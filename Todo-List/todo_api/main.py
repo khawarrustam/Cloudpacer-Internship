@@ -34,11 +34,12 @@ USE_FIREBASE = os.getenv("USE_FIREBASE", "false").lower() == "true"
 if USE_FIREBASE:
     # Firebase Setup (Provide serviceAccountKey.json path or default app credentials)
     cred_path = os.getenv("FIREBASE_CREDENTIALS_PATH", "serviceAccountKey.json")
-    if os.path.exists(cred_path):
-        cred = credentials.Certificate(cred_path)
-        firebase_admin.initialize_app(cred)
-    else:
-        firebase_admin.initialize_app()
+    if not firebase_admin._apps:
+        if os.path.exists(cred_path):
+            cred = credentials.Certificate(cred_path)
+            firebase_admin.initialize_app(cred)
+        else:
+            firebase_admin.initialize_app()
     db = firestore.client()
     todo_repo: ITodoRepository = FirestoreTodoRepository(db=db)
     print("Database: Running with Firebase Firestore")
@@ -62,3 +63,8 @@ app.include_router(todo_router)
 @app.get("/", tags=["Health"])
 def health_check():
     return {"status": "ok", "architecture": "Onion / DDD"}
+
+
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run("main:app", host="127.0.0.1", port=8000, reload=True)

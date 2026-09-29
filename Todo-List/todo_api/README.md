@@ -1,6 +1,7 @@
 # 🧅 Todo API — DDD + Onion Architecture
 
-> **A clean, production-ready Todo REST API** built with FastAPI, following Domain-Driven Design (DDD) and Onion Architecture patterns. Supports both **Firebase Firestore** and **In-Memory** storage.
+> **A clean, production-ready Todo REST API** built with FastAPI, following Domain-Driven Design (DDD) and Onion Architecture patterns. Supports both **Firebase Firestore** and **In-Memory** storage.  
+> 📖 **Master Architecture Guide (DDD vs MVC in Roman Urdu):** [`../../README.md`](file:///Users/apple/internship-practice/README.md)
 
 **Author:** RanaKhawarAli
 

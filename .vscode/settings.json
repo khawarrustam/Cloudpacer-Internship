@@ -2,9 +2,16 @@
   "python.defaultInterpreterPath": "${workspaceFolder}/Todo-List/todo_api/venv/bin/python",
   "python.analysis.extraPaths": [
     "${workspaceFolder}/Todo-List/todo_api",
-    "${workspaceFolder}/Todo-List/todo_api/src"
+    "${workspaceFolder}/Todo-List/todo_api/src",
+    "${workspaceFolder}/Todo MVC"
+  ],
+  "python.autoComplete.extraPaths": [
+    "${workspaceFolder}/Todo-List/todo_api",
+    "${workspaceFolder}/Todo-List/todo_api/src",
+    "${workspaceFolder}/Todo MVC"
   ],
   "python.analysis.autoSearchPaths": true,
   "python.analysis.diagnosticMode": "openFilesOnly",
-  "python.analysis.typeCheckingMode": "off"
+  "python.analysis.typeCheckingMode": "off",
+  "python.envFile": "${workspaceFolder}/.env"
 }

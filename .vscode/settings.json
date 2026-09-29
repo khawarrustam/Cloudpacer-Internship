@@ -1,0 +1,10 @@
+{
+  "python.defaultInterpreterPath": "${workspaceFolder}/Todo-List/todo_api/venv/bin/python",
+  "python.analysis.extraPaths": [
+    "${workspaceFolder}/Todo-List/todo_api",
+    "${workspaceFolder}/Todo-List/todo_api/src"
+  ],
+  "python.analysis.autoSearchPaths": true,
+  "python.analysis.diagnosticMode": "openFilesOnly",
+  "python.analysis.typeCheckingMode": "off"
+}

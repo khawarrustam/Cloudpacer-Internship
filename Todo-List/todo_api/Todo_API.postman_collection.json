@@ -1,0 +1,375 @@
+{
+	"info": {
+		"_postman_id": "todo-onion-api-collection",
+		"name": "Todo Onion Architecture API",
+		"description": "Clean Architecture (DDD + Onion) Todo API with FastAPI & Firebase Firestore.\n\n## How to use\n1. Start the server: `USE_FIREBASE=true python main.py`\n2. Base URL: `http://127.0.0.1:8000`\n3. Run requests in order: Create → List → Complete → List again",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"variable": [
+		{
+			"key": "base_url",
+			"value": "http://127.0.0.1:8000",
+			"type": "string"
+		},
+		{
+			"key": "todo_id",
+			"value": "",
+			"type": "string"
+		}
+	],
+	"item": [
+		{
+			"name": "Health",
+			"item": [
+				{
+					"name": "Health Check",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/",
+							"host": ["{{base_url}}"],
+							"path": [""]
+						},
+						"description": "Check if the API is running."
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Todos",
+			"item": [
+				{
+					"name": "Create Todo - HIGH priority",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Status is 201', function () {",
+									"    pm.response.to.have.status(201);",
+									"});",
+									"",
+									"pm.test('Response has correct fields', function () {",
+									"    var json = pm.response.json();",
+									"    pm.expect(json).to.have.property('id');",
+									"    pm.expect(json).to.have.property('title');",
+									"    pm.expect(json).to.have.property('priority');",
+									"    pm.expect(json).to.have.property('is_completed');",
+									"    pm.expect(json.is_completed).to.eql(false);",
+									"    pm.expect(json.priority).to.eql('HIGH');",
+									"});",
+									"",
+									"// Save todo_id for later use",
+									"var json = pm.response.json();",
+									"pm.collectionVariables.set('todo_id', json.id);"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"title\": \"Setup Firebase Firestore\",\n    \"priority\": \"HIGH\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/todos",
+							"host": ["{{base_url}}"],
+							"path": ["todos"]
+						},
+						"description": "Create a new todo with HIGH priority. The `todo_id` is automatically saved for subsequent requests."
+					},
+					"response": []
+				},
+				{
+					"name": "Create Todo - MEDIUM priority (default)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Status is 201', function () {",
+									"    pm.response.to.have.status(201);",
+									"});",
+									"",
+									"pm.test('Priority defaults to MEDIUM', function () {",
+									"    var json = pm.response.json();",
+									"    pm.expect(json.priority).to.eql('MEDIUM');",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"title\": \"Implement Onion Architecture layers\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/todos",
+							"host": ["{{base_url}}"],
+							"path": ["todos"]
+						},
+						"description": "Create a todo without specifying priority — should default to MEDIUM."
+					},
+					"response": []
+				},
+				{
+					"name": "Create Todo - LOW priority",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Status is 201', function () {",
+									"    pm.response.to.have.status(201);",
+									"});",
+									"",
+									"pm.test('Priority is LOW', function () {",
+									"    var json = pm.response.json();",
+									"    pm.expect(json.priority).to.eql('LOW');",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"title\": \"Write unit tests for domain layer\",\n    \"priority\": \"LOW\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/todos",
+							"host": ["{{base_url}}"],
+							"path": ["todos"]
+						},
+						"description": "Create a todo with LOW priority."
+					},
+					"response": []
+				},
+				{
+					"name": "List All Todos",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Status is 200', function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test('Response is an array', function () {",
+									"    var json = pm.response.json();",
+									"    pm.expect(json).to.be.an('array');",
+									"    pm.expect(json.length).to.be.greaterThan(0);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/todos",
+							"host": ["{{base_url}}"],
+							"path": ["todos"]
+						},
+						"description": "Fetch all todos from the database."
+					},
+					"response": []
+				},
+				{
+					"name": "Complete Todo",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Status is 200', function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test('Todo is marked as completed', function () {",
+									"    var json = pm.response.json();",
+									"    pm.expect(json.is_completed).to.eql(true);",
+									"    pm.expect(json.completed_at).to.not.be.null;",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "PATCH",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/todos/{{todo_id}}/complete",
+							"host": ["{{base_url}}"],
+							"path": ["todos", "{{todo_id}}", "complete"]
+						},
+						"description": "Mark the previously created todo as complete. Uses the `todo_id` saved from the Create request."
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Error Cases",
+			"item": [
+				{
+					"name": "Create Todo - Title Too Short (Validation Error)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Status is 422 (Validation Error)', function () {",
+									"    pm.response.to.have.status(422);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"title\": \"AB\",\n    \"priority\": \"HIGH\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/todos",
+							"host": ["{{base_url}}"],
+							"path": ["todos"]
+						},
+						"description": "Title is only 2 chars — should fail with 422 (min 3 required)."
+					},
+					"response": []
+				},
+				{
+					"name": "Create Todo - Missing Title (Validation Error)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Status is 422 (Validation Error)', function () {",
+									"    pm.response.to.have.status(422);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"priority\": \"HIGH\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/todos",
+							"host": ["{{base_url}}"],
+							"path": ["todos"]
+						},
+						"description": "No title provided — should fail with 422."
+					},
+					"response": []
+				},
+				{
+					"name": "Complete Todo - Invalid ID (Not Found)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Status is 404 (Not Found)', function () {",
+									"    pm.response.to.have.status(404);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "PATCH",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/todos/non-existent-id-12345/complete",
+							"host": ["{{base_url}}"],
+							"path": ["todos", "non-existent-id-12345", "complete"]
+						},
+						"description": "Try to complete a todo that doesn't exist — should return 404."
+					},
+					"response": []
+				},
+				{
+					"name": "Complete Todo - Already Completed (Domain Error)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Status is 400 (Already Completed)', function () {",
+									"    pm.response.to.have.status(400);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "PATCH",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/todos/{{todo_id}}/complete",
+							"host": ["{{base_url}}"],
+							"path": ["todos", "{{todo_id}}", "complete"]
+						},
+						"description": "Try to complete the same todo again — should return 400 (already completed domain error)."
+					},
+					"response": []
+				}
+			]
+		}
+	]
+}

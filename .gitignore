@@ -1,0 +1,18 @@
+# Environment files
+.env
+*.env
+
+# Credentials & Secrets
+*serviceAccountKey.json
+serviceAccountKey.json
+
+# Python
+venv/
+env/
+__pycache__/
+*.pyc
+.pytest_cache/
+.mypy_cache/
+
+# OS
+.DS_Store

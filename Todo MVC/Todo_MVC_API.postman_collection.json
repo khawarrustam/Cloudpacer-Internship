@@ -1,0 +1,150 @@
+{
+	"info": {
+		"_postman_id": "todo-mvc-api-collection",
+		"name": "Todo MVC Architecture API",
+		"description": "Traditional MVC Architecture Todo API with FastAPI & MongoDB.\n\nBase URL: http://127.0.0.1:8001\nRun: cd 'Todo MVC' && python main_mvc.py",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"variable": [
+		{
+			"key": "base_url",
+			"value": "http://127.0.0.1:8001",
+			"type": "string"
+		},
+		{
+			"key": "todo_id",
+			"value": "",
+			"type": "string"
+		}
+	],
+	"item": [
+		{
+			"name": "Health Check",
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "{{base_url}}/",
+					"host": ["{{base_url}}"],
+					"path": [""]
+				}
+			}
+		},
+		{
+			"name": "Create Todo",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"var json = pm.response.json();",
+							"pm.collectionVariables.set('todo_id', json.id);"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "POST",
+				"header": [{"key": "Content-Type", "value": "application/json"}],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"title\": \"Learn MVC Architecture\",\n    \"priority\": \"HIGH\"\n}"
+				},
+				"url": {
+					"raw": "{{base_url}}/todos",
+					"host": ["{{base_url}}"],
+					"path": ["todos"]
+				}
+			}
+		},
+		{
+			"name": "List All Todos",
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "{{base_url}}/todos",
+					"host": ["{{base_url}}"],
+					"path": ["todos"]
+				}
+			}
+		},
+		{
+			"name": "Get Single Todo",
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "{{base_url}}/todos/{{todo_id}}",
+					"host": ["{{base_url}}"],
+					"path": ["todos", "{{todo_id}}"]
+				}
+			}
+		},
+		{
+			"name": "Complete Todo",
+			"request": {
+				"method": "PATCH",
+				"header": [],
+				"url": {
+					"raw": "{{base_url}}/todos/{{todo_id}}/complete",
+					"host": ["{{base_url}}"],
+					"path": ["todos", "{{todo_id}}", "complete"]
+				}
+			}
+		},
+		{
+			"name": "Delete Todo",
+			"request": {
+				"method": "DELETE",
+				"header": [],
+				"url": {
+					"raw": "{{base_url}}/todos/{{todo_id}}",
+					"host": ["{{base_url}}"],
+					"path": ["todos", "{{todo_id}}"]
+				}
+			}
+		},
+		{
+			"name": "Error — Title Too Short",
+			"request": {
+				"method": "POST",
+				"header": [{"key": "Content-Type", "value": "application/json"}],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"title\": \"AB\",\n    \"priority\": \"HIGH\"\n}"
+				},
+				"url": {
+					"raw": "{{base_url}}/todos",
+					"host": ["{{base_url}}"],
+					"path": ["todos"]
+				}
+			}
+		},
+		{
+			"name": "Error — Not Found",
+			"request": {
+				"method": "PATCH",
+				"header": [],
+				"url": {
+					"raw": "{{base_url}}/todos/non-existent-id/complete",
+					"host": ["{{base_url}}"],
+					"path": ["todos", "non-existent-id", "complete"]
+				}
+			}
+		},
+		{
+			"name": "Error — Already Completed",
+			"request": {
+				"method": "PATCH",
+				"header": [],
+				"url": {
+					"raw": "{{base_url}}/todos/{{todo_id}}/complete",
+					"host": ["{{base_url}}"],
+					"path": ["todos", "{{todo_id}}", "complete"]
+				}
+			}
+		}
+	]
+}

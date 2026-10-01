@@ -2,47 +2,47 @@
 =============================================================================
 MODEL LAYER — Todo Data Model + Business Rules (MVC Pattern)
 =============================================================================
-MVC architecture mein "Model" ka kaam data ki shape define karna aur
-saare business rules / validations ko sambhalna hota hai.
+In the MVC architecture, the "Model" is responsible for defining the shape of the data
+and handling all business rules/validations.
 
-MVC vs Clean Architecture / DDD ka Farq:
-- MVC mein data aur rules isi ek file mein plain Python dictionaries aur helper
-  functions ke zariye manage hotay hain.
-- Clean Architecture (DDD) mein yeh alag alag layers mein divide hota hai:
+Difference between MVC and Clean Architecture / DDD:
+- In MVC, data and rules are managed in this single file using plain Python dictionaries
+  and helper functions.
+- In Clean Architecture (DDD), this is divided into separate layers 
   (entities.py, value_objects.py, exceptions.py).
 
-Kahan Connected Hai:
-- Is file ke functions (`create_todo_dict`, `mark_completed`, `validate_title`)
-  aur exceptions (`InvalidTitleError`, `TodoAlreadyCompletedError`, `TodoNotFoundError`)
-  ko `src_mvc/controllers/todo_controller.py` import karke use karta hai.
+Where it's Connected:
+- The functions in this file (`create_todo_dict`, `mark_completed`, `validate_title`)
+  and exceptions (`InvalidTitleError`, `TodoAlreadyCompletedError`, `TodoNotFoundError`)
+  are imported and used by `src_mvc/controllers/todo_controller.py`.
 =============================================================================
 """
 
 # ---------------------------------------------------------------------------
-# LIBRARIES / IMPORTS (Kyun aur kis liye import ki gayi hain):
+# LIBRARIES / IMPORTS (Why and for what they are imported):
 # ---------------------------------------------------------------------------
-# 'datetime, timezone': Todo kab create hua ('created_at') aur kab complete hua ('completed_at')
-# us waqt ki current UTC date & time record karne ke liye.
+# 'datetime, timezone': To record the current UTC date & time for when a Todo 
+# is created ('created_at') and completed ('completed_at').
 from datetime import datetime, timezone
 
-# 'Enum': Ek specific set of constant values define karne ke liye taake ghalat values pass na ho sakein.
+# 'Enum': To define a specific set of constant values so invalid values cannot be passed.
 from enum import Enum
 
-# 'typing.Optional': Type hinting ke liye use hota hai, batane ke liye ke koi value String bhi ho sakti hai aur None bhi.
+# 'typing.Optional': Used for type hinting, indicating a value can be a String or None.
 from typing import Optional
 
-# 'uuid': Universally Unique Identifier generate karne ke liye, taake har Todo ko unique ID milay.
+# 'uuid': To generate a Universally Unique Identifier, ensuring each Todo gets a unique ID.
 import uuid
 
 
 # ---------------------------------------------------------------------------
-# ENUMS / CONSTANTS (Qeemtein fix karne ke liye):
+# ENUMS / CONSTANTS (To set fixed values):
 # ---------------------------------------------------------------------------
 class Priority(str, Enum):
     """
-    Kyun banaya gaya:
-    - Todo ki priority ko sirf 3 makhsoos darjon (LOW, MEDIUM, HIGH) tak mehdood rakhne ke liye.
-    - String inherit karne se JSON serialization aasan ho jati hai.
+    Why it was created:
+    - To restrict the Todo's priority to only 3 specific levels (LOW, MEDIUM, HIGH).
+    - Inheriting from string makes JSON serialization easier.
     """
     LOW = "LOW"
     MEDIUM = "MEDIUM"
@@ -50,31 +50,31 @@ class Priority(str, Enum):
 
 
 # ---------------------------------------------------------------------------
-# CUSTOM EXCEPTIONS (Khusoosi Errors):
+# CUSTOM EXCEPTIONS (Specific Errors):
 # ---------------------------------------------------------------------------
 class TodoNotFoundError(Exception):
     """
-    Kyun banaya gaya:
-    - Jab user aisi ID mangay jo database mein mojood na ho, toh yeh error raise hota hai.
-    - Controller isay pakar kar 404 Not Found response deta hai.
+    Why it was created:
+    - Triggered when a user requests an ID that does not exist in the database.
+    - The controller catches this and returns a 404 Not Found response.
     """
     pass
 
 
 class TodoAlreadyCompletedError(Exception):
     """
-    Kyun banaya gaya:
-    - Business Rule: Agar task pehle se mukammal (completed) hai toh usay dubara complete nahi kiya ja sakta.
-    - Controller isay pakar kar 400 Bad Request response deta hai.
+    Why it was created:
+    - Business Rule: If a task is already completed, it cannot be completed again.
+    - The controller catches this and returns a 400 Bad Request response.
     """
     pass
 
 
 class InvalidTitleError(Exception):
     """
-    Kyun banaya gaya:
-    - Business Rule: Todo ka title agar bohot chota (< 3) ya bohot lamba (> 120) ho toh yeh error trigger hota hai.
-    - Controller isay pakar kar 400 Bad Request response deta hai.
+    Why it was created:
+    - Business Rule: Triggered if a Todo's title is too short (< 3) or too long (> 120).
+    - The controller catches this and returns a 400 Bad Request response.
     """
     pass
 
@@ -84,17 +84,17 @@ class InvalidTitleError(Exception):
 # ---------------------------------------------------------------------------
 def validate_title(title: str) -> str:
     """
-    Kyun use ho raha hai:
-    - Title ki safai (trimming) aur length validation ke business rules check karne ke liye.
+    Why it's being used:
+    - To check business rules for title cleanup (trimming) and length validation.
 
-    Kaise kaam karta hai:
-    1. Title ke aagay peechay ki faltu spaces (`strip()`) khatam karta hai.
-    2. Agar length 3 se kam ho toh `InvalidTitleError` deta hai.
-    3. Agar length 120 se zyada ho toh `InvalidTitleError` deta hai.
-    4. Agar valid ho toh saaf title wapis karta hai.
+    How it works:
+    1. Removes extra spaces from the beginning and end of the title (`strip()`).
+    2. Raises `InvalidTitleError` if the length is less than 3.
+    3. Raises `InvalidTitleError` if the length is more than 120.
+    4. Returns the cleaned title if it's valid.
 
-    Kahan connected hai:
-    - Isi file ke `create_todo_dict()` mein call hota hai aur controller mein validation ke liye.
+    Where it's connected:
+    - Called in `create_todo_dict()` in this file and used for validation in the controller.
     """
     clean = title.strip() if title else ""
     if len(clean) < 3:
@@ -106,23 +106,23 @@ def validate_title(title: str) -> str:
 
 def create_todo_dict(title: str, priority: str = "MEDIUM") -> dict:
     """
-    Kyun use ho raha hai:
-    - Naya Todo object (dictionary ki shakal mein) banane ka factory function hai.
+    Why it's being used:
+    - A factory function to create a new Todo object (in the form of a dictionary).
 
-    Kaise kaam karta hai:
-    1. Title ko `validate_title()` ke zariye check aur clean karta hai.
-    2. Priority ko validate karta hai Priority enum ke zariye.
-    3. Ek plain Python dictionary return karta hai jisme:
-       - 'id': Naya unique UUID string.
-       - 'title': Validated title.
-       - 'priority': Priority string value.
-       - 'is_completed': Shuru mein False.
+    How it works:
+    1. Checks and cleans the title using `validate_title()`.
+    2. Validates the priority using the Priority enum.
+    3. Returns a plain Python dictionary containing:
+       - 'id': A new unique UUID string.
+       - 'title': The validated title.
+       - 'priority': The priority string value.
+       - 'is_completed': Initially False.
        - 'created_at': Current UTC time (ISO format string).
-       - 'completed_at': Shuru mein None.
+       - 'completed_at': Initially None.
 
-    Kahan connected hai:
-    - `src_mvc/controllers/todo_controller.py` ke `create_todo()` route mein call hota hai.
-    - Banney ke baad yeh dictionary Firestore DB mein save hone jati hai.
+    Where it's connected:
+    - Called in the `create_todo()` route of `src_mvc/controllers/todo_controller.py`.
+    - After creation, this dictionary is sent to be saved in the Firestore DB.
     """
     clean_title = validate_title(title)
     valid_priority = Priority(priority.upper())
@@ -139,17 +139,18 @@ def create_todo_dict(title: str, priority: str = "MEDIUM") -> dict:
 
 def mark_completed(todo: dict) -> dict:
     """
-    Kyun use ho raha hai:
-    - Todo ko mukammal (complete) karne ka business rule enforce karta hai.
+    Why it's being used:
+    - Enforces the business rule for marking a Todo as complete.
 
-    Kaise kaam karta hai:
-    1. Check karta hai ke `todo["is_completed"]` pehle se True toh nahi.
-    2. Agar pehle se True ho, toh `TodoAlreadyCompletedError` throw karta hai.
-    3. Agar False ho, toh `is_completed` ko True karta hai aur `completed_at` mein current time stamp daal kar dictionary return karta hai.
+    How it works:
+    1. Checks if `todo["is_completed"]` is already True.
+    2. If it is already True, raises `TodoAlreadyCompletedError`.
+    3. If False, sets `is_completed` to True, adds the current timestamp to `completed_at`,
+       and returns the dictionary.
 
-    Kahan connected hai:
-    - `src_mvc/controllers/todo_controller.py` ke `complete_todo()` route mein call hota hai.
-    - Is function ke return ke baad controller updated data Firestore DB mein save karta hai.
+    Where it's connected:
+    - Called in the `complete_todo()` route of `src_mvc/controllers/todo_controller.py`.
+    - After this function returns, the controller saves the updated data in the Firestore DB.
     """
     if todo["is_completed"]:
         raise TodoAlreadyCompletedError(

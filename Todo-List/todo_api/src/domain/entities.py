@@ -1,12 +1,42 @@
+"""
+=============================================================================
+DOMAIN LAYER — Entities
+=============================================================================
+Entities woh objects hotay hain jinki ek distinct identity (ID) hoti hai.
+Bhalay unke baqi attributes change ho jayen, unki ID same rehti hai, isliye
+unhe Entity kaha jata hai.
+
+Kyun Zaroori Hain:
+- Yeh application ka Core Business Logic aur Rules (Invariants) hold karte hain.
+- Inhe bahar ki kisi layer (Database, API, UI) ka kuch pata nahi hota.
+- Yeh apne state (data) ko khud manage karte hain taake data hamesha valid rahe.
+
+Kahan Connected Hai:
+- Use cases (jaise `CreateTodoUseCase`, `CompleteTodoUseCase`) in Entities ko
+  create ya update karte hain.
+- Repositories in Entities ko database mein save karte hain ya wahan se fetch karte hain.
+=============================================================================
+"""
+
+# ---------------------------------------------------------------------------
+# LIBRARIES / IMPORTS:
+# ---------------------------------------------------------------------------
 from dataclasses import dataclass
 from datetime import datetime, timezone
 import uuid
+
+# Value Objects: Yeh chhotay objects hain jo validation rules carry karte hain.
 from src.domain.value_objects import TaskTitle, Priority
+
+# Domain Exceptions: Agar koi business rule toota toh yeh custom errors raise hotay hain.
 from src.domain.exceptions import TaskAlreadyCompletedError
 
 @dataclass
 class TodoItem:
-    """Aggregate Root: Enforces all business invariants on a Todo."""
+    """
+    Aggregate Root: Yeh main Entity hai jo apne andar ke sub-components ko manage karti hai.
+    Koi bahar ki class iske data ko direct modify na kare (bina rules follow kiye).
+    """
     id: str
     title: TaskTitle
     priority: Priority
@@ -16,10 +46,13 @@ class TodoItem:
 
     @classmethod
     def create(cls, title: str, priority: Priority = Priority.MEDIUM) -> "TodoItem":
-        """Factory method: Validates inputs and creates a clean aggregate."""
+        """
+        Factory method: Naya TodoItem bananane ka sahulati (helper) tarika.
+        Isme naya ID auto-generate hota hai aur default values set hoti hain.
+        """
         return cls(
             id=str(uuid.uuid4()),
-            title=TaskTitle(title),
+            title=TaskTitle(title), # Title ki validation TaskTitle Value Object handle karega
             priority=priority,
             is_completed=False,
             created_at=datetime.now(timezone.utc),
@@ -27,7 +60,11 @@ class TodoItem:
         )
 
     def mark_as_completed(self) -> None:
-        """Business Invariant: Completed task cannot be completed again."""
+        """
+        Business Invariant (Rule): Ek task jo pehle se complete hai, 
+        usey dobara complete nahi kiya ja sakta.
+        Agar state valid hai toh status aur completed_at date update kar deta hai.
+        """
         if self.is_completed:
             raise TaskAlreadyCompletedError(f"Todo with ID '{self.id}' is already completed.")
         self.is_completed = True

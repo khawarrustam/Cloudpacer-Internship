@@ -2,47 +2,48 @@
 =============================================================================
 VIEW LAYER — Pydantic Schemas for Request & Response (MVC Pattern)
 =============================================================================
-MVC architecture mein "View" ka matlab hota hai user/client ko kya nazar aayega.
-Kyunki yeh ek REST API hai (HTML templates nahi hain), is liye Pydantic Models
-hi hamari "Views" hain jo Request body aur Response JSON ka structure define karti hain.
+In the MVC architecture, "View" refers to what the user/client will see.
+Since this is a REST API (there are no HTML templates), Pydantic Models act as
+our "Views" that define the structure of the Request body and Response JSON.
 
 MVC vs Clean Architecture / DDD:
-- MVC mein yahi Schemas dono kaam karti hain (API validation + data transfer).
-- DDD mein do alag cheezein hoti hain: Presentation Schemas (FastAPI ke liye) aur
-  Application DTOs (Data Transfer Objects jo layers ke darmiyan data le jati hain).
+- In MVC, these same schemas handle both API validation and data transfer.
+- In DDD, there are two distinct concepts: Presentation Schemas (for FastAPI) and
+  Application DTOs (Data Transfer Objects that carry data between layers).
 
-Kahan Connected Hai:
-- Yeh classes `src_mvc/controllers/todo_controller.py` mein har route ke input (`req: CreateTodoRequest`)
-  aur output (`response_model=TodoResponse`) ke tor par use hoti hain.
+Where it's Connected:
+- These classes are used in `src_mvc/controllers/todo_controller.py` for every route 
+  as input (`req: CreateTodoRequest`) and output (`response_model=TodoResponse`).
 =============================================================================
 """
 
 # ---------------------------------------------------------------------------
-# LIBRARIES / IMPORTS (Kyun aur kis liye import ki gayi hain):
+# LIBRARIES / IMPORTS (Why and for what they are imported):
 # ---------------------------------------------------------------------------
-# 'BaseModel': Pydantic ka base class jo request aur response data ko validate aur serialize karta hai.
-# 'Field': Model fields par additional constraints (jaise min_length, max_length, examples) lagane ke liye.
+# 'BaseModel': Pydantic's base class that validates and serializes request and response data.
+# 'Field': To apply additional constraints (like min_length, max_length, examples) on model fields.
 from pydantic import BaseModel, Field
 
-# 'Optional': Batane ke liye ke field ki value string bhi ho sakti hai ya phir None (null) bhi.
+# 'Optional': To indicate that a field's value can be a string or None (null).
 from typing import Optional
 
 
 # ---------------------------------------------------------------------------
-# REQUEST SCHEMAS (Client se aane wala data):
+# REQUEST SCHEMAS (Data incoming from the client):
 # ---------------------------------------------------------------------------
 class CreateTodoRequest(BaseModel):
     """
-    Kyun banaya gaya:
-    - Jab client POST /todos par naya task create karne ki request kare,
-      toh aane wale JSON body ko validate karne ke liye.
+    Why it was created:
+    - To validate the incoming JSON body when a client makes a request to create 
+      a new task via POST /todos.
 
-    Fields aur Rules:
-    - title: String hona zaroori hai, kam az kam 3 aur zyada se zyada 120 characters ka ho.
-    - priority: Optional string, default value 'MEDIUM' hogi.
+    Fields and Rules:
+    - title: Must be a String, with a minimum of 3 and a maximum of 120 characters.
+    - priority: Optional string, defaults to 'MEDIUM'.
 
-    Kahan connected hai:
-    - `src_mvc/controllers/todo_controller.py` ke `create_todo(req: CreateTodoRequest)` mein parameter ke tor par.
+    Where it's connected:
+    - As a parameter in `create_todo(req: CreateTodoRequest)` within 
+      `src_mvc/controllers/todo_controller.py`.
     """
     title: str = Field(
         ..., min_length=3, max_length=120, examples=["Setup MVC Architecture"]
@@ -51,23 +52,24 @@ class CreateTodoRequest(BaseModel):
 
 
 # ---------------------------------------------------------------------------
-# RESPONSE SCHEMAS (Client ko wapis bheja jane wala data):
+# RESPONSE SCHEMAS (Data sent back to the client):
 # ---------------------------------------------------------------------------
 class TodoResponse(BaseModel):
     """
-    Kyun banaya gaya:
-    - Client ko jo Todo ka data response mein bhejna hai, uska JSON contract fix karne ke liye.
+    Why it was created:
+    - To define a fixed JSON contract for the Todo data sent back to the client in the response.
 
     Fields:
-    - id: Todo ka unique ID string.
-    - title: Task ka title.
-    - priority: Task ki priority (LOW, MEDIUM, HIGH).
+    - id: The Todo's unique ID string.
+    - title: The task's title.
+    - priority: The task's priority (LOW, MEDIUM, HIGH).
     - is_completed: Boolean flag (True/False).
-    - created_at: Timestamp jab todo bana.
-    - completed_at: Timestamp jab todo complete hua (agar nahi hua toh null/None).
+    - created_at: Timestamp of when the todo was created.
+    - completed_at: Timestamp of when the todo was completed (null/None if not yet completed).
 
-    Kahan connected hai:
-    - `src_mvc/controllers/todo_controller.py` mein `response_model=TodoResponse` ya `List[TodoResponse]` ke tor par.
+    Where it's connected:
+    - As `response_model=TodoResponse` or `List[TodoResponse]` in 
+      `src_mvc/controllers/todo_controller.py`.
     """
     id: str
     title: str

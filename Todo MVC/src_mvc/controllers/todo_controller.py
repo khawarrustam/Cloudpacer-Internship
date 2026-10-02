@@ -26,15 +26,9 @@ Kahan Connected Hai:
 # ---------------------------------------------------------------------------
 # LIBRARIES / IMPORTS (Kyun aur kis liye import ki gayi hain):
 # ---------------------------------------------------------------------------
-# 'typing.List': Ek se zyada Todo items ka list response model define karne ke liye (List[TodoResponse]).
 from typing import List
-
-# 'APIRouter': FastAPI mein related routes ko ek group/module mein organize karne ke liye.
-# 'HTTPException': Error aane par standard HTTP error status (400, 404 wagera) throw karne ke liye.
-# 'status': HTTP status codes ke constants (jaise HTTP_201_CREATED, HTTP_404_NOT_FOUND) ke liye.
 from fastapi import APIRouter, HTTPException, status
 
-# MODEL IMPORTS: Business rules, data creation, aur custom exceptions jo model layer mein hain.
 from src_mvc.models.todo_model import (
     create_todo_dict,
     mark_completed,
@@ -43,35 +37,15 @@ from src_mvc.models.todo_model import (
     TodoAlreadyCompletedError,
     InvalidTitleError,
 )
-
-# VIEW IMPORTS: Request validation aur response formatting schemas.
 from src_mvc.views.todo_views import CreateTodoRequest, TodoResponse
-
-# DATABASE IMPORT: Firestore connection instance hasil karne ke liye.
 from src_mvc.db.firebase import get_db
 
 
-# APIRouter banaya gaya jo tamam Todo endpoints ko '/todos' prefix aur 'Todos' tag deta hai.
 router = APIRouter(prefix="/todos", tags=["Todos"])
-
-# Firestore collection ka naam jahan todos ke documents save honge.
 COLLECTION = "todos"
 
 
-# ---------------------------------------------------------------------------
-# HELPER FUNCTION (Database Access):
-# ---------------------------------------------------------------------------
 def _collection():
-    """
-    Kyun use ho raha hai:
-    - Har route mein baar baar `get_db().collection("todos")` likhne ke bajaye ek central helper.
-
-    Kaise kaam karta hai:
-    - `get_db()` se active Firestore client leta hai aur "todos" collection ka reference return karta hai.
-
-    Kahan connected hai:
-    - Is file ke tamam routes (create, list, get, complete, delete) is helper ko call karte hain.
-    """
     return get_db().collection(COLLECTION)
 
 
@@ -81,132 +55,196 @@ def _collection():
 
 @router.post("", response_model=TodoResponse, status_code=status.HTTP_201_CREATED)
 async def create_todo(req: CreateTodoRequest):
-    """
-    Kyun use ho raha hai:
-    - Naya Todo task create karne ke liye (POST /todos).
+    print("\n" + "="*60)
+    print("📥 [MVC] REQUEST RECEIVED")
+    print("="*60)
+    print(f"   📂 File    : src_mvc/controllers/todo_controller.py")
+    print(f"   🔧 Function: create_todo()")
+    print(f"   🌐 Route   : POST /todos")
+    print(f"   📝 Title   : {req.title}")
+    print(f"   🎯 Priority: {req.priority}")
+    print("-"*60)
+    print("   ➡️  STEP 1: Controller → calling Model (todo_model.py)")
+    print("              Function: create_todo_dict(title, priority)")
 
-    Kaise kaam karta hai (Flow):
-    1. Input Data View Schema (`CreateTodoRequest`) ke zariye validate hota hai.
-    2. Model ka `create_todo_dict()` function call hota hai jo title check karta hai aur naya dict banata hai.
-    3. Agar title invalid ho toh `InvalidTitleError` catch karke 400 Bad Request phenk deta hai.
-    4. Firestore collection mein document ID ke sath data save (.set()) karta hai.
-    5. Save hone ke baad data ko `TodoResponse` View mein pack karke 201 Created status ke sath return karta hai.
-
-    Data Flow:
-    Client Request -> Controller -> Model (Validation & Factory) -> Firestore DB -> View Response -> Client
-    """
     try:
         todo = create_todo_dict(title=req.title, priority=req.priority)
+
+        print(f"   ✅ STEP 2: Model returned new todo dict")
+        print(f"              ID         : {todo['id']}")
+        print(f"              Title      : {todo['title']}")
+        print(f"              Priority   : {todo['priority']}")
+        print(f"              created_at : {todo['created_at']}")
+        print("-"*60)
+        print(f"   ➡️  STEP 3: Controller → saving to Firestore DB")
+        print(f"              Collection : '{COLLECTION}'")
+        print(f"              Document ID: {todo['id']}")
+
         _collection().document(todo["id"]).set(todo)
+
+        print(f"   ✅ STEP 4: Firestore saved successfully!")
+        print("-"*60)
+        print("   ➡️  STEP 5: Building TodoResponse (View)")
+        print("              File: src_mvc/views/todo_views.py → TodoResponse")
+        print("   📤 STEP 6: Sending Response to Client | Status: 201 Created")
+        print("="*60 + "\n")
+
         return TodoResponse(**todo)
+
     except InvalidTitleError as err:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST, detail=str(err)
-        )
+        print(f"   ❌ InvalidTitleError caught in Controller!")
+        print(f"      Detail: {str(err)}")
+        print("="*60 + "\n")
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(err))
 
 
 @router.get("", response_model=List[TodoResponse])
 async def list_todos():
-    """
-    Kyun use ho raha hai:
-    - Database mein mojood tamam Todos ki list lane ke liye (GET /todos).
+    print("\n" + "="*60)
+    print("📥 [MVC] REQUEST RECEIVED")
+    print("="*60)
+    print(f"   📂 File    : src_mvc/controllers/todo_controller.py")
+    print(f"   🔧 Function: list_todos()")
+    print(f"   🌐 Route   : GET /todos")
+    print("-"*60)
+    print(f"   ➡️  STEP 1: Controller → querying Firestore (collection='{COLLECTION}')")
+    print(f"              Method: _collection().stream()")
 
-    Kaise kaam karta hai (Flow):
-    1. `_collection().stream()` ke zariye Firestore se saare documents fetch karta hai.
-    2. Har document ko `.to_dict()` se Python dictionary mein convert karta hai.
-    3. Saari dictionaries ko `TodoResponse` Pydantic models ki list bana kar return karta hai.
-
-    Data Flow:
-    Client Request -> Controller -> Firestore DB (fetch all) -> View Response List -> Client
-    """
     docs = _collection().stream()
     todos = [doc.to_dict() for doc in docs]
+
+    print(f"   ✅ STEP 2: Firestore returned {len(todos)} document(s)")
+    for i, t in enumerate(todos, 1):
+        print(f"              [{i}] id={t['id'][:8]}... | title={t['title']} | completed={t['is_completed']}")
+    print(f"   ➡️  STEP 3: Converting to TodoResponse list (View)")
+    print(f"   📤 STEP 4: Sending Response to Client | Status: 200 OK")
+    print("="*60 + "\n")
+
     return [TodoResponse(**t) for t in todos]
 
 
 @router.get("/{todo_id}", response_model=TodoResponse)
 async def get_todo(todo_id: str):
-    """
-    Kyun use ho raha hai:
-    - Makhsoos ID ke zariye single Todo task fetch karne ke liye (GET /todos/{todo_id}).
+    print("\n" + "="*60)
+    print("📥 [MVC] REQUEST RECEIVED")
+    print("="*60)
+    print(f"   📂 File    : src_mvc/controllers/todo_controller.py")
+    print(f"   🔧 Function: get_todo()")
+    print(f"   🌐 Route   : GET /todos/{{todo_id}}")
+    print(f"   🆔 todo_id : {todo_id}")
+    print("-"*60)
+    print(f"   ➡️  STEP 1: Controller → fetching from Firestore by ID")
+    print(f"              Collection.document('{todo_id}').get()")
 
-    Kaise kaam karta hai (Flow):
-    1. URL se `todo_id` hasil karta hai.
-    2. Firestore se us ID ka document fetch karta hai (`.document(todo_id).get()`).
-    3. Agar document mojood na ho (`not doc.exists`), toh 404 NOT FOUND HTTPException raise karta hai.
-    4. Agar mojood ho toh data ko `TodoResponse` View mein convert karke return karta hai.
-
-    Data Flow:
-    Client Request -> Controller -> Firestore DB (find by ID) -> View Response -> Client
-    """
     doc = _collection().document(todo_id).get()
+
     if not doc.exists:
+        print(f"   ❌ STEP 2: Document NOT FOUND in Firestore!")
+        print(f"      Raising: 404 Not Found")
+        print("="*60 + "\n")
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Todo with ID '{todo_id}' was not found.",
         )
-    return TodoResponse(**doc.to_dict())
+
+    print(f"   ✅ STEP 2: Document FOUND!")
+    data = doc.to_dict()
+    print(f"              title      : {data['title']}")
+    print(f"              completed  : {data['is_completed']}")
+    print(f"   ➡️  STEP 3: Building TodoResponse (View)")
+    print(f"   📤 STEP 4: Sending Response | Status: 200 OK")
+    print("="*60 + "\n")
+
+    return TodoResponse(**data)
 
 
 @router.patch("/{todo_id}/complete", response_model=TodoResponse)
 async def complete_todo(todo_id: str):
-    """
-    Kyun use ho raha hai:
-    - Kisi incomplete task ko mukammal (complete) mark karne ke liye (PATCH /todos/{todo_id}/complete).
+    print("\n" + "="*60)
+    print("📥 [MVC] REQUEST RECEIVED")
+    print("="*60)
+    print(f"   📂 File    : src_mvc/controllers/todo_controller.py")
+    print(f"   🔧 Function: complete_todo()")
+    print(f"   🌐 Route   : PATCH /todos/{{todo_id}}/complete")
+    print(f"   🆔 todo_id : {todo_id}")
+    print("-"*60)
+    print(f"   ➡️  STEP 1: Controller → fetching from Firestore by ID")
 
-    Kaise kaam karta hai (Flow):
-    1. Firestore se document nikalta hai; agar na mile toh 404 NOT FOUND raise karta hai.
-    2. Model layer ke `mark_completed(todo)` function ko call karta hai.
-    3. Model check karta hai agar task already completed hai toh `TodoAlreadyCompletedError` raise karta hai,
-       jisko controller pakar kar 400 BAD REQUEST return karta hai.
-    4. Agar pehle se complete nahi tha, toh Firestore mein `is_completed=True` aur `completed_at` update karta hai.
-    5. Updated todo ko `TodoResponse` View ke zariye client ko return karta hai.
-
-    Data Flow:
-    Client Request -> Controller -> Firestore (get) -> Model (business rule) -> Firestore (update) -> View Response -> Client
-    """
     doc_ref = _collection().document(todo_id)
     doc = doc_ref.get()
+
     if not doc.exists:
+        print(f"   ❌ STEP 2: Document NOT FOUND! Raising 404.")
+        print("="*60 + "\n")
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Todo with ID '{todo_id}' was not found.",
         )
+
     todo = doc.to_dict()
+    print(f"   ✅ STEP 2: Document FOUND!")
+    print(f"              title        : {todo['title']}")
+    print(f"              is_completed : {todo['is_completed']}")
+    print("-"*60)
+    print(f"   ➡️  STEP 3: Controller → calling Model (todo_model.py)")
+    print(f"              Function: mark_completed(todo)")
 
     try:
         updated = mark_completed(todo)
-    except TodoAlreadyCompletedError as err:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST, detail=str(err)
-        )
 
-    doc_ref.update({
-        "is_completed": True,
-        "completed_at": updated["completed_at"]
-    })
-    return TodoResponse(**updated)
+        print(f"   ✅ STEP 4: Model applied business rule successfully!")
+        print(f"              is_completed : {updated['is_completed']}")
+        print(f"              completed_at : {updated['completed_at']}")
+        print("-"*60)
+        print(f"   ➡️  STEP 5: Controller → updating Firestore document")
+        print(f"              doc_ref.update(is_completed=True, completed_at=...)")
+
+        doc_ref.update({
+            "is_completed": True,
+            "completed_at": updated["completed_at"]
+        })
+
+        print(f"   ✅ STEP 6: Firestore updated successfully!")
+        print(f"   ➡️  STEP 7: Building TodoResponse (View)")
+        print(f"   📤 STEP 8: Sending Response | Status: 200 OK")
+        print("="*60 + "\n")
+
+        return TodoResponse(**updated)
+
+    except TodoAlreadyCompletedError as err:
+        print(f"   ❌ TodoAlreadyCompletedError caught!")
+        print(f"      Detail: {str(err)}")
+        print("="*60 + "\n")
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(err))
 
 
 @router.delete("/{todo_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_todo(todo_id: str):
-    """
-    Kyun use ho raha hai:
-    - Database se kisi Todo ko mukammal taur par delete karne ke liye (DELETE /todos/{todo_id}).
+    print("\n" + "="*60)
+    print("📥 [MVC] REQUEST RECEIVED")
+    print("="*60)
+    print(f"   📂 File    : src_mvc/controllers/todo_controller.py")
+    print(f"   🔧 Function: delete_todo()")
+    print(f"   🌐 Route   : DELETE /todos/{{todo_id}}")
+    print(f"   🆔 todo_id : {todo_id}")
+    print("-"*60)
+    print(f"   ➡️  STEP 1: Controller → checking if document exists in Firestore")
 
-    Kaise kaam karta hai (Flow):
-    1. URL se `todo_id` hasil karta hai.
-    2. Check karta hai document exist karta hai ya nahi; agar nahi toh 404 NOT FOUND deta hai.
-    3. Agar mojood ho toh Firestore se `.delete()` call karke delete kar deta hai.
-    4. 204 NO CONTENT status return karta hai (yani koi body nahi bhejni, task delete ho gaya).
-
-    Data Flow:
-    Client Request -> Controller -> Firestore DB (delete) -> 204 Status -> Client
-    """
     doc_ref = _collection().document(todo_id)
+
     if not doc_ref.get().exists:
+        print(f"   ❌ STEP 2: Document NOT FOUND! Raising 404.")
+        print("="*60 + "\n")
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Todo with ID '{todo_id}' was not found.",
         )
+
+    print(f"   ✅ STEP 2: Document exists. Proceeding with delete.")
+    print(f"   ➡️  STEP 3: Controller → calling doc_ref.delete()")
+
     doc_ref.delete()
+
+    print(f"   ✅ STEP 4: Firestore document deleted successfully!")
+    print(f"   📤 STEP 5: Sending Response | Status: 204 No Content")
+    print("="*60 + "\n")

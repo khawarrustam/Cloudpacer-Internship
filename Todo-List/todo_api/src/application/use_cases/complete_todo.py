@@ -2,78 +2,57 @@
 =============================================================================
 APPLICATION LAYER — Complete Todo Use Case (Clean Architecture / DDD)
 =============================================================================
-Yeh Use Case kisi mojooda Todo ko complete (mukammal) karne ka workflow chalata hai.
-
-CompleteTodoUseCase ka Kaam:
-1. Command se `todo_id` hasil karna.
-2. Repository se entity fetch karna (agar na mile toh `TodoNotFoundError` dena).
-3. Entity ka `mark_as_completed()` method call karna (business invariant check).
-4. Updated entity ko repository ke zariye database mein save karwana.
-5. Result ko `TodoDTO` mein pack karke wapis bhejna.
-
-Kahan Connected Hai:
-- Instantiation: `main.py` is class ko repository ke sath instantiate karta hai.
-- Caller: `src/presentation/api/todo_router.py` ke `complete_todo` endpoint se call hota hai.
-- Domain Call: `src/domain/entities.py` ke `todo.mark_as_completed()` ko call karta hai.
-- Storage Call: `src/domain/repositories.py` ke `get_by_id()` aur `save()` ko call karta hai.
-=============================================================================
 """
 
-# ---------------------------------------------------------------------------
-# LIBRARIES / IMPORTS (Kyun aur kis liye import ki gayi hain):
-# ---------------------------------------------------------------------------
-# REPOSITORY INTERFACE: Database ke operations access karne ke liye abstract contract.
 from src.domain.repositories import ITodoRepository
-
-# DOMAIN EXCEPTION: Jab database mein requested ID ka task na mile.
 from src.domain.exceptions import TodoNotFoundError
-
-# APPLICATION DTOs: Input command (id) aur output DTO.
 from src.application.dtos import CompleteTodoCommand, TodoDTO
 
 
-# ---------------------------------------------------------------------------
-# USE CASE CLASS:
-# ---------------------------------------------------------------------------
 class CompleteTodoUseCase:
-    """
-    Kyun banaya gaya:
-    - Single Responsibility: Todo ko complete karne ka poora workflow orchestrate karna.
-    """
-
     def __init__(self, todo_repo: ITodoRepository):
-        """
-        Dependency Injection (DI):
-        - Abstract repository interface inject hota hai.
-        """
         self.todo_repo = todo_repo
 
     def execute(self, cmd: CompleteTodoCommand) -> TodoDTO:
-        """
-        Kyun use ho raha hai:
-        - Task completion ka step-by-step workflow execute karne ke liye.
+        print(f"   📂 File    : src/application/use_cases/complete_todo.py")
+        print(f"   🔧 Function: CompleteTodoUseCase.execute()")
+        print(f"   🏛️  Layer   : APPLICATION LAYER (Use Case / Orchestrator)")
+        print(f"   📦 Command : todo_id='{cmd.todo_id}'")
+        print(f"   ➡️  STEP A: Calling Infrastructure Layer — todo_repo.get_by_id()")
+        print(f"              📂 File: src/infrastructure/repositories/ → get_by_id('{cmd.todo_id}')")
 
-        Kaise kaam karta hai:
-        1. `self.todo_repo.get_by_id(cmd.todo_id)` chala kar task dhoondta hai.
-        2. Agar task nahi milta, toh `TodoNotFoundError` raise karta hai.
-        3. Agar mil jaye, toh entity ka method `todo.mark_as_completed()` call karta hai.
-           - Domain Entity khud check karegi ke agar already completed hai toh `TaskAlreadyCompletedError` degi.
-        4. Entity update hone ke baad `self.todo_repo.save(todo)` chala kar DB mein update save karta hai.
-        5. Updated data `TodoDTO` bana kar return karta hai.
-
-        Kahan connected hai:
-        - `src/presentation/api/todo_router.py` ke `complete_todo` PATCH route se call hota hai.
-        """
         # 1. Repository se task nikaalo
         todo = self.todo_repo.get_by_id(cmd.todo_id)
+
         if not todo:
+            print(f"   ❌ STEP B: Entity NOT FOUND in Repository!")
+            print(f"      Raising: TodoNotFoundError")
+            print(f"      📂 File: src/domain/exceptions.py → TodoNotFoundError")
             raise TodoNotFoundError(f"Todo with ID '{cmd.todo_id}' was not found.")
 
-        # 2. Business logic aggregate ke method se chalegi (Enforcing invariant)
+        print(f"   ✅ STEP B: Entity fetched from Repository!")
+        print(f"              Title        : {todo.title.value}")
+        print(f"              is_completed : {todo.is_completed}")
+        print(f"   ➡️  STEP C: Calling Domain Layer — todo.mark_as_completed()")
+        print(f"              📂 File: src/domain/entities.py → TodoItem.mark_as_completed()")
+        print(f"              (Domain will enforce: cannot complete twice!)")
+
+        # 2. Business logic aggregate ke method se chalegi
         todo.mark_as_completed()
+
+        print(f"   ✅ STEP D: Domain Entity marked as completed!")
+        print(f"              is_completed : {todo.is_completed}")
+        print(f"              completed_at : {todo.completed_at}")
+        print(f"   ➡️  STEP E: Calling Infrastructure Layer — todo_repo.save(todo)")
+        print(f"              (Saving updated entity back to Database)")
 
         # 3. Updated state ko save karo
         self.todo_repo.save(todo)
+
+        print(f"   ✅ STEP F: Repository saved updated entity!")
+        print(f"   ➡️  STEP G: Building TodoDTO (Output DTO)")
+        print(f"              📂 File: src/application/dtos.py → TodoDTO")
+        print(f"   ↩️  Returning TodoDTO to Presentation Layer (todo_router.py)")
 
         # 4. Output DTO wapis karo
         return TodoDTO(

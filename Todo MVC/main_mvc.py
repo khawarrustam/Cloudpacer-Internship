@@ -42,6 +42,7 @@ from fastapi import FastAPI
 
 # CONTROLLER IMPORT: Tamam Todo endpoints (POST, GET, PATCH, DELETE) ka router.
 from src_mvc.controllers.todo_controller import router as todo_router
+from src_mvc.controllers.auth_controller import router as auth_router
 
 # DATABASE LIFECYCLE IMPORTS: Firebase Firestore ko initialize aur close karne wale functions.
 from src_mvc.db.firebase import connect_db, disconnect_db
@@ -82,6 +83,7 @@ app = FastAPI(
 
 # Controller ke router ko main app mein shaamil (include) karna
 app.include_router(todo_router)
+app.include_router(auth_router)
 
 
 # ---------------------------------------------------------------------------

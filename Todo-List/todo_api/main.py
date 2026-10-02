@@ -53,6 +53,7 @@ from src.presentation.api.todo_router import (
     get_complete_use_case,
     get_list_use_case,
 )
+from src.presentation.api.auth_router import router as auth_router
 
 
 # ---------------------------------------------------------------------------
@@ -106,6 +107,7 @@ app.dependency_overrides[get_list_use_case] = lambda: list_use_case
 
 # Step 4: Router ko Main App mein Shamil (Include) karna
 app.include_router(todo_router)
+app.include_router(auth_router)
 
 
 # ---------------------------------------------------------------------------

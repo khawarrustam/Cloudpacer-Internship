@@ -1,0 +1,1 @@
+# Rule: Is layer mein kisi third-party library ya database ka import nahi hoga.

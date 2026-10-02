@@ -62,6 +62,7 @@ class TodoResponse(BaseModel):
     - created_at: Creation time string.
     - completed_at: Completion time string ya null.
     """
+    
     id: str
     title: str
     priority: str

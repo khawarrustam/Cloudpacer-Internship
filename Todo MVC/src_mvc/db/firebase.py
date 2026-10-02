@@ -88,4 +88,4 @@ async def disconnect_db() -> None:
     Kahan connected hai:
     - `main_mvc.py` ke `lifespan(app)` shutdown event mein call hota hai.
     """
-    print("🔌 Firebase connection closed.")
+    print(" Firebase connection closed.")

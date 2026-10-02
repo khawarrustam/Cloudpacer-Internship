@@ -2,7 +2,7 @@
 	"info": {
 		"_postman_id": "todo-mvc-api-collection",
 		"name": "Todo MVC Architecture API",
-		"description": "Traditional MVC Architecture Todo API with FastAPI & MongoDB.\n\nBase URL: http://127.0.0.1:8001\nRun: cd 'Todo MVC' && python main_mvc.py",
+		"description": "Traditional MVC Architecture Todo API with FastAPI & MongoDB.\n\nBase URL: http://127.0.0.1:8001\nRun: cd 'Todo MVC' && python main_mvc.py\n\n## Auth Flow\n1. Run **Signup** → token is auto-saved to `auth_token` variable\n2. All protected requests will automatically use the saved token",
 		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
 	},
 	"variable": [
@@ -15,136 +15,307 @@
 			"key": "todo_id",
 			"value": "",
 			"type": "string"
+		},
+		{
+			"key": "auth_token",
+			"value": "",
+			"type": "string",
+			"description": "Firebase JWT token — auto-saved after Signup"
 		}
 	],
 	"item": [
 		{
-			"name": "Health Check",
-			"request": {
-				"method": "GET",
-				"header": [],
-				"url": {
-					"raw": "{{base_url}}/",
-					"host": ["{{base_url}}"],
-					"path": [""]
-				}
-			}
-		},
-		{
-			"name": "Create Todo",
-			"event": [
+			"name": "🔐 Auth",
+			"item": [
 				{
-					"listen": "test",
-					"script": {
-						"exec": [
-							"var json = pm.response.json();",
-							"pm.collectionVariables.set('todo_id', json.id);"
+					"name": "Signup — New User",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Status is 201 Created', function () {",
+									"    pm.response.to.have.status(201);",
+									"});",
+									"",
+									"pm.test('Response has uid, email and token', function () {",
+									"    var json = pm.response.json();",
+									"    pm.expect(json).to.have.property('uid');",
+									"    pm.expect(json).to.have.property('email');",
+									"    pm.expect(json).to.have.property('token');",
+									"    pm.expect(json).to.have.property('message');",
+									"    pm.expect(json.message).to.eql('User created successfully');",
+									"});",
+									"",
+									"// Auto-save token for subsequent requests",
+									"var json = pm.response.json();",
+									"if (json.token) {",
+									"    pm.collectionVariables.set('auth_token', json.token);",
+									"    console.log('✅ Token saved to auth_token variable');",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{ "key": "Content-Type", "value": "application/json" }
 						],
-						"type": "text/javascript"
-					}
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"email\": \"testuser@example.com\",\n    \"password\": \"secret123\",\n    \"display_name\": \"Test User\"\n}",
+							"options": {
+								"raw": { "language": "json" }
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/auth/signup",
+							"host": ["{{base_url}}"],
+							"path": ["auth", "signup"]
+						},
+						"description": "Register a new user in Firebase Auth. The returned JWT token is **automatically saved** to the `auth_token` collection variable for use in protected routes."
+					},
+					"response": []
+				},
+				{
+					"name": "Signup — Duplicate Email (Error 400)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Status is 400 (Email already exists)', function () {",
+									"    pm.response.to.have.status(400);",
+									"});",
+									"",
+									"pm.test('Error message mentions email', function () {",
+									"    var json = pm.response.json();",
+									"    pm.expect(json).to.have.property('detail');",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{ "key": "Content-Type", "value": "application/json" }
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"email\": \"testuser@example.com\",\n    \"password\": \"secret123\",\n    \"display_name\": \"Test User\"\n}",
+							"options": {
+								"raw": { "language": "json" }
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/auth/signup",
+							"host": ["{{base_url}}"],
+							"path": ["auth", "signup"]
+						},
+						"description": "Try to register with an email that already exists — should return 400."
+					},
+					"response": []
+				},
+				{
+					"name": "Signup — Weak Password (Error 422)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Status is 422 (Validation Error)', function () {",
+									"    pm.response.to.have.status(422);",
+									"});",
+									"",
+									"pm.test('Error mentions password', function () {",
+									"    var json = pm.response.json();",
+									"    pm.expect(json).to.have.property('detail');",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{ "key": "Content-Type", "value": "application/json" }
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"email\": \"testuser@example.com\",\n    \"password\": \"123\",\n    \"display_name\": \"Test User\"\n}",
+							"options": {
+								"raw": { "language": "json" }
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/auth/signup",
+							"host": ["{{base_url}}"],
+							"path": ["auth", "signup"]
+						},
+						"description": "Password is only 3 characters — min_length=6 validation should fail with 422."
+					},
+					"response": []
 				}
 			],
-			"request": {
-				"method": "POST",
-				"header": [{"key": "Content-Type", "value": "application/json"}],
-				"body": {
-					"mode": "raw",
-					"raw": "{\n    \"title\": \"Learn MVC Architecture\",\n    \"priority\": \"HIGH\"\n}"
+			"description": "Firebase Authentication endpoints. Run **Signup** first — the token is auto-saved for you."
+		},
+		{
+			"name": "📋 Todos",
+			"item": [
+				{
+					"name": "Health Check",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/",
+							"host": ["{{base_url}}"],
+							"path": [""]
+						}
+					},
+					"response": []
 				},
-				"url": {
-					"raw": "{{base_url}}/todos",
-					"host": ["{{base_url}}"],
-					"path": ["todos"]
-				}
-			}
-		},
-		{
-			"name": "List All Todos",
-			"request": {
-				"method": "GET",
-				"header": [],
-				"url": {
-					"raw": "{{base_url}}/todos",
-					"host": ["{{base_url}}"],
-					"path": ["todos"]
-				}
-			}
-		},
-		{
-			"name": "Get Single Todo",
-			"request": {
-				"method": "GET",
-				"header": [],
-				"url": {
-					"raw": "{{base_url}}/todos/{{todo_id}}",
-					"host": ["{{base_url}}"],
-					"path": ["todos", "{{todo_id}}"]
-				}
-			}
-		},
-		{
-			"name": "Complete Todo",
-			"request": {
-				"method": "PATCH",
-				"header": [],
-				"url": {
-					"raw": "{{base_url}}/todos/{{todo_id}}/complete",
-					"host": ["{{base_url}}"],
-					"path": ["todos", "{{todo_id}}", "complete"]
-				}
-			}
-		},
-		{
-			"name": "Delete Todo",
-			"request": {
-				"method": "DELETE",
-				"header": [],
-				"url": {
-					"raw": "{{base_url}}/todos/{{todo_id}}",
-					"host": ["{{base_url}}"],
-					"path": ["todos", "{{todo_id}}"]
-				}
-			}
-		},
-		{
-			"name": "Error — Title Too Short",
-			"request": {
-				"method": "POST",
-				"header": [{"key": "Content-Type", "value": "application/json"}],
-				"body": {
-					"mode": "raw",
-					"raw": "{\n    \"title\": \"AB\",\n    \"priority\": \"HIGH\"\n}"
+				{
+					"name": "Create Todo",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"var json = pm.response.json();",
+									"pm.collectionVariables.set('todo_id', json.id);"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [{ "key": "Content-Type", "value": "application/json" }],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"title\": \"Learn MVC Architecture\",\n    \"priority\": \"HIGH\"\n}",
+							"options": {
+								"raw": { "language": "json" }
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/todos",
+							"host": ["{{base_url}}"],
+							"path": ["todos"]
+						}
+					},
+					"response": []
 				},
-				"url": {
-					"raw": "{{base_url}}/todos",
-					"host": ["{{base_url}}"],
-					"path": ["todos"]
+				{
+					"name": "List All Todos",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/todos",
+							"host": ["{{base_url}}"],
+							"path": ["todos"]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get Single Todo",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/todos/{{todo_id}}",
+							"host": ["{{base_url}}"],
+							"path": ["todos", "{{todo_id}}"]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Complete Todo",
+					"request": {
+						"method": "PATCH",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/todos/{{todo_id}}/complete",
+							"host": ["{{base_url}}"],
+							"path": ["todos", "{{todo_id}}", "complete"]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Delete Todo",
+					"request": {
+						"method": "DELETE",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/todos/{{todo_id}}",
+							"host": ["{{base_url}}"],
+							"path": ["todos", "{{todo_id}}"]
+						}
+					},
+					"response": []
 				}
-			}
+			]
 		},
 		{
-			"name": "Error — Not Found",
-			"request": {
-				"method": "PATCH",
-				"header": [],
-				"url": {
-					"raw": "{{base_url}}/todos/non-existent-id/complete",
-					"host": ["{{base_url}}"],
-					"path": ["todos", "non-existent-id", "complete"]
+			"name": "❌ Error Cases",
+			"item": [
+				{
+					"name": "Error — Title Too Short",
+					"request": {
+						"method": "POST",
+						"header": [{ "key": "Content-Type", "value": "application/json" }],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"title\": \"AB\",\n    \"priority\": \"HIGH\"\n}",
+							"options": {
+								"raw": { "language": "json" }
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/todos",
+							"host": ["{{base_url}}"],
+							"path": ["todos"]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Error — Not Found",
+					"request": {
+						"method": "PATCH",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/todos/non-existent-id/complete",
+							"host": ["{{base_url}}"],
+							"path": ["todos", "non-existent-id", "complete"]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Error — Already Completed",
+					"request": {
+						"method": "PATCH",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/todos/{{todo_id}}/complete",
+							"host": ["{{base_url}}"],
+							"path": ["todos", "{{todo_id}}", "complete"]
+						}
+					},
+					"response": []
 				}
-			}
-		},
-		{
-			"name": "Error — Already Completed",
-			"request": {
-				"method": "PATCH",
-				"header": [],
-				"url": {
-					"raw": "{{base_url}}/todos/{{todo_id}}/complete",
-					"host": ["{{base_url}}"],
-					"path": ["todos", "{{todo_id}}", "complete"]
-				}
-			}
+			]
 		}
 	]
 }

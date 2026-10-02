@@ -2,7 +2,7 @@
 	"info": {
 		"_postman_id": "todo-onion-api-collection",
 		"name": "Todo Onion Architecture API",
-		"description": "Clean Architecture (DDD + Onion) Todo API with FastAPI & Firebase Firestore.\n\n## How to use\n1. Start the server: `USE_FIREBASE=true python main.py`\n2. Base URL: `http://127.0.0.1:8000`\n3. Run requests in order: Create → List → Complete → List again",
+		"description": "Clean Architecture (DDD + Onion) Todo API with FastAPI & Firebase Firestore.\n\n## How to use\n1. Start the server: `USE_FIREBASE=true python main.py`\n2. Base URL: `http://127.0.0.1:8000`\n3. Run Auth → **Signup** first → token is auto-saved\n4. Run requests in order: Create → List → Complete → List again",
 		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
 	},
 	"variable": [
@@ -15,11 +15,204 @@
 			"key": "todo_id",
 			"value": "",
 			"type": "string"
+		},
+		{
+			"key": "auth_token",
+			"value": "",
+			"type": "string",
+			"description": "Firebase JWT token — auto-saved after Signup"
 		}
 	],
 	"item": [
 		{
-			"name": "Health",
+			"name": "🔐 Auth",
+			"item": [
+				{
+					"name": "Signup — New User",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Status is 201 Created', function () {",
+									"    pm.response.to.have.status(201);",
+									"});",
+									"",
+									"pm.test('Response has uid, email and token', function () {",
+									"    var json = pm.response.json();",
+									"    pm.expect(json).to.have.property('uid');",
+									"    pm.expect(json).to.have.property('email');",
+									"    pm.expect(json).to.have.property('token');",
+									"    pm.expect(json).to.have.property('message');",
+									"    pm.expect(json.message).to.eql('User created successfully');",
+									"});",
+									"",
+									"pm.test('uid is a non-empty string', function () {",
+									"    var json = pm.response.json();",
+									"    pm.expect(json.uid).to.be.a('string').and.not.empty;",
+									"});",
+									"",
+									"// Auto-save token for subsequent requests",
+									"var json = pm.response.json();",
+									"if (json.token) {",
+									"    pm.collectionVariables.set('auth_token', json.token);",
+									"    console.log('✅ Token saved:', json.token.substring(0, 30) + '...');",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{ "key": "Content-Type", "value": "application/json" }
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"email\": \"ddd_user@example.com\",\n    \"password\": \"securepass123\",\n    \"display_name\": \"DDD User\"\n}",
+							"options": {
+								"raw": { "language": "json" }
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/auth/signup",
+							"host": ["{{base_url}}"],
+							"path": ["auth", "signup"]
+						},
+						"description": "Register a new user via Firebase Auth.\n\nThe returned JWT `token` is **automatically saved** to the `auth_token` collection variable — no manual copy-paste needed!"
+					},
+					"response": []
+				},
+				{
+					"name": "Signup — Duplicate Email (Error 400)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Status is 400 (Email already registered)', function () {",
+									"    pm.response.to.have.status(400);",
+									"});",
+									"",
+									"pm.test('Response has error detail', function () {",
+									"    var json = pm.response.json();",
+									"    pm.expect(json).to.have.property('detail');",
+									"    pm.expect(json.detail).to.be.a('string').and.not.empty;",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{ "key": "Content-Type", "value": "application/json" }
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"email\": \"ddd_user@example.com\",\n    \"password\": \"securepass123\",\n    \"display_name\": \"DDD User\"\n}",
+							"options": {
+								"raw": { "language": "json" }
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/auth/signup",
+							"host": ["{{base_url}}"],
+							"path": ["auth", "signup"]
+						},
+						"description": "Run this **after** the first Signup. Same email should return 400 (email already in use)."
+					},
+					"response": []
+				},
+				{
+					"name": "Signup — Invalid Email (Error 422)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Status is 422 (Unprocessable Entity)', function () {",
+									"    pm.response.to.have.status(422);",
+									"});",
+									"",
+									"pm.test('Validation error details present', function () {",
+									"    var json = pm.response.json();",
+									"    pm.expect(json).to.have.property('detail');",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{ "key": "Content-Type", "value": "application/json" }
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"email\": \"not-a-valid-email\",\n    \"password\": \"securepass123\",\n    \"display_name\": \"Bad Email User\"\n}",
+							"options": {
+								"raw": { "language": "json" }
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/auth/signup",
+							"host": ["{{base_url}}"],
+							"path": ["auth", "signup"]
+						},
+						"description": "Invalid email format — Pydantic EmailStr validation should fail with 422."
+					},
+					"response": []
+				},
+				{
+					"name": "Signup — Weak Password (Error 422)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Status is 422 (Password too short)', function () {",
+									"    pm.response.to.have.status(422);",
+									"});",
+									"",
+									"pm.test('Validation error details present', function () {",
+									"    var json = pm.response.json();",
+									"    pm.expect(json).to.have.property('detail');",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{ "key": "Content-Type", "value": "application/json" }
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"email\": \"weakpass@example.com\",\n    \"password\": \"123\",\n    \"display_name\": \"Weak Pass User\"\n}",
+							"options": {
+								"raw": { "language": "json" }
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/auth/signup",
+							"host": ["{{base_url}}"],
+							"path": ["auth", "signup"]
+						},
+						"description": "Password is only 3 characters — min_length=6 should fail with 422."
+					},
+					"response": []
+				}
+			],
+			"description": "Firebase Authentication endpoints.\n\n**Recommended order:**\n1. Signup — New User (token auto-saved)\n2. Test error cases"
+		},
+		{
+			"name": "🏥 Health",
 			"item": [
 				{
 					"name": "Health Check",
@@ -38,7 +231,7 @@
 			]
 		},
 		{
-			"name": "Todos",
+			"name": "📋 Todos",
 			"item": [
 				{
 					"name": "Create Todo - HIGH priority",
@@ -79,7 +272,10 @@
 						],
 						"body": {
 							"mode": "raw",
-							"raw": "{\n    \"title\": \"Setup Firebase Firestore\",\n    \"priority\": \"HIGH\"\n}"
+							"raw": "{\n    \"title\": \"Setup Firebase Firestore\",\n    \"priority\": \"HIGH\"\n}",
+							"options": {
+								"raw": { "language": "json" }
+							}
 						},
 						"url": {
 							"raw": "{{base_url}}/todos",
@@ -120,7 +316,10 @@
 						],
 						"body": {
 							"mode": "raw",
-							"raw": "{\n    \"title\": \"Implement Onion Architecture layers\"\n}"
+							"raw": "{\n    \"title\": \"Implement Onion Architecture layers\"\n}",
+							"options": {
+								"raw": { "language": "json" }
+							}
 						},
 						"url": {
 							"raw": "{{base_url}}/todos",
@@ -161,7 +360,10 @@
 						],
 						"body": {
 							"mode": "raw",
-							"raw": "{\n    \"title\": \"Write unit tests for domain layer\",\n    \"priority\": \"LOW\"\n}"
+							"raw": "{\n    \"title\": \"Write unit tests for domain layer\",\n    \"priority\": \"LOW\"\n}",
+							"options": {
+								"raw": { "language": "json" }
+							}
 						},
 						"url": {
 							"raw": "{{base_url}}/todos",
@@ -241,7 +443,7 @@
 			]
 		},
 		{
-			"name": "Error Cases",
+			"name": "❌ Error Cases",
 			"item": [
 				{
 					"name": "Create Todo - Title Too Short (Validation Error)",
@@ -268,7 +470,10 @@
 						],
 						"body": {
 							"mode": "raw",
-							"raw": "{\n    \"title\": \"AB\",\n    \"priority\": \"HIGH\"\n}"
+							"raw": "{\n    \"title\": \"AB\",\n    \"priority\": \"HIGH\"\n}",
+							"options": {
+								"raw": { "language": "json" }
+							}
 						},
 						"url": {
 							"raw": "{{base_url}}/todos",
@@ -304,7 +509,10 @@
 						],
 						"body": {
 							"mode": "raw",
-							"raw": "{\n    \"priority\": \"HIGH\"\n}"
+							"raw": "{\n    \"priority\": \"HIGH\"\n}",
+							"options": {
+								"raw": { "language": "json" }
+							}
 						},
 						"url": {
 							"raw": "{{base_url}}/todos",

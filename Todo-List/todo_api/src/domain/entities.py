@@ -42,10 +42,11 @@ class TodoItem:
     priority: Priority
     is_completed: bool
     created_at: datetime
+    owner_uid: str = ""        # Firebase user UID — empty string for legacy records
     completed_at: datetime | None = None
 
     @classmethod
-    def create(cls, title: str, priority: Priority = Priority.MEDIUM) -> "TodoItem":
+    def create(cls, title: str, priority: Priority = Priority.MEDIUM, owner_uid: str = "") -> "TodoItem":
         """
         Factory method: Naya TodoItem bananane ka sahulati (helper) tarika.
         Isme naya ID auto-generate hota hai aur default values set hoti hain.
@@ -56,6 +57,7 @@ class TodoItem:
             priority=priority,
             is_completed=False,
             created_at=datetime.now(timezone.utc),
+            owner_uid=owner_uid,
             completed_at=None
         )
 

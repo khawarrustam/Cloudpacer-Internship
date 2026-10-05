@@ -18,18 +18,23 @@ class CreateTodoUseCase:
         print(f"   📂 File    : src/application/use_cases/create_todo.py")
         print(f"   🔧 Function: CreateTodoUseCase.execute()")
         print(f"   🏛️  Layer   : APPLICATION LAYER (Use Case / Orchestrator)")
-        print(f"   📦 Command : title='{cmd.title}', priority='{cmd.priority}'")
+        print(f"   📦 Command : title='{cmd.title}', priority='{cmd.priority}', owner='{cmd.owner_uid}'")
         print(f"   ➡️  STEP A: Calling Domain Layer — TodoItem.create()")
         print(f"              📂 File: src/domain/entities.py → TodoItem.create()")
         print(f"              📂 File: src/domain/value_objects.py → Priority('{cmd.priority}')")
 
         # 1. Domain Entity create karo (Business rules validate honge)
-        todo = TodoItem.create(title=cmd.title, priority=Priority(cmd.priority.upper()))
+        todo = TodoItem.create(
+            title=cmd.title,
+            priority=Priority(cmd.priority.upper()),
+            owner_uid=cmd.owner_uid,
+        )
 
         print(f"   ✅ STEP B: Domain Entity created successfully!")
         print(f"              ID       : {todo.id}")
         print(f"              Title    : {todo.title.value}")
         print(f"              Priority : {todo.priority.value}")
+        print(f"              Owner    : {todo.owner_uid}")
         print(f"   ➡️  STEP C: Calling Infrastructure Layer — todo_repo.save(todo)")
         print(f"              📂 File: src/infrastructure/repositories/ (FirestoreTodoRepo or InMemoryTodoRepo)")
 
@@ -49,4 +54,5 @@ class CreateTodoUseCase:
             is_completed=todo.is_completed,
             created_at=todo.created_at.isoformat(),
             completed_at=None,
+            owner_uid=todo.owner_uid,
         )

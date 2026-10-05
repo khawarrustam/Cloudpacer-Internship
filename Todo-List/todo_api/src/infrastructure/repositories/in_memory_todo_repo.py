@@ -65,3 +65,10 @@ class InMemoryTodoRepository(ITodoRepository):
         - Tamam stored `TodoItem` entities ko list ki shakal mein return karta hai.
         """
         return list(self._storage.values())
+
+    def get_by_owner(self, owner_uid: str) -> List[TodoItem]:
+        """
+        Kyun use ho raha hai:
+        - Sirf ek specific user ke todos filter karke return karta hai.
+        """
+        return [t for t in self._storage.values() if t.owner_uid == owner_uid]

@@ -2,7 +2,7 @@
 	"info": {
 		"_postman_id": "todo-onion-api-collection",
 		"name": "Todo Onion Architecture API",
-		"description": "Clean Architecture (DDD + Onion) Todo API with FastAPI & Firebase Firestore.\n\n## How to use\n1. Start the server: `USE_FIREBASE=true python main.py`\n2. Base URL: `http://127.0.0.1:8000`\n3. Run Auth → **Signup** first → token is auto-saved\n4. Run requests in order: Create → List → Complete → List again",
+		"description": "Clean Architecture (DDD + Onion) Todo API with FastAPI & Firebase Firestore.\n\n## How to use\n1. Start the server: `USE_FIREBASE=true python main.py`\n2. Base URL: `http://127.0.0.1:8000`\n3. Run Auth → **Signup** first → token is auto-saved\n4. Run Auth → **Login** to get a fresh token anytime\n5. All /todos requests use the saved token automatically\n6. Run requests in order: Create → List → Complete → List again",
 		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
 	},
 	"variable": [
@@ -20,7 +20,7 @@
 			"key": "auth_token",
 			"value": "",
 			"type": "string",
-			"description": "Firebase JWT token — auto-saved after Signup"
+			"description": "Firebase ID token — auto-saved after Signup or Login"
 		}
 	],
 	"item": [
@@ -81,6 +81,135 @@
 							"path": ["auth", "signup"]
 						},
 						"description": "Register a new user via Firebase Auth.\n\nThe returned JWT `token` is **automatically saved** to the `auth_token` collection variable — no manual copy-paste needed!"
+					},
+					"response": []
+				},
+				{
+					"name": "Login — Existing User",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Status is 200 OK', function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test('Response has uid, email and token', function () {",
+									"    var json = pm.response.json();",
+									"    pm.expect(json).to.have.property('uid');",
+									"    pm.expect(json).to.have.property('email');",
+									"    pm.expect(json).to.have.property('token');",
+									"    pm.expect(json).to.have.property('message');",
+									"    pm.expect(json.message).to.eql('Login successful');",
+									"});",
+									"",
+									"// Auto-save token for subsequent requests",
+									"var json = pm.response.json();",
+									"if (json.token) {",
+									"    pm.collectionVariables.set('auth_token', json.token);",
+									"    console.log('✅ Token saved after login:', json.token.substring(0, 30) + '...');",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{ "key": "Content-Type", "value": "application/json" }
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"email\": \"ddd_user@example.com\",\n    \"password\": \"securepass123\"\n}",
+							"options": {
+								"raw": { "language": "json" }
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/auth/login",
+							"host": ["{{base_url}}"],
+							"path": ["auth", "login"]
+						},
+						"description": "Login with email & password. Returns a Firebase ID token that is **automatically saved** to the `auth_token` collection variable.\n\nUse this to get a fresh token anytime (tokens expire after 1 hour)."
+					},
+					"response": []
+				},
+				{
+					"name": "Login — Wrong Password (Error 401)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Status is 401 Unauthorized', function () {",
+									"    pm.response.to.have.status(401);",
+									"});",
+									"",
+									"pm.test('Response has error detail', function () {",
+									"    var json = pm.response.json();",
+									"    pm.expect(json).to.have.property('detail');",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{ "key": "Content-Type", "value": "application/json" }
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"email\": \"ddd_user@example.com\",\n    \"password\": \"wrongpassword\"\n}",
+							"options": {
+								"raw": { "language": "json" }
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/auth/login",
+							"host": ["{{base_url}}"],
+							"path": ["auth", "login"]
+						},
+						"description": "Wrong password — should return 401 Unauthorized."
+					},
+					"response": []
+				},
+				{
+					"name": "Login — Non-existent Email (Error 401)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Status is 401 Unauthorized', function () {",
+									"    pm.response.to.have.status(401);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{ "key": "Content-Type", "value": "application/json" }
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"email\": \"nobody@example.com\",\n    \"password\": \"doesntmatter\"\n}",
+							"options": {
+								"raw": { "language": "json" }
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/auth/login",
+							"host": ["{{base_url}}"],
+							"path": ["auth", "login"]
+						},
+						"description": "Email not registered — should return 401 Unauthorized."
 					},
 					"response": []
 				},
@@ -209,7 +338,7 @@
 					"response": []
 				}
 			],
-			"description": "Firebase Authentication endpoints.\n\n**Recommended order:**\n1. Signup — New User (token auto-saved)\n2. Test error cases"
+			"description": "Firebase Authentication endpoints.\n\n**Recommended order:**\n1. Signup — New User (token auto-saved)\n2. Login — Existing User (refresh token anytime)\n3. Test error cases"
 		},
 		{
 			"name": "🏥 Health",
@@ -224,14 +353,14 @@
 							"host": ["{{base_url}}"],
 							"path": [""]
 						},
-						"description": "Check if the API is running."
+						"description": "Check if the API is running. No auth required."
 					},
 					"response": []
 				}
 			]
 		},
 		{
-			"name": "📋 Todos",
+			"name": "📋 Todos (Auth Required)",
 			"item": [
 				{
 					"name": "Create Todo - HIGH priority",
@@ -265,10 +394,8 @@
 					"request": {
 						"method": "POST",
 						"header": [
-							{
-								"key": "Content-Type",
-								"value": "application/json"
-							}
+							{ "key": "Content-Type", "value": "application/json" },
+							{ "key": "Authorization", "value": "Bearer {{auth_token}}" }
 						],
 						"body": {
 							"mode": "raw",
@@ -282,7 +409,7 @@
 							"host": ["{{base_url}}"],
 							"path": ["todos"]
 						},
-						"description": "Create a new todo with HIGH priority. The `todo_id` is automatically saved for subsequent requests."
+						"description": "Create a new todo with HIGH priority. Requires Bearer token. The `todo_id` is automatically saved for subsequent requests."
 					},
 					"response": []
 				},
@@ -309,10 +436,8 @@
 					"request": {
 						"method": "POST",
 						"header": [
-							{
-								"key": "Content-Type",
-								"value": "application/json"
-							}
+							{ "key": "Content-Type", "value": "application/json" },
+							{ "key": "Authorization", "value": "Bearer {{auth_token}}" }
 						],
 						"body": {
 							"mode": "raw",
@@ -353,10 +478,8 @@
 					"request": {
 						"method": "POST",
 						"header": [
-							{
-								"key": "Content-Type",
-								"value": "application/json"
-							}
+							{ "key": "Content-Type", "value": "application/json" },
+							{ "key": "Authorization", "value": "Bearer {{auth_token}}" }
 						],
 						"body": {
 							"mode": "raw",
@@ -375,7 +498,7 @@
 					"response": []
 				},
 				{
-					"name": "List All Todos",
+					"name": "List My Todos",
 					"event": [
 						{
 							"listen": "test",
@@ -388,7 +511,6 @@
 									"pm.test('Response is an array', function () {",
 									"    var json = pm.response.json();",
 									"    pm.expect(json).to.be.an('array');",
-									"    pm.expect(json.length).to.be.greaterThan(0);",
 									"});"
 								],
 								"type": "text/javascript"
@@ -397,13 +519,15 @@
 					],
 					"request": {
 						"method": "GET",
-						"header": [],
+						"header": [
+							{ "key": "Authorization", "value": "Bearer {{auth_token}}" }
+						],
 						"url": {
 							"raw": "{{base_url}}/todos",
 							"host": ["{{base_url}}"],
 							"path": ["todos"]
 						},
-						"description": "Fetch all todos from the database."
+						"description": "Fetch only YOUR todos. Other users' todos are not visible."
 					},
 					"response": []
 				},
@@ -430,23 +554,87 @@
 					],
 					"request": {
 						"method": "PATCH",
-						"header": [],
+						"header": [
+							{ "key": "Authorization", "value": "Bearer {{auth_token}}" }
+						],
 						"url": {
 							"raw": "{{base_url}}/todos/{{todo_id}}/complete",
 							"host": ["{{base_url}}"],
 							"path": ["todos", "{{todo_id}}", "complete"]
 						},
-						"description": "Mark the previously created todo as complete. Uses the `todo_id` saved from the Create request."
+						"description": "Mark the previously created todo as complete. Uses the `todo_id` saved from the Create request. Requires Bearer token."
 					},
 					"response": []
 				}
-			]
+			],
+			"description": "Todo CRUD endpoints.\n\n⚠️ **All requests require `Authorization: Bearer {{auth_token}}`**\nRun Signup or Login first to get the token.\n\nEach user only sees their own todos."
 		},
 		{
 			"name": "❌ Error Cases",
 			"item": [
 				{
-					"name": "Create Todo - Title Too Short (Validation Error)",
+					"name": "Todos — No Auth Token (Error 403)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Status is 403 (Forbidden)', function () {",
+									"    pm.response.to.have.status(403);",
+									"});",
+									"",
+									"pm.test('Detail says not authenticated', function () {",
+									"    var json = pm.response.json();",
+									"    pm.expect(json.detail).to.eql('Not authenticated');",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/todos",
+							"host": ["{{base_url}}"],
+							"path": ["todos"]
+						},
+						"description": "Try to access /todos without a Bearer token — should return 403."
+					},
+					"response": []
+				},
+				{
+					"name": "Todos — Invalid Token (Error 401)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Status is 401 (Unauthorized)', function () {",
+									"    pm.response.to.have.status(401);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [
+							{ "key": "Authorization", "value": "Bearer fake.invalid.token" }
+						],
+						"url": {
+							"raw": "{{base_url}}/todos",
+							"host": ["{{base_url}}"],
+							"path": ["todos"]
+						},
+						"description": "Pass a fake token — should return 401 Unauthorized."
+					},
+					"response": []
+				},
+				{
+					"name": "Create Todo - Title Too Short (Error 422)",
 					"event": [
 						{
 							"listen": "test",
@@ -463,10 +651,8 @@
 					"request": {
 						"method": "POST",
 						"header": [
-							{
-								"key": "Content-Type",
-								"value": "application/json"
-							}
+							{ "key": "Content-Type", "value": "application/json" },
+							{ "key": "Authorization", "value": "Bearer {{auth_token}}" }
 						],
 						"body": {
 							"mode": "raw",
@@ -485,7 +671,7 @@
 					"response": []
 				},
 				{
-					"name": "Create Todo - Missing Title (Validation Error)",
+					"name": "Create Todo - Missing Title (Error 422)",
 					"event": [
 						{
 							"listen": "test",
@@ -502,10 +688,8 @@
 					"request": {
 						"method": "POST",
 						"header": [
-							{
-								"key": "Content-Type",
-								"value": "application/json"
-							}
+							{ "key": "Content-Type", "value": "application/json" },
+							{ "key": "Authorization", "value": "Bearer {{auth_token}}" }
 						],
 						"body": {
 							"mode": "raw",
@@ -540,7 +724,9 @@
 					],
 					"request": {
 						"method": "PATCH",
-						"header": [],
+						"header": [
+							{ "key": "Authorization", "value": "Bearer {{auth_token}}" }
+						],
 						"url": {
 							"raw": "{{base_url}}/todos/non-existent-id-12345/complete",
 							"host": ["{{base_url}}"],
@@ -567,7 +753,9 @@
 					],
 					"request": {
 						"method": "PATCH",
-						"header": [],
+						"header": [
+							{ "key": "Authorization", "value": "Bearer {{auth_token}}" }
+						],
 						"url": {
 							"raw": "{{base_url}}/todos/{{todo_id}}/complete",
 							"host": ["{{base_url}}"],

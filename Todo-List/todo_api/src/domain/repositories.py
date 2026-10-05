@@ -63,3 +63,8 @@ class ITodoRepository(ABC):
     def get_all(self) -> List[TodoItem]:
         """Tamam TodoItems ko fetch karke list ki shakal mein return karta hai."""
         pass
+
+    @abstractmethod
+    def get_by_owner(self, owner_uid: str) -> List[TodoItem]:
+        """Sirf ek specific user ke TodoItems return karta hai (owner_uid se filter)."""
+        pass

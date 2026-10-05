@@ -25,6 +25,7 @@ from typing import List
 from fastapi import APIRouter, HTTPException, Depends, status
 
 from src.presentation.api.schemas import CreateTodoRequest, TodoResponse
+from src.presentation.api.dependencies import get_current_user, CurrentUser
 from src.application.dtos import CreateTodoCommand, CompleteTodoCommand
 from src.application.use_cases.create_todo import CreateTodoUseCase
 from src.application.use_cases.complete_todo import CompleteTodoUseCase
@@ -53,12 +54,14 @@ def get_list_use_case() -> ListTodosUseCase:
 
 
 # ---------------------------------------------------------------------------
-# ENDPOINTS / ROUTE HANDLERS:
+# ENDPOINTS / ROUTE HANDLERS (All routes require authentication):
 # ---------------------------------------------------------------------------
 
 @router.post("", response_model=TodoResponse, status_code=status.HTTP_201_CREATED)
 def create_todo(
-    req: CreateTodoRequest, use_case: CreateTodoUseCase = Depends(get_create_use_case)
+    req: CreateTodoRequest,
+    user: CurrentUser = Depends(get_current_user),
+    use_case: CreateTodoUseCase = Depends(get_create_use_case),
 ):
     print("\n" + "="*60)
     print("📥 [DDD] REQUEST RECEIVED — PRESENTATION LAYER")
@@ -66,107 +69,91 @@ def create_todo(
     print(f"   📂 File    : src/presentation/api/todo_router.py")
     print(f"   🔧 Function: create_todo()")
     print(f"   🌐 Route   : POST /todos")
+    print(f"   🔐 User    : {user.email} (uid={user.uid})")
     print(f"   📝 Title   : {req.title}")
     print(f"   🎯 Priority: {req.priority}")
     print("-"*60)
     print(f"   ➡️  STEP 1: Presentation → Application Layer")
-    print(f"              Building CreateTodoCommand(title, priority)")
-    print(f"              📂 File: src/application/dtos.py → CreateTodoCommand")
+    print(f"              Building CreateTodoCommand(title, priority, owner_uid)")
 
     try:
-        cmd = CreateTodoCommand(title=req.title, priority=req.priority)
+        cmd = CreateTodoCommand(title=req.title, priority=req.priority, owner_uid=user.uid)
 
         print(f"   ➡️  STEP 2: Calling CreateTodoUseCase.execute(cmd)")
-        print(f"              📂 File: src/application/use_cases/create_todo.py")
-
         result = use_case.execute(cmd)
 
-        print("-"*60)
-        print(f"   ✅ STEP 3: Use Case returned TodoDTO to Router")
-        print(f"              ID       : {result.id}")
-        print(f"              Title    : {result.title}")
-        print(f"              Priority : {result.priority}")
-        print(f"   ➡️  STEP 4: Building TodoResponse (Presentation Schema)")
-        print(f"              📂 File: src/presentation/api/schemas.py → TodoResponse")
-        print(f"   📤 STEP 5: Sending Response to Client | Status: 201 Created")
+        print(f"   📤 STEP 3: Sending Response | Status: 201 Created")
         print("="*60 + "\n")
-
         return result
 
     except DomainError as err:
-        print(f"   ❌ DomainError caught in Router!")
-        print(f"      📂 Raised by: src/domain/exceptions.py → DomainError")
-        print(f"      Detail: {str(err)}")
+        print(f"   ❌ DomainError: {str(err)}")
         print("="*60 + "\n")
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(err))
 
 
 @router.patch("/{todo_id}/complete", response_model=TodoResponse)
 def complete_todo(
-    todo_id: str, use_case: CompleteTodoUseCase = Depends(get_complete_use_case)
+    todo_id: str,
+    user: CurrentUser = Depends(get_current_user),
+    use_case: CompleteTodoUseCase = Depends(get_complete_use_case),
 ):
     print("\n" + "="*60)
     print("📥 [DDD] REQUEST RECEIVED — PRESENTATION LAYER")
     print("="*60)
     print(f"   📂 File    : src/presentation/api/todo_router.py")
     print(f"   🔧 Function: complete_todo()")
-    print(f"   🌐 Route   : PATCH /todos/{{todo_id}}/complete")
+    print(f"   🌐 Route   : PATCH /todos/{todo_id}/complete")
+    print(f"   🔐 User    : {user.email} (uid={user.uid})")
     print(f"   🆔 todo_id : {todo_id}")
     print("-"*60)
-    print(f"   ➡️  STEP 1: Building CompleteTodoCommand(todo_id)")
-    print(f"              📂 File: src/application/dtos.py → CompleteTodoCommand")
 
     try:
         cmd = CompleteTodoCommand(todo_id=todo_id)
 
-        print(f"   ➡️  STEP 2: Calling CompleteTodoUseCase.execute(cmd)")
-        print(f"              📂 File: src/application/use_cases/complete_todo.py")
-
+        print(f"   ➡️  STEP 1: Calling CompleteTodoUseCase.execute(cmd)")
         result = use_case.execute(cmd)
 
-        print("-"*60)
-        print(f"   ✅ STEP 3: Use Case returned updated TodoDTO to Router")
-        print(f"              ID           : {result.id}")
-        print(f"              is_completed : {result.is_completed}")
-        print(f"              completed_at : {result.completed_at}")
-        print(f"   ➡️  STEP 4: Building TodoResponse and sending to Client")
-        print(f"   📤 STEP 5: Response | Status: 200 OK")
-        print("="*60 + "\n")
+        # Verify the todo belongs to this user
+        if result.owner_uid and result.owner_uid != user.uid:
+            print(f"   ❌ Forbidden! Todo owner={result.owner_uid} but user={user.uid}")
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="You can only complete your own todos.",
+            )
 
+        print(f"   📤 Response | Status: 200 OK")
+        print("="*60 + "\n")
         return result
 
     except TodoNotFoundError as err:
-        print(f"   ❌ TodoNotFoundError caught in Router!")
-        print(f"      📂 Raised by: src/domain/exceptions.py → TodoNotFoundError")
-        print(f"      Detail: {str(err)}")
+        print(f"   ❌ TodoNotFoundError: {str(err)}")
         print("="*60 + "\n")
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(err))
     except DomainError as err:
-        print(f"   ❌ DomainError caught in Router!")
-        print(f"      📂 Raised by: src/domain/exceptions.py → DomainError")
-        print(f"      Detail: {str(err)}")
+        print(f"   ❌ DomainError: {str(err)}")
         print("="*60 + "\n")
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(err))
 
 
 @router.get("", response_model=List[TodoResponse])
-def get_todos(use_case: ListTodosUseCase = Depends(get_list_use_case)):
+def get_todos(
+    user: CurrentUser = Depends(get_current_user),
+    use_case: ListTodosUseCase = Depends(get_list_use_case),
+):
     print("\n" + "="*60)
     print("📥 [DDD] REQUEST RECEIVED — PRESENTATION LAYER")
     print("="*60)
     print(f"   📂 File    : src/presentation/api/todo_router.py")
     print(f"   🔧 Function: get_todos()")
     print(f"   🌐 Route   : GET /todos")
+    print(f"   🔐 User    : {user.email} (uid={user.uid})")
     print("-"*60)
-    print(f"   ➡️  STEP 1: Calling ListTodosUseCase.execute()")
-    print(f"              📂 File: src/application/use_cases/list_todos.py")
+    print(f"   ➡️  Fetching only this user's todos")
 
-    results = use_case.execute()
+    results = use_case.execute(owner_uid=user.uid)
 
-    print(f"   ✅ STEP 2: Use Case returned {len(results)} TodoDTO(s)")
-    for i, r in enumerate(results, 1):
-        print(f"             [{i}] id={r.id[:8]}... | title={r.title} | completed={r.is_completed}")
-    print(f"   📤 STEP 3: Sending Response | Status: 200 OK")
+    print(f"   ✅ Returning {len(results)} todo(s) for user {user.email}")
     print("="*60 + "\n")
 
     return results

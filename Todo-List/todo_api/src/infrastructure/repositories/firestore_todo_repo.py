@@ -38,6 +38,7 @@ class FirestoreTodoRepository(ITodoRepository):
             priority=Priority(doc_data["priority"]),
             is_completed=doc_data["is_completed"],
             created_at=created_at,
+            owner_uid=doc_data.get("owner_uid", ""),
             completed_at=completed_at,
         )
 
@@ -48,6 +49,7 @@ class FirestoreTodoRepository(ITodoRepository):
             "title": todo.title.value,
             "priority": todo.priority.value,
             "is_completed": todo.is_completed,
+            "owner_uid": todo.owner_uid,
             "created_at": todo.created_at.isoformat(),
             "completed_at": (
                 todo.completed_at.isoformat() if todo.completed_at else None
@@ -92,4 +94,16 @@ class FirestoreTodoRepository(ITodoRepository):
 
         print(f"   ✅ Firestore returned {len(entities)} document(s), hydrated to entities")
 
+        return entities
+
+    def get_by_owner(self, owner_uid: str) -> List[TodoItem]:
+        print(f"   📂 File    : src/infrastructure/repositories/firestore_todo_repo.py")
+        print(f"   🔧 Function: FirestoreTodoRepository.get_by_owner()")
+        print(f"   🏛️  Layer   : INFRASTRUCTURE LAYER")
+        print(f"   🗄️  Action  : Firestore.collection('todos').where('owner_uid', '==', '{owner_uid}')")
+
+        docs = self.collection.where("owner_uid", "==", owner_uid).stream()
+        entities = [self._to_entity(doc.to_dict()) for doc in docs]
+
+        print(f"   ✅ Firestore returned {len(entities)} document(s) for user '{owner_uid}'")
         return entities

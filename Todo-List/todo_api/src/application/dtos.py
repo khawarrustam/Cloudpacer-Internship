@@ -35,12 +35,14 @@ class CreateTodoCommand:
     - Fields:
       - title: Task ka title string.
       - priority: Task ki priority string.
+      - owner_uid: Firebase user UID jisne yeh task banaya.
 
     Kahan connected hai:
     - Router se `CreateTodoUseCase.execute(cmd)` mein pass hota hai.
     """
     title: str
     priority: str
+    owner_uid: str = ""
 
 
 @dataclass(frozen=True)
@@ -85,3 +87,4 @@ class TodoDTO:
     is_completed: bool
     created_at: str
     completed_at: str | None
+    owner_uid: str = ""

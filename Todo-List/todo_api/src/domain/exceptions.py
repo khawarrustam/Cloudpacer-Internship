@@ -57,3 +57,14 @@ class TodoNotFoundError(DomainError):
     - HTTP Map: 404 Not Found.
     """
     pass
+
+
+class ValidationException(DomainError):
+    """
+    Kyun banaya gaya:
+    - Jab koi external service (jaise Firebase Auth) ke sath interaction mein
+      validation ya operational error aaye.
+    - Kahan raise hota hai: `src/infrastructure/repositories/firebase_auth_repo.py` mein.
+    - HTTP Map: 400 Bad Request.
+    """
+    pass

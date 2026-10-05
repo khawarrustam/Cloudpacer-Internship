@@ -19,8 +19,9 @@ class FirestoreTodoRepository(ITodoRepository):
         print(f"   📂 File    : src/infrastructure/repositories/firestore_todo_repo.py")
         print(f"   🔧 Function: FirestoreTodoRepository.__init__()")
         print(f"   🏛️  Layer   : INFRASTRUCTURE LAYER (Firestore Adapter)")
-        print(f"   🗄️  Collection: '{collection_name}'")
-        self.collection = db.collection(collection_name)
+        print(f"   🗄️  Collection: '{collection_name}' (Nested under users/UID)")
+        self.db = db
+        self.collection_name = collection_name
 
     def _to_entity(self, doc_data: dict) -> TodoItem:
         """Mapper: Firestore dict → Domain Entity"""
@@ -60,11 +61,15 @@ class FirestoreTodoRepository(ITodoRepository):
         print(f"   📂 File    : src/infrastructure/repositories/firestore_todo_repo.py")
         print(f"   🔧 Function: FirestoreTodoRepository.save()")
         print(f"   🏛️  Layer   : INFRASTRUCTURE LAYER")
-        print(f"   🗄️  Action  : Firestore.collection('todos').document('{todo.id}').set(data)")
-        print(f"              Serializing Entity → Dict via _to_document()")
 
         doc_data = self._to_document(todo)
-        self.collection.document(todo.id).set(doc_data)
+        
+        if todo.owner_uid:
+            print(f"   🗄️  Action  : Firestore.collection('users').document('{todo.owner_uid}').collection('{self.collection_name}').document('{todo.id}').set(data)")
+            self.db.collection("users").document(todo.owner_uid).collection(self.collection_name).document(todo.id).set(doc_data)
+        else:
+            print(f"   🗄️  Action  : Firestore.collection('{self.collection_name}').document('{todo.id}').set(data)")
+            self.db.collection(self.collection_name).document(todo.id).set(doc_data)
 
         print(f"   ✅ Firestore .set() completed for document id='{todo.id}'")
 
@@ -72,24 +77,25 @@ class FirestoreTodoRepository(ITodoRepository):
         print(f"   📂 File    : src/infrastructure/repositories/firestore_todo_repo.py")
         print(f"   🔧 Function: FirestoreTodoRepository.get_by_id()")
         print(f"   🏛️  Layer   : INFRASTRUCTURE LAYER")
-        print(f"   🗄️  Action  : Firestore.collection('todos').document('{todo_id}').get()")
+        print(f"   🗄️  Action  : Firestore.collection_group('{self.collection_name}').where('id', '==', '{todo_id}').stream()")
 
-        doc = self.collection.document(todo_id).get()
+        # Collection group query handles both top-level todos and nested users/{uid}/todos
+        docs = self.db.collection_group(self.collection_name).where("id", "==", todo_id).stream()
+        
+        for doc in docs:
+            print(f"   ✅ Firestore: Document found! Hydrating via _to_entity()")
+            return self._to_entity(doc.to_dict())
 
-        if not doc.exists:
-            print(f"   ❌ Firestore: Document '{todo_id}' does NOT exist → returning None")
-            return None
-
-        print(f"   ✅ Firestore: Document found! Hydrating via _to_entity()")
-        return self._to_entity(doc.to_dict())
+        print(f"   ❌ Firestore: Document '{todo_id}' does NOT exist → returning None")
+        return None
 
     def get_all(self) -> List[TodoItem]:
         print(f"   📂 File    : src/infrastructure/repositories/firestore_todo_repo.py")
         print(f"   🔧 Function: FirestoreTodoRepository.get_all()")
         print(f"   🏛️  Layer   : INFRASTRUCTURE LAYER")
-        print(f"   🗄️  Action  : Firestore.collection('todos').stream() — fetching all docs")
+        print(f"   🗄️  Action  : Firestore.collection_group('{self.collection_name}').stream() — fetching all docs")
 
-        docs = self.collection.stream()
+        docs = self.db.collection_group(self.collection_name).stream()
         entities = [self._to_entity(doc.to_dict()) for doc in docs]
 
         print(f"   ✅ Firestore returned {len(entities)} document(s), hydrated to entities")
@@ -100,9 +106,9 @@ class FirestoreTodoRepository(ITodoRepository):
         print(f"   📂 File    : src/infrastructure/repositories/firestore_todo_repo.py")
         print(f"   🔧 Function: FirestoreTodoRepository.get_by_owner()")
         print(f"   🏛️  Layer   : INFRASTRUCTURE LAYER")
-        print(f"   🗄️  Action  : Firestore.collection('todos').where('owner_uid', '==', '{owner_uid}')")
+        print(f"   🗄️  Action  : Firestore.collection('users').document('{owner_uid}').collection('{self.collection_name}').stream()")
 
-        docs = self.collection.where("owner_uid", "==", owner_uid).stream()
+        docs = self.db.collection("users").document(owner_uid).collection(self.collection_name).stream()
         entities = [self._to_entity(doc.to_dict()) for doc in docs]
 
         print(f"   ✅ Firestore returned {len(entities)} document(s) for user '{owner_uid}'")

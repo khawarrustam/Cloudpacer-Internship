@@ -11,14 +11,65 @@ import { toast } from './ui/Toast';
 import ConfirmModal from './ui/ConfirmModal';
 
 export default function TodoDashboard({ onLogout, user }) {
+  // ============================================================================
+  // HOOKS USED IN THIS COMPONENT:
+  // 1. useTodos (Custom Hook)
+  // 2. useState (Built-in React Hook)
+  // [Roman Urdu]: Dashboard me tasks ki state aur UI form inputs ko manage karne ke liye yeh hooks use ho rahe hain.
+  // ============================================================================
+
+  // Hook: useTodos (Custom Hook)
+  // What it does: Manages fetching, caching, and CRUD mutations (add, complete, delete) for user tasks.
+  // Why it is here: Keeps API calls, error handling, and state synchronization decoupled from UI rendering.
+  // Roman Urdu: Hamara custom hook jo backend se tasks laata hai aur add/complete/delete karne ke functions deta hai.
   const { todos, loading: todoLoading, error: todoError, addTodo, completeTodo, removeTodo } = useTodos();
+
+  // Hook: useState
+  // What it does: Holds the task title text currently typed into the input field.
+  // Why it is here: Controls the form input value so it can be validated and cleared after successful creation.
+  // Roman Urdu: Naye task ka naam jo user input me type karta hai usko save karta hai taake create hone ke baad input empty ho sake.
   const [text, setText] = useState('');
+
+  // Hook: useState
+  // What it does: Holds the chosen priority level ('low', 'medium', 'high') for a new task.
+  // Why it is here: Keeps the priority dropdown value synchronized with component state.
+  // Roman Urdu: Task ki priority level ('low', 'medium', 'high') store karta hai jo select dropdown se chuni jaati hai.
   const [priority, setPriority] = useState('medium');
+
+  // Hook: useState
+  // What it does: Stores validation error messages specifically for the task creation form.
+  // Why it is here: Renders inline error feedback directly under the task title input.
+  // Roman Urdu: Agar task ka title khali ho toh input ke neechay validation error message dikhata hai.
   const [submitError, setSubmitError] = useState(null);
+
+  // Hook: useState
+  // What it does: Stores the active filter tab ('all', 'active', 'completed').
+  // Why it is here: Drives client-side task filtering without triggering redundant backend requests.
+  // Roman Urdu: Yeh track karta hai ke user sabhi tasks dekh raha hai ('all'), sirf baaqi bache huye ('active'), ya mukammal ('completed').
   const [filter, setFilter] = useState('all');
+
+  // Hook: useState
+  // What it does: Boolean flag indicating if task creation is actively in flight.
+  // Why it is here: Shows a loading spinner and disables submit button to avoid duplicate submissions.
+  // Roman Urdu: Jab naya task server par create ho raha ho tab submit button par loading spinner dikhata hai.
   const [creating, setCreating] = useState(false);
+
+  // Hook: useState
+  // What it does: Holds the ID of the specific todo item currently being marked complete.
+  // Why it is here: Shows a per-item spinner on only the clicked task rather than freezing the whole list.
+  // Roman Urdu: Jis specific task par click kiya gaya ho sirf uske circle button par spinner dikhata hai.
   const [completingId, setCompletingId] = useState(null);
+
+  // Hook: useState
+  // What it does: Holds the todo object chosen by the user for deletion (null when modal is closed).
+  // Why it is here: Controls the ConfirmModal visibility and provides context on which task will be purged.
+  // Roman Urdu: Jis task ko delete karna ho uska data rakhta hai taake delete confirmation popup modal open ho sake.
   const [deleteTarget, setDeleteTarget] = useState(null);
+
+  // Hook: useState
+  // What it does: Holds the ID of the todo actively being deleted during the delete network request.
+  // Why it is here: Shows loading spinner in the ConfirmModal button and prevents double deletion clicks.
+  // Roman Urdu: Jab task delete hone ki API call chal rahi ho tab delete button par loading spinner dikhata hai.
   const [deletingId, setDeletingId] = useState(null);
 
   const stats = {

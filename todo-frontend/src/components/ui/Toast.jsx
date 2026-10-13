@@ -2,6 +2,17 @@ import React, { useState, useEffect } from 'react';
 import { CheckCircle, AlertCircle, X } from 'lucide-react';
 
 export function ToastProvider({ children }) {
+  // ============================================================================
+  // HOOKS USED IN THIS COMPONENT:
+  // 1. useState (Built-in React Hook)
+  // 2. useEffect (Built-in React Hook)
+  // [Roman Urdu]: Toast alerts ko handle karne ke liye hooks.
+  // ============================================================================
+
+  // Hook: useState
+  // What it does: Stores an array of active toast notification objects [{ id, message, type }, ...].
+  // Why it is here: Provides reactive state to render floating alerts dynamically and remove them after expiration.
+  // Roman Urdu: Active notification popups ki list save karta hai taake naye alerts screen par nazar aayein aur timer khatam hone par gayab ho jayein.
   const [toasts, setToasts] = useState([]);
 
   const addToast = (message, type = 'success', duration = 3000) => {
@@ -13,7 +24,14 @@ export function ToastProvider({ children }) {
     }, duration);
   };
 
-  // We use a simple window event to trigger toasts from anywhere in the app
+  // Hook: useEffect
+  // What it does: 
+  //   1. Attaches an 'app-toast' event listener to window to catch global toast triggers from anywhere in the app.
+  //   2. Returns a cleanup function that removes the listener when ToastProvider unmounts.
+  // Why it is here:
+  //   Event registration is a side effect that shouldn't happen during render passes. Using an event-driven
+  //   pattern allows any module (even non-React modules) to trigger toasts without prop-drilling.
+  // Roman Urdu: Poori application me se kahin se bhi toast notification aane par usko listen karta hai aur popup show karta hai. Component khatam hone par memory leak se bachane ke liye listener ko remove kar deta hai.
   useEffect(() => {
     const handleToastEvent = (e) => {
       const { message, type } = e.detail;

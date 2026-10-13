@@ -5,11 +5,46 @@ import Input from './ui/Input';
 import { toast } from './ui/Toast';
 
 export default function AuthForm({ onSignup, onLogin, loading }) {
+  // ============================================================================
+  // HOOKS USED IN THIS COMPONENT:
+  // - useState: Manages local, isolated component state across renders.
+  //   [Roman Urdu]: Component ke andar local state sambhalne ke liye useState use hota hai.
+  // ============================================================================
+
+  // Hook: useState
+  // What it does: Tracks whether the current view is "Sign In" (true) or "Create Account" (false).
+  // Why it is here: Allows users to seamlessly switch between Login and Signup modes without leaving the page.
+  // Roman Urdu: Yeh track karta hai ke user Login form par hai ya Signup form par; baghair page reload kiye screen badal deta hai.
   const [isLogin, setIsLogin] = useState(true);
+
+  // Hook: useState
+  // What it does: Stores the text entered into the email field.
+  // Why it is here: Powers a controlled input for two-way data binding, sending the email payload on form submit.
+  // Roman Urdu: Email input ki value ko state me store karta hai taake form submit hone par backend ko bheji ja sake.
   const [email, setEmail] = useState('');
+
+  // Hook: useState
+  // What it does: Stores the text entered into the password field.
+  // Why it is here: Implements a controlled input to safely pass password credentials to authentication handlers.
+  // Roman Urdu: Password input ki value save karta hai taake login ya signup API call me use ho sake.
   const [password, setPassword] = useState('');
+
+  // Hook: useState
+  // What it does: Stores the full display name during user registration.
+  // Why it is here: Required only in signup mode (when !isLogin) to create a user profile with their name.
+  // Roman Urdu: Signup ke waqt user ka naam save karta hai; login ke waqt iski zaroorat nahi hoti.
   const [name, setName] = useState('');
+
+  // Hook: useState
+  // What it does: Toggles password input type between 'password' (masked) and 'text' (visible).
+  // Why it is here: Enhances user experience by allowing users to verify their typed password before submitting.
+  // Roman Urdu: Password ko hide/show karne ke liye boolean flag hai taake user apna typed password dekh sake.
   const [showPassword, setShowPassword] = useState(false);
+
+  // Hook: useState
+  // What it does: Stores authentication or validation error messages returned by API responses.
+  // Why it is here: Triggers re-rendering to display inline error alerts when authentication fails.
+  // Roman Urdu: Jab login ya signup fail ho jaye toh backend ka error message screen par laal alert me show karta hai.
   const [error, setError] = useState(null);
 
   const handleSubmit = async (e) => {

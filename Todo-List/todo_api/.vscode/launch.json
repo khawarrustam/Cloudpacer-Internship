@@ -1,0 +1,51 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "🚀 Debug FastAPI (Todo API)",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "uvicorn",
+      "args": [
+        "main:app",
+        "--host", "127.0.0.1",
+        "--port", "8000",
+        "--reload"
+      ],
+      "jinja": true,
+      "justMyCode": true,
+      "cwd": "${workspaceFolder}/Todo-List/todo_api",
+      "env": {
+        "USE_FIREBASE": "false"
+      },
+      "console": "integratedTerminal"
+    },
+    {
+      "name": "🔥 Debug FastAPI (with Firebase)",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "uvicorn",
+      "args": [
+        "main:app",
+        "--host", "127.0.0.1",
+        "--port", "8000"
+      ],
+      "jinja": true,
+      "justMyCode": true,
+      "cwd": "${workspaceFolder}/Todo-List/todo_api",
+      "env": {
+        "USE_FIREBASE": "true",
+        "FIREBASE_CREDENTIALS_PATH": "serviceAccountKey.json"
+      },
+      "console": "integratedTerminal"
+    },
+    {
+      "name": "🧪 Debug Current Python File",
+      "type": "debugpy",
+      "request": "launch",
+      "program": "${file}",
+      "console": "integratedTerminal",
+      "justMyCode": true
+    }
+  ]
+}

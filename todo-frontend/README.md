@@ -4,6 +4,8 @@
 
 This README is for you if you are starting React from zero. Instead of learning hooks through unrelated examples, we will learn them through this TodoFlow application.
 
+Ready to learn Redux next? Read the project-specific [Redux Toolkit migration guide](./REDUX_TOOLKIT_GUIDE.md). It explains what this app currently uses instead of Redux, which slices/reducers it needs, and the complete action → thunk → reducer → selector → UI flow in Roman Urdu and English.
+
 ---
 
 ## Table of contents

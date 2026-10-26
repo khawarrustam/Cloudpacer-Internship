@@ -19,26 +19,26 @@ Yeh links GitHub ke committed **pre-Redux baseline `f373040`** ko point karti ha
 
 | Feature | Exact current lines | Abhi kya ho raha hai? |
 |---|---|---|
-| React root | [`main.jsx` 1-13](https://github.com/khawarrustam/Cloudpacer-Internship/blob/f373040/todo-frontend/src/main.jsx#L1-L13) | `StrictMode`, `ToastProvider`, `App`; Redux Provider nahi. |
-| Auth imports/state | [`App.jsx` 1-28](https://github.com/khawarrustam/Cloudpacer-Internship/blob/f373040/todo-frontend/src/App.jsx#L1-L28) | `useAuth()` aur duplicate `isLoggedIn` state. |
-| Auth effect | [`App.jsx` 30-53](https://github.com/khawarrustam/Cloudpacer-Internship/blob/f373040/todo-frontend/src/App.jsx#L30-L53) | Token check aur `auth-failure` listener. |
-| Auth handlers | [`App.jsx` 55-74](https://github.com/khawarrustam/Cloudpacer-Internship/blob/f373040/todo-frontend/src/App.jsx#L55-L74) | Signup/login/logout custom-hook calls. |
-| Auth rendering | [`App.jsx` 76-103](https://github.com/khawarrustam/Cloudpacer-Internship/blob/f373040/todo-frontend/src/App.jsx#L76-L103) | Loading, AuthForm ya dashboard decision. |
-| Auth custom hook | [`useAuth.js` 17-87](https://github.com/khawarrustam/Cloudpacer-Internship/blob/f373040/todo-frontend/src/hooks/useAuth.js#L17-L87) | User/loading/error, APIs aur storage. |
-| Todos custom hook | [`useTodos.js` 17-104](https://github.com/khawarrustam/Cloudpacer-Internship/blob/f373040/todo-frontend/src/hooks/useTodos.js#L17-L104) | Todo state, fetch effect aur CRUD. |
-| JWT request interceptor | [`client.js` 11-18](https://github.com/khawarrustam/Cloudpacer-Internship/blob/f373040/todo-frontend/src/api/client.js#L11-L18) | Token Authorization header mein lagata hai. |
-| Old `401` bridge | [`client.js` 20-31](https://github.com/khawarrustam/Cloudpacer-Internship/blob/f373040/todo-frontend/src/api/client.js#L20-L31) | Storage clear + `auth-failure` event. |
-| Dashboard imports/state | [`TodoDashboard.jsx` 1-37](https://github.com/khawarrustam/Cloudpacer-Internship/blob/f373040/todo-frontend/src/components/TodoDashboard.jsx#L1-L37) | `useTodos`, forms, filters aur request flags. |
-| Keyboard effect - keep local | [`TodoDashboard.jsx` 40-56](https://github.com/khawarrustam/Cloudpacer-Internship/blob/f373040/todo-frontend/src/components/TodoDashboard.jsx#L40-L56) | `/` aur `N` shortcuts. |
-| Stats | [`TodoDashboard.jsx` 59-64](https://github.com/khawarrustam/Cloudpacer-Internship/blob/f373040/todo-frontend/src/components/TodoDashboard.jsx#L59-L64) | Local `useMemo`; future `selectTodoStats`. |
-| Visible todos | [`TodoDashboard.jsx` 66-91](https://github.com/khawarrustam/Cloudpacer-Internship/blob/f373040/todo-frontend/src/components/TodoDashboard.jsx#L66-L91) | Filter/sort `useMemo`; future selector. |
-| Todo CRUD handlers | [`TodoDashboard.jsx` 95-139](https://github.com/khawarrustam/Cloudpacer-Internship/blob/f373040/todo-frontend/src/components/TodoDashboard.jsx#L95-L139) | Add, complete aur delete calls. |
-| Todo row flags | [`TodoDashboard.jsx` 177-186](https://github.com/khawarrustam/Cloudpacer-Internship/blob/f373040/todo-frontend/src/components/TodoDashboard.jsx#L177-L186) | Current completing/deleting ID comparison. |
-| Search/sort/refresh | [`TodoDashboard.jsx` 238-254](https://github.com/khawarrustam/Cloudpacer-Internship/blob/f373040/todo-frontend/src/components/TodoDashboard.jsx#L238-L254) | Local setters aur refresh callback. |
-| Filter buttons | [`TodoDashboard.jsx` 258-268](https://github.com/khawarrustam/Cloudpacer-Internship/blob/f373040/todo-frontend/src/components/TodoDashboard.jsx#L258-L268) | `setFilter` ko Redux action banana hai. |
-| Auth form - keep local | [`AuthForm.jsx` 7-28](https://github.com/khawarrustam/Cloudpacer-Internship/blob/f373040/todo-frontend/src/components/AuthForm.jsx#L7-L28) | Email/password/name/form mode. |
-| Toast system | [`Toast.jsx` 4-40](https://github.com/khawarrustam/Cloudpacer-Internship/blob/f373040/todo-frontend/src/components/ui/Toast.jsx#L4-L40) | Optional last migration. |
-| Modal ref/effect - keep local | [`ConfirmModal.jsx` 5-26](https://github.com/khawarrustam/Cloudpacer-Internship/blob/f373040/todo-frontend/src/components/ui/ConfirmModal.jsx#L5-L26) | DOM focus/keyboard behavior. |
+| React root | [`main.jsx` 1-13](https://github.com/khawarrustam/Cloudpacer-Internship/blob/f373040c05dac4a68b2f4b979f8a7832db39d706/todo-frontend/src/main.jsx#L1-L13) | `StrictMode`, `ToastProvider`, `App`; Redux Provider nahi. |
+| Auth imports/state | [`App.jsx` 1-28](https://github.com/khawarrustam/Cloudpacer-Internship/blob/f373040c05dac4a68b2f4b979f8a7832db39d706/todo-frontend/src/App.jsx#L1-L28) | `useAuth()` aur duplicate `isLoggedIn` state. |
+| Auth effect | [`App.jsx` 30-53](https://github.com/khawarrustam/Cloudpacer-Internship/blob/f373040c05dac4a68b2f4b979f8a7832db39d706/todo-frontend/src/App.jsx#L30-L53) | Token check aur `auth-failure` listener. |
+| Auth handlers | [`App.jsx` 55-74](https://github.com/khawarrustam/Cloudpacer-Internship/blob/f373040c05dac4a68b2f4b979f8a7832db39d706/todo-frontend/src/App.jsx#L55-L74) | Signup/login/logout custom-hook calls. |
+| Auth rendering | [`App.jsx` 76-103](https://github.com/khawarrustam/Cloudpacer-Internship/blob/f373040c05dac4a68b2f4b979f8a7832db39d706/todo-frontend/src/App.jsx#L76-L103) | Loading, AuthForm ya dashboard decision. |
+| Auth custom hook | [`useAuth.js` 17-87](https://github.com/khawarrustam/Cloudpacer-Internship/blob/f373040c05dac4a68b2f4b979f8a7832db39d706/todo-frontend/src/hooks/useAuth.js#L17-L87) | User/loading/error, APIs aur storage. |
+| Todos custom hook | [`useTodos.js` 17-104](https://github.com/khawarrustam/Cloudpacer-Internship/blob/f373040c05dac4a68b2f4b979f8a7832db39d706/todo-frontend/src/hooks/useTodos.js#L17-L104) | Todo state, fetch effect aur CRUD. |
+| JWT request interceptor | [`client.js` 11-18](https://github.com/khawarrustam/Cloudpacer-Internship/blob/f373040c05dac4a68b2f4b979f8a7832db39d706/todo-frontend/src/api/client.js#L11-L18) | Token Authorization header mein lagata hai. |
+| Old `401` bridge | [`client.js` 20-31](https://github.com/khawarrustam/Cloudpacer-Internship/blob/f373040c05dac4a68b2f4b979f8a7832db39d706/todo-frontend/src/api/client.js#L20-L31) | Storage clear + `auth-failure` event. |
+| Dashboard imports/state | [`TodoDashboard.jsx` 1-37](https://github.com/khawarrustam/Cloudpacer-Internship/blob/f373040c05dac4a68b2f4b979f8a7832db39d706/todo-frontend/src/components/TodoDashboard.jsx#L1-L37) | `useTodos`, forms, filters aur request flags. |
+| Keyboard effect - keep local | [`TodoDashboard.jsx` 40-56](https://github.com/khawarrustam/Cloudpacer-Internship/blob/f373040c05dac4a68b2f4b979f8a7832db39d706/todo-frontend/src/components/TodoDashboard.jsx#L40-L56) | `/` aur `N` shortcuts. |
+| Stats | [`TodoDashboard.jsx` 59-64](https://github.com/khawarrustam/Cloudpacer-Internship/blob/f373040c05dac4a68b2f4b979f8a7832db39d706/todo-frontend/src/components/TodoDashboard.jsx#L59-L64) | Local `useMemo`; future `selectTodoStats`. |
+| Visible todos | [`TodoDashboard.jsx` 66-91](https://github.com/khawarrustam/Cloudpacer-Internship/blob/f373040c05dac4a68b2f4b979f8a7832db39d706/todo-frontend/src/components/TodoDashboard.jsx#L66-L91) | Filter/sort `useMemo`; future selector. |
+| Todo CRUD handlers | [`TodoDashboard.jsx` 95-139](https://github.com/khawarrustam/Cloudpacer-Internship/blob/f373040c05dac4a68b2f4b979f8a7832db39d706/todo-frontend/src/components/TodoDashboard.jsx#L95-L139) | Add, complete aur delete calls. |
+| Todo row flags | [`TodoDashboard.jsx` 177-186](https://github.com/khawarrustam/Cloudpacer-Internship/blob/f373040c05dac4a68b2f4b979f8a7832db39d706/todo-frontend/src/components/TodoDashboard.jsx#L177-L186) | Current completing/deleting ID comparison. |
+| Search/sort/refresh | [`TodoDashboard.jsx` 238-254](https://github.com/khawarrustam/Cloudpacer-Internship/blob/f373040c05dac4a68b2f4b979f8a7832db39d706/todo-frontend/src/components/TodoDashboard.jsx#L238-L254) | Local setters aur refresh callback. |
+| Filter buttons | [`TodoDashboard.jsx` 258-268](https://github.com/khawarrustam/Cloudpacer-Internship/blob/f373040c05dac4a68b2f4b979f8a7832db39d706/todo-frontend/src/components/TodoDashboard.jsx#L258-L268) | `setFilter` ko Redux action banana hai. |
+| Auth form - keep local | [`AuthForm.jsx` 7-28](https://github.com/khawarrustam/Cloudpacer-Internship/blob/f373040c05dac4a68b2f4b979f8a7832db39d706/todo-frontend/src/components/AuthForm.jsx#L7-L28) | Email/password/name/form mode. |
+| Toast system | [`Toast.jsx` 4-40](https://github.com/khawarrustam/Cloudpacer-Internship/blob/f373040c05dac4a68b2f4b979f8a7832db39d706/todo-frontend/src/components/ui/Toast.jsx#L4-L40) | Optional last migration. |
+| Modal ref/effect - keep local | [`ConfirmModal.jsx` 5-26](https://github.com/khawarrustam/Cloudpacer-Internship/blob/f373040c05dac4a68b2f4b979f8a7832db39d706/todo-frontend/src/components/ui/ConfirmModal.jsx#L5-L26) | DOM focus/keyboard behavior. |
 
 ### Exact copy/paste order
 
@@ -47,26 +47,26 @@ Yeh links GitHub ke committed **pre-Redux baseline `f373040`** ko point karti ha
 | 1 | `todo-frontend/package.json` dependencies | Install command run karo; JSON manually paste na karo. | [Phase 1](#phase-1--packages-install-karo) |
 | 2 | `src/features/taskView/taskViewSlice.js`, **new file line 1** | Poora taskView slice paste karo. | [Phase 2](#phase-2--sab-se-simple-taskviewslice) |
 | 3 | `src/app/store.js`, **new file line 1** | Initial store paste karo. | [Phase 3](#phase-3--store-banao) |
-| 4 | [`src/main.jsx` 1-13](https://github.com/khawarrustam/Cloudpacer-Internship/blob/f373040/todo-frontend/src/main.jsx#L1-L13) | Poora file Provider wale block se replace karo. | [Phase 4](#phase-4--root-par-provider-lagao) |
-| 5a | [`TodoDashboard.jsx` 1-19](https://github.com/khawarrustam/Cloudpacer-Internship/blob/f373040/todo-frontend/src/components/TodoDashboard.jsx#L1-L19) | React-Redux/taskView imports add karo; `useTodos` todos phase tak rehne do. | [Phase 5](#phase-5--dashboard-ke-filtersearchsort-connect-karo) |
-| 5b | [`TodoDashboard.jsx` 32-34](https://github.com/khawarrustam/Cloudpacer-Internship/blob/f373040/todo-frontend/src/components/TodoDashboard.jsx#L32-L34) | Filter/query/sort local states remove; selector block component ke start par paste karo. | [Phase 5](#phase-5--dashboard-ke-filtersearchsort-connect-karo) |
-| 5c | [`TodoDashboard.jsx` 242](https://github.com/khawarrustam/Cloudpacer-Internship/blob/f373040/todo-frontend/src/components/TodoDashboard.jsx#L242) | `setQuery(...)` ko `dispatch(queryChanged(...))` se replace karo. | [Phase 5](#phase-5--dashboard-ke-filtersearchsort-connect-karo) |
-| 5d | [`TodoDashboard.jsx` 248](https://github.com/khawarrustam/Cloudpacer-Internship/blob/f373040/todo-frontend/src/components/TodoDashboard.jsx#L248) | `setSort(...)` ko `dispatch(sortChanged(...))` se replace karo. | [Phase 5](#phase-5--dashboard-ke-filtersearchsort-connect-karo) |
-| 5e | [`TodoDashboard.jsx` 264](https://github.com/khawarrustam/Cloudpacer-Internship/blob/f373040/todo-frontend/src/components/TodoDashboard.jsx#L264) | `setFilter(...)` ko `dispatch(filterChanged(...))` se replace karo. | [Phase 5](#phase-5--dashboard-ke-filtersearchsort-connect-karo) |
+| 4 | [`src/main.jsx` 1-13](https://github.com/khawarrustam/Cloudpacer-Internship/blob/f373040c05dac4a68b2f4b979f8a7832db39d706/todo-frontend/src/main.jsx#L1-L13) | Poora file Provider wale block se replace karo. | [Phase 4](#phase-4--root-par-provider-lagao) |
+| 5a | [`TodoDashboard.jsx` 1-19](https://github.com/khawarrustam/Cloudpacer-Internship/blob/f373040c05dac4a68b2f4b979f8a7832db39d706/todo-frontend/src/components/TodoDashboard.jsx#L1-L19) | React-Redux/taskView imports add karo; `useTodos` todos phase tak rehne do. | [Phase 5](#phase-5--dashboard-ke-filtersearchsort-connect-karo) |
+| 5b | [`TodoDashboard.jsx` 32-34](https://github.com/khawarrustam/Cloudpacer-Internship/blob/f373040c05dac4a68b2f4b979f8a7832db39d706/todo-frontend/src/components/TodoDashboard.jsx#L32-L34) | Filter/query/sort local states remove; selector block component ke start par paste karo. | [Phase 5](#phase-5--dashboard-ke-filtersearchsort-connect-karo) |
+| 5c | [`TodoDashboard.jsx` 242](https://github.com/khawarrustam/Cloudpacer-Internship/blob/f373040c05dac4a68b2f4b979f8a7832db39d706/todo-frontend/src/components/TodoDashboard.jsx#L242) | `setQuery(...)` ko `dispatch(queryChanged(...))` se replace karo. | [Phase 5](#phase-5--dashboard-ke-filtersearchsort-connect-karo) |
+| 5d | [`TodoDashboard.jsx` 248](https://github.com/khawarrustam/Cloudpacer-Internship/blob/f373040c05dac4a68b2f4b979f8a7832db39d706/todo-frontend/src/components/TodoDashboard.jsx#L248) | `setSort(...)` ko `dispatch(sortChanged(...))` se replace karo. | [Phase 5](#phase-5--dashboard-ke-filtersearchsort-connect-karo) |
+| 5e | [`TodoDashboard.jsx` 264](https://github.com/khawarrustam/Cloudpacer-Internship/blob/f373040c05dac4a68b2f4b979f8a7832db39d706/todo-frontend/src/components/TodoDashboard.jsx#L264) | `setFilter(...)` ko `dispatch(filterChanged(...))` se replace karo. | [Phase 5](#phase-5--dashboard-ke-filtersearchsort-connect-karo) |
 | 6 | `src/features/auth/authSlice.js`, **new file line 1** | Poora auth slice paste karo. | [`authSlice` code](#9-authslice-ka-recommended-code) |
 | 7 | `src/app/store.js` | `authReducer` import aur `auth:` entry add karo. | [`authSlice` code](#9-authslice-ka-recommended-code) |
-| 8 | [`src/App.jsx` 1-104](https://github.com/khawarrustam/Cloudpacer-Internship/blob/f373040/todo-frontend/src/App.jsx#L1-L104) | Poora file Redux App block se replace karo. | [Auth component flow](#10-auth-component-flow-redux-ke-baad) |
-| 9 | [`src/api/client.js` 1-33](https://github.com/khawarrustam/Cloudpacer-Internship/blob/f373040/todo-frontend/src/api/client.js#L1-L33) | Poora file callback-registration version se replace karo. | [Axios 401 bridge](#11-axios-401-ko-redux-se-connect-karna--circular-import-ke-baghair) |
+| 8 | [`src/App.jsx` 1-104](https://github.com/khawarrustam/Cloudpacer-Internship/blob/f373040c05dac4a68b2f4b979f8a7832db39d706/todo-frontend/src/App.jsx#L1-L104) | Poora file Redux App block se replace karo. | [Auth component flow](#10-auth-component-flow-redux-ke-baad) |
+| 9 | [`src/api/client.js` 1-33](https://github.com/khawarrustam/Cloudpacer-Internship/blob/f373040c05dac4a68b2f4b979f8a7832db39d706/todo-frontend/src/api/client.js#L1-L33) | Poora file callback-registration version se replace karo. | [Axios 401 bridge](#11-axios-401-ko-redux-se-connect-karna--circular-import-ke-baghair) |
 | 10 | `src/main.jsx`, imports ke baad, render se pehle | `setUnauthorizedHandler(...)` registration paste karo. | [Axios 401 bridge](#11-axios-401-ko-redux-se-connect-karna--circular-import-ke-baghair) |
 | 11 | `src/features/todos/todosSlice.js`, **new file line 1** | Poora todos slice paste karo. | [`todosSlice` code](#12-todosslice-ka-recommended-code) |
 | 12 | `src/features/todos/todosSelectors.js`, **new file line 1** | Poora selectors block paste karo. | [Derived selectors](#13-derived-data-ke-selectors) |
 | 13 | `src/app/store.js` | `todosReducer` import aur `todos:` entry add karo. | [`todosSlice` code](#12-todosslice-ka-recommended-code) |
-| 14a | [`TodoDashboard.jsx` 1-37](https://github.com/khawarrustam/Cloudpacer-Internship/blob/f373040/todo-frontend/src/components/TodoDashboard.jsx#L1-L37) | `useTodos` aur old request flags replace karo. `text`, `priority`, `submitError`, `deleteTarget` local rakho. | [Dashboard migration](#14-tododashboard-migration-pattern) |
-| 14b | [`TodoDashboard.jsx` 59-91](https://github.com/khawarrustam/Cloudpacer-Internship/blob/f373040/todo-frontend/src/components/TodoDashboard.jsx#L59-L91) | Stats/visibleTodos `useMemo` remove; selector results use karo. | [Dashboard migration](#14-tododashboard-migration-pattern) |
-| 14c | [`TodoDashboard.jsx` 95-139](https://github.com/khawarrustam/Cloudpacer-Internship/blob/f373040/todo-frontend/src/components/TodoDashboard.jsx#L95-L139) | CRUD handlers dispatch + `.unwrap()` versions se replace karo. | [Dashboard migration](#14-tododashboard-migration-pattern) |
-| 14d | [`TodoDashboard.jsx` 177-186](https://github.com/khawarrustam/Cloudpacer-Internship/blob/f373040/todo-frontend/src/components/TodoDashboard.jsx#L177-L186) | Row flags ko `completingIds[todo.id]` / `deletingIds[todo.id]` se replace karo. | [Dashboard migration](#14-tododashboard-migration-pattern) |
+| 14a | [`TodoDashboard.jsx` 1-37](https://github.com/khawarrustam/Cloudpacer-Internship/blob/f373040c05dac4a68b2f4b979f8a7832db39d706/todo-frontend/src/components/TodoDashboard.jsx#L1-L37) | `useTodos` aur old request flags replace karo. `text`, `priority`, `submitError`, `deleteTarget` local rakho. | [Dashboard migration](#14-tododashboard-migration-pattern) |
+| 14b | [`TodoDashboard.jsx` 59-91](https://github.com/khawarrustam/Cloudpacer-Internship/blob/f373040c05dac4a68b2f4b979f8a7832db39d706/todo-frontend/src/components/TodoDashboard.jsx#L59-L91) | Stats/visibleTodos `useMemo` remove; selector results use karo. | [Dashboard migration](#14-tododashboard-migration-pattern) |
+| 14c | [`TodoDashboard.jsx` 95-139](https://github.com/khawarrustam/Cloudpacer-Internship/blob/f373040c05dac4a68b2f4b979f8a7832db39d706/todo-frontend/src/components/TodoDashboard.jsx#L95-L139) | CRUD handlers dispatch + `.unwrap()` versions se replace karo. | [Dashboard migration](#14-tododashboard-migration-pattern) |
+| 14d | [`TodoDashboard.jsx` 177-186](https://github.com/khawarrustam/Cloudpacer-Internship/blob/f373040c05dac4a68b2f4b979f8a7832db39d706/todo-frontend/src/components/TodoDashboard.jsx#L177-L186) | Row flags ko `completingIds[todo.id]` / `deletingIds[todo.id]` se replace karo. | [Dashboard migration](#14-tododashboard-migration-pattern) |
 | 15 | `src/features/notifications/notificationsSlice.js`, **optional new file line 1** | Auth/todos stable hone ke baad hi paste karo. | [Optional notifications](#17-optional-notificationsslice) |
-| 16 | [`useAuth.js` 1-87](https://github.com/khawarrustam/Cloudpacer-Internship/blob/f373040/todo-frontend/src/hooks/useAuth.js#L1-L87) and [`useTodos.js` 1-104](https://github.com/khawarrustam/Cloudpacer-Internship/blob/f373040/todo-frontend/src/hooks/useTodos.js#L1-L104) | Sab imports remove aur Redux flow verify hone ke baad old files delete karo. | [One-to-one mapping](#16-current-to-redux-one-to-one-mapping) |
+| 16 | [`useAuth.js` 1-87](https://github.com/khawarrustam/Cloudpacer-Internship/blob/f373040c05dac4a68b2f4b979f8a7832db39d706/todo-frontend/src/hooks/useAuth.js#L1-L87) and [`useTodos.js` 1-104](https://github.com/khawarrustam/Cloudpacer-Internship/blob/f373040c05dac4a68b2f4b979f8a7832db39d706/todo-frontend/src/hooks/useTodos.js#L1-L104) | Sab imports remove aur Redux flow verify hone ke baad old files delete karo. | [One-to-one mapping](#16-current-to-redux-one-to-one-mapping) |
 
 ### Line-number safety rule
 
@@ -533,18 +533,20 @@ Yeh line numbers committed pre-migration version `f373040` ke hain. Blue link pa
 | Phase 1 | Terminal command hai; kisi source-code line par paste nahi karna. |
 | Phase 2 | `src/features/taskView/taskViewSlice.js` **new file, line 1**. |
 | Phase 3 | `src/app/store.js` **new file, line 1**. |
-| Phase 4 | [`src/main.jsx` lines 1-13 replace karo](https://github.com/khawarrustam/Cloudpacer-Internship/blob/f373040/todo-frontend/src/main.jsx#L1-L13). |
-| Phase 5 imports | [`TodoDashboard.jsx` lines 1-19](https://github.com/khawarrustam/Cloudpacer-Internship/blob/f373040/todo-frontend/src/components/TodoDashboard.jsx#L1-L19). |
-| Phase 5 local state | [`TodoDashboard.jsx` lines 32-34 remove/replace karo](https://github.com/khawarrustam/Cloudpacer-Internship/blob/f373040/todo-frontend/src/components/TodoDashboard.jsx#L32-L34). |
-| Phase 5 search | [`TodoDashboard.jsx` line 242](https://github.com/khawarrustam/Cloudpacer-Internship/blob/f373040/todo-frontend/src/components/TodoDashboard.jsx#L242): `setQuery` replace karo. |
-| Phase 5 sort | [`TodoDashboard.jsx` line 248](https://github.com/khawarrustam/Cloudpacer-Internship/blob/f373040/todo-frontend/src/components/TodoDashboard.jsx#L248): `setSort` replace karo. |
-| Phase 5 filter | [`TodoDashboard.jsx` line 264](https://github.com/khawarrustam/Cloudpacer-Internship/blob/f373040/todo-frontend/src/components/TodoDashboard.jsx#L264): `setFilter` replace karo. |
+| Phase 4 | [`src/main.jsx` lines 1-13 replace karo](https://github.com/khawarrustam/Cloudpacer-Internship/blob/f373040c05dac4a68b2f4b979f8a7832db39d706/todo-frontend/src/main.jsx#L1-L13). |
+| Phase 5 imports | [`TodoDashboard.jsx` lines 1-19](https://github.com/khawarrustam/Cloudpacer-Internship/blob/f373040c05dac4a68b2f4b979f8a7832db39d706/todo-frontend/src/components/TodoDashboard.jsx#L1-L19). |
+| Phase 5 local state | [`TodoDashboard.jsx` lines 32-34 remove/replace karo](https://github.com/khawarrustam/Cloudpacer-Internship/blob/f373040c05dac4a68b2f4b979f8a7832db39d706/todo-frontend/src/components/TodoDashboard.jsx#L32-L34). |
+| Phase 5 search | [`TodoDashboard.jsx` line 242](https://github.com/khawarrustam/Cloudpacer-Internship/blob/f373040c05dac4a68b2f4b979f8a7832db39d706/todo-frontend/src/components/TodoDashboard.jsx#L242): `setQuery` replace karo. |
+| Phase 5 sort | [`TodoDashboard.jsx` line 248](https://github.com/khawarrustam/Cloudpacer-Internship/blob/f373040c05dac4a68b2f4b979f8a7832db39d706/todo-frontend/src/components/TodoDashboard.jsx#L248): `setSort` replace karo. |
+| Phase 5 filter | [`TodoDashboard.jsx` line 264](https://github.com/khawarrustam/Cloudpacer-Internship/blob/f373040c05dac4a68b2f4b979f8a7832db39d706/todo-frontend/src/components/TodoDashboard.jsx#L264): `setFilter` replace karo. |
 
 Note: ek edit ke baad local lines shift ho sakti hain. Is surat mein `Ctrl+F` se `setQuery`, `setSort`, ya `setFilter` search karo.
 
 ### Phase 1 — packages install karo
 
-Frontend directory mein:
+> **RUN — copy into terminal, code file mein nahi**
+>
+> Folder: repository root se command start karo.
 
 ```bash
 cd todo-frontend
@@ -560,7 +562,11 @@ Roles:
 
 Pehle API ke baghair filter/search/sort Redux par shift karo. Is se action → reducer → selector → UI flow samajh aayega.
 
-Paste location: `src/features/taskView/taskViewSlice.js` **new file, line 1**.
+> **CREATE NEW FILE AND COPY THE WHOLE NEXT BLOCK**
+>
+> File: `todo-frontend/src/features/taskView/taskViewSlice.js`<br>
+> Paste starting at: **line 1**<br>
+> Action: new blank file create karo, phir next code block ka copy button press karke poora block paste karo.
 
 ```js
 import { createSlice } from '@reduxjs/toolkit';
@@ -606,7 +612,11 @@ export default taskViewSlice.reducer;
 
 ### Phase 3 — store banao
 
-Paste location: `src/app/store.js` **new file, line 1**.
+> **CREATE NEW FILE AND COPY THE WHOLE NEXT BLOCK**
+>
+> File: `todo-frontend/src/app/store.js`<br>
+> Paste starting at: **line 1**<br>
+> Action: new blank file create karo, phir next code block poora paste karo.
 
 ```js
 import { configureStore } from '@reduxjs/toolkit';
@@ -628,7 +638,12 @@ export const store = configureStore({
 
 ### Phase 4 — root par Provider lagao
 
-Paste location: [`src/main.jsx` ki current lines 1-13](https://github.com/khawarrustam/Cloudpacer-Internship/blob/f373040/todo-frontend/src/main.jsx#L1-L13) ko neeche wale poore block se replace karo.
+> **REPLACE THE WHOLE FILE WITH THE NEXT CODE BLOCK**
+>
+> File: `todo-frontend/src/main.jsx`<br>
+> Old code: **lines 1-13**<br>
+> Paste starting at: **line 1**<br>
+> Action: `Ctrl+A` inside `main.jsx`, phir next code block copy/paste karo.
 
 ```jsx
 import React from 'react';
@@ -654,9 +669,13 @@ Provider ke baghair `useSelector`/`useDispatch` use karne par “could not find 
 
 ### Phase 5 — Dashboard ke filter/search/sort connect karo
 
-Edit locations: imports [`lines 1-19`](https://github.com/khawarrustam/Cloudpacer-Internship/blob/f373040/todo-frontend/src/components/TodoDashboard.jsx#L1-L19), local filter state [`lines 32-34`](https://github.com/khawarrustam/Cloudpacer-Internship/blob/f373040/todo-frontend/src/components/TodoDashboard.jsx#L32-L34), aur JSX handlers [`lines 242, 248, 264`](https://github.com/khawarrustam/Cloudpacer-Internship/blob/f373040/todo-frontend/src/components/TodoDashboard.jsx#L242-L264).
+#### Step 5A — old local state delete karo
 
-Old local state remove:
+> **DELETE — next block copy/paste nahi karna**
+>
+> File: `todo-frontend/src/components/TodoDashboard.jsx`<br>
+> Delete old lines: **32-34**<br>
+> Action: file mein neeche wali three lines search karke delete karo.
 
 ```js
 const [filter, setFilter] = useState('all');
@@ -664,7 +683,13 @@ const [query, setQuery] = useState('');
 const [sort, setSort] = useState('smart');
 ```
 
-New imports/state:
+#### Step 5B — imports add karo
+
+> **ADD THE NEXT IMPORT BLOCK**
+>
+> File: `todo-frontend/src/components/TodoDashboard.jsx`<br>
+> Add near: **lines 1-19**, doosre imports ke sath<br>
+> Action: next block ko file ke top par last import ke baad paste karo.
 
 ```js
 import { useDispatch, useSelector } from 'react-redux';
@@ -676,14 +701,30 @@ import {
   selectTaskQuery,
   selectTaskSort,
 } from '../features/taskView/taskViewSlice';
+```
 
+#### Step 5C — Redux hooks component mein add karo
+
+> **ADD THE NEXT STATE BLOCK**
+>
+> File: `todo-frontend/src/components/TodoDashboard.jsx`<br>
+> Add after: `export default function TodoDashboard(...) {` — old baseline **line 27**<br>
+> Action: opening `{` ke baad component ke andar paste karo; imports ke beech paste mat karna.
+
+```js
 const dispatch = useDispatch();
 const filter = useSelector(selectTaskFilter);
 const query = useSelector(selectTaskQuery);
 const sort = useSelector(selectTaskSort);
 ```
 
-Event handlers replace:
+#### Step 5D — three JSX handlers replace karo
+
+> **REPLACE ONE HANDLER AT A TIME**
+>
+> File: `todo-frontend/src/components/TodoDashboard.jsx`<br>
+> Search old baseline lines: **242 (`setQuery`)**, **248 (`setSort`)**, **264 (`setFilter`)**<br>
+> Action: poori input/select/button line replace nahi karni; sirf matching `onChange` ya `onClick` expression replace karo.
 
 ```jsx
 onChange={(event) => dispatch(queryChanged(event.target.value))}
@@ -703,7 +744,13 @@ taskView/filterChanged
 
 ## 9. `authSlice` ka recommended code
 
-Create `src/features/auth/authSlice.js`:
+> **CREATE NEW FILE AND COPY THE WHOLE NEXT BLOCK**
+>
+> File: `todo-frontend/src/features/auth/authSlice.js`
+>
+> Paste starting at: **line 1**
+>
+> Action: new blank file create karke next code block poora paste karo.
 
 ```js
 import { createAsyncThunk, createSlice } from '@reduxjs/toolkit';
@@ -845,10 +892,20 @@ Why storage functions thunk ke aas paas hain, reducer mein nahi?
 - `loggedOut` sirf Redux state change karta hai.
 - `logoutUser` thunk pehle storage clear karta hai, phir reducer action dispatch karta hai.
 
-Store mein reducer add karo:
+> **REPLACE THE WHOLE STORE FILE WITH THE NEXT BLOCK**
+>
+> File: `todo-frontend/src/app/store.js`
+>
+> Current phase-3 file: **lines 1-8**
+>
+> Paste starting at: **line 1**
+>
+> Action: `store.js` mein `Ctrl+A`, phir next complete block paste karo.
 
 ```js
+import { configureStore } from '@reduxjs/toolkit';
 import authReducer from '../features/auth/authSlice';
+import taskViewReducer from '../features/taskView/taskViewSlice';
 
 export const store = configureStore({
   reducer: {
@@ -862,7 +919,15 @@ export const store = configureStore({
 
 ## 10. Auth component flow Redux ke baad
 
-`App.jsx` mein `useAuth`, `isLoggedIn` aur auth event listener ki zaroorat nahi rahegi:
+> **REPLACE THE WHOLE FILE WITH THE NEXT CODE BLOCK**
+>
+> File: `todo-frontend/src/App.jsx`
+>
+> Old pre-Redux code: **lines 1-104**
+>
+> Paste starting at: **line 1**
+>
+> Action: `App.jsx` mein `Ctrl+A`, phir next block paste karo. Is ke baad `useAuth`, local `isLoggedIn`, aur old auth event listener ki zaroorat nahi rahegi.
 
 ```jsx
 import { useDispatch, useSelector } from 'react-redux';
@@ -942,7 +1007,15 @@ authSlice → authApi → client → store → authSlice
 
 Clean callback registration pattern use karo.
 
-`src/api/client.js`:
+> **REPLACE THE WHOLE API CLIENT FILE WITH THE NEXT BLOCK**
+>
+> File: `todo-frontend/src/api/client.js`
+>
+> Old pre-Redux code: **lines 1-33**
+>
+> Paste starting at: **line 1**
+>
+> Action: `client.js` mein `Ctrl+A`, phir next block paste karo.
 
 ```js
 import axios from 'axios';
@@ -981,7 +1054,39 @@ apiClient.interceptors.response.use(
 export default apiClient;
 ```
 
-`main.jsx`, store create/import hone ke baad:
+> **REPLACE THE WHOLE MAIN FILE WITH THE NEXT BLOCK**
+>
+> File: `todo-frontend/src/main.jsx`
+>
+> Action: Phase 4 wala `main.jsx` ab is complete version se replace karo. Paste starting at **line 1**.
+
+```jsx
+import React from 'react';
+import ReactDOM from 'react-dom/client';
+import { Provider } from 'react-redux';
+import App from './App';
+import { store } from './app/store';
+import { setUnauthorizedHandler } from './api/client';
+import { ToastProvider } from './components/ui/Toast';
+import { expireSession } from './features/auth/authSlice';
+import './index.css';
+
+setUnauthorizedHandler(() => {
+  store.dispatch(expireSession());
+});
+
+ReactDOM.createRoot(document.getElementById('root')).render(
+  <React.StrictMode>
+    <Provider store={store}>
+      <ToastProvider>
+        <App />
+      </ToastProvider>
+    </Provider>
+  </React.StrictMode>,
+);
+```
+
+> **EXPLANATION ONLY — next small block dobara paste mat karna.** Yeh lines complete `main.jsx` block mein already included hain.
 
 ```js
 import { setUnauthorizedHandler } from './api/client';
@@ -1017,7 +1122,13 @@ App automatically renders AuthForm
 
 ## 12. `todosSlice` ka recommended code
 
-Create `src/features/todos/todosSlice.js`:
+> **CREATE NEW FILE AND COPY THE WHOLE NEXT BLOCK**
+>
+> File: `todo-frontend/src/features/todos/todosSlice.js`
+>
+> Paste starting at: **line 1**
+>
+> Action: new blank file create karke next code block poora paste karo.
 
 ```js
 import { createAsyncThunk, createSlice } from '@reduxjs/toolkit';
@@ -1185,10 +1296,19 @@ Notes:
 - Logout/session expiry par private todo data clear hota hai.
 - `condition` React Strict Mode/dependent re-render ke waqt duplicate in-flight fetch ko rokta hai.
 
-Store mein add:
+> **REPLACE THE WHOLE STORE FILE WITH THE NEXT BLOCK**
+>
+> File: `todo-frontend/src/app/store.js`
+>
+> Paste starting at: **line 1**
+>
+> Action: auth phase wala `store.js` ab is complete three-reducer version se replace karo.
 
 ```js
+import { configureStore } from '@reduxjs/toolkit';
+import authReducer from '../features/auth/authSlice';
 import todosReducer from '../features/todos/todosSlice';
+import taskViewReducer from '../features/taskView/taskViewSlice';
 
 export const store = configureStore({
   reducer: {
@@ -1203,7 +1323,13 @@ export const store = configureStore({
 
 ## 13. Derived data ke selectors
 
-Create `src/features/todos/todosSelectors.js`:
+> **CREATE NEW FILE AND COPY THE WHOLE NEXT BLOCK**
+>
+> File: `todo-frontend/src/features/todos/todosSelectors.js`
+>
+> Paste starting at: **line 1**
+>
+> Action: new blank file create karke next code block poora paste karo.
 
 ```js
 import { createSelector } from '@reduxjs/toolkit';
@@ -1273,7 +1399,15 @@ Warning: Redux state array ko direct `.sort()` mat karo outside reducer. Is code
 
 ## 14. `TodoDashboard` migration pattern
 
-`useTodos()` remove karke:
+### Step 14A — Redux imports add karo
+
+> **ADD THE NEXT IMPORT BLOCK**
+>
+> File: `todo-frontend/src/components/TodoDashboard.jsx`
+>
+> Add near old baseline: **lines 1-19**, doosre imports ke sath
+>
+> Also delete: old `useTodos` import at **line 12**.
 
 ```js
 import { useDispatch, useSelector } from 'react-redux';
@@ -1293,7 +1427,21 @@ import {
   selectTodosFetchStatus,
   selectVisibleTodos,
 } from '../features/todos/todosSelectors';
+```
 
+### Step 14B — `useTodos()` ko selector state se replace karo
+
+> **REPLACE THE OLD HOOK/REQUEST-STATE AREA WITH THE NEXT BLOCK**
+>
+> File: `todo-frontend/src/components/TodoDashboard.jsx`
+>
+> Old hook call: **line 28**
+>
+> Add inside component: `export default function TodoDashboard(...) {` ke immediately baad
+>
+> Important: Phase 5 ka existing `const dispatch = useDispatch()` duplicate mat rakhna; sirf ek `dispatch` line honi chahiye.
+
+```js
 const dispatch = useDispatch();
 const todos = useSelector(selectAllTodos);
 const visibleTodos = useSelector(selectVisibleTodos);
@@ -1308,7 +1456,13 @@ const loading = fetchStatus === 'loading';
 const creating = createStatus === 'loading';
 ```
 
-Initial fetch:
+### Step 14C — initial fetch effect add karo
+
+> **ADD THE NEXT BLOCK INSIDE THE COMPONENT**
+>
+> Suggested location: Redux selector state ke immediately baad
+>
+> Existing keyboard-shortcut `useEffect` ko delete mat karna.
 
 ```js
 useEffect(() => {
@@ -1318,13 +1472,21 @@ useEffect(() => {
 }, [dispatch, fetchStatus]);
 ```
 
-Refresh button:
+### Step 14D — refresh button handler replace karo
+
+> File: `todo-frontend/src/components/TodoDashboard.jsx`
+>
+> Old baseline: **line 254**, `onClick={refresh}` ko next expression se replace karo.
 
 ```jsx
 onClick={() => dispatch(fetchTodos())}
 ```
 
-Create handler:
+### Step 14E — create handler replace karo
+
+> **REPLACE THE WHOLE `handleSubmit` FUNCTION**
+>
+> Old baseline: **lines 95-117**
 
 ```js
 const handleSubmit = async (event) => {
@@ -1351,7 +1513,11 @@ const handleSubmit = async (event) => {
 };
 ```
 
-Complete handler:
+### Step 14F — complete handler replace karo
+
+> **REPLACE THE WHOLE `handleComplete` FUNCTION**
+>
+> Old baseline: **lines 119-124**
 
 ```js
 const handleComplete = async (id) => {
@@ -1364,7 +1530,11 @@ const handleComplete = async (id) => {
 };
 ```
 
-Delete handler:
+### Step 14G — delete handler replace karo
+
+> **REPLACE THE WHOLE `handleRemove` FUNCTION**
+>
+> Old baseline: **lines 126-139**
 
 ```js
 const handleRemove = async () => {
@@ -1380,7 +1550,11 @@ const handleRemove = async () => {
 };
 ```
 
-Row statuses:
+### Step 14H — TodoItem row props replace karo
+
+> **REPLACE THE `<TodoItem ... />` BLOCK**
+>
+> Old baseline: **lines 179-186**
 
 ```jsx
 <TodoItem
@@ -1392,7 +1566,11 @@ Row statuses:
 />
 ```
 
-Local state jo Dashboard mein ab bhi rehni chahiye:
+### Step 14I — local state keep karo
+
+> **REFERENCE ONLY — agar yeh lines already hain to dobara paste mat karna**
+>
+> `text`, `priority`, `submitError`, aur `deleteTarget` local React state hi rahengi.
 
 ```js
 const [text, setText] = useState('');
@@ -1401,7 +1579,11 @@ const [submitError, setSubmitError] = useState(null);
 const [deleteTarget, setDeleteTarget] = useState(null);
 ```
 
-Old local states jo remove ho jayengi:
+### Step 14J — old states remove karo
+
+> **DELETE THESE OLD STATE VARIABLES — next block paste nahi karna**
+>
+> `creating`, `completingId`, `deletingId` remove honge. `filter`, `query`, `sort` Phase 5 mein already remove ho chuke honge.
 
 ```js
 creating
@@ -1481,6 +1663,14 @@ Un files ko tab tak delete mat karna jab tak their Redux replacement verified na
 ## 17. Optional `notificationsSlice`
 
 Sirf auth/todos samajhne ke baad:
+
+> **OPTIONAL: CREATE NEW FILE AND COPY THE WHOLE NEXT BLOCK**
+>
+> File: `todo-frontend/src/features/notifications/notificationsSlice.js`
+>
+> Paste starting at: **line 1**
+>
+> Abhi skip karna recommended hai; pehle auth aur todos verify karo.
 
 ```js
 import { createSlice, nanoid } from '@reduxjs/toolkit';

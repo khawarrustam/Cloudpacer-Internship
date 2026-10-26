@@ -1,4 +1,29 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useState } from 'react';
+import { useDispatch, useSelector } from 'react-redux';
+import {
+  fetchTodos,
+  createTodo,
+  completeTodo,
+  deleteTodo,
+} from '../features/todos/todosSlice';
+import {
+  selectAllTodos,
+  selectCreateStatus,
+  selectCompletingIds,
+  selectDeletingIds,
+  selectTodoStats,
+  selectTodosError,
+  selectTodosFetchStatus,
+  selectVisibleTodos,
+} from '../features/todos/todosSelectors';
+import {
+  filterChanged,
+  queryChanged,
+  sortChanged,
+  selectTaskFilter,
+  selectTaskQuery,
+  selectTaskSort,
+} from '../features/taskView/taskViewSlice';
 import {
   AlertTriangle,
   ArrowDownUp,
@@ -9,7 +34,6 @@ import {
   Search,
   Target,
 } from 'lucide-react';
-import { useTodos } from '../hooks/useTodos';
 import Navbar from './ui/Navbar';
 import Card from './ui/Card';
 import Input from './ui/Input';
@@ -25,18 +49,38 @@ const PRIORITIES = [
 ];
 
 export default function TodoDashboard({ onLogout, user }) {
-  const { todos, loading, error, addTodo, completeTodo, removeTodo, refresh } = useTodos();
+  // Step 14B: Redux hooks and selectors
+  const dispatch = useDispatch();
+  const todos = useSelector(selectAllTodos);
+  const visibleTodos = useSelector(selectVisibleTodos);
+  const stats = useSelector(selectTodoStats);
+  const fetchStatus = useSelector(selectTodosFetchStatus);
+  const createStatus = useSelector(selectCreateStatus);
+  const completingIds = useSelector(selectCompletingIds);
+  const deletingIds = useSelector(selectDeletingIds);
+  const error = useSelector(selectTodosError);
+
+  const loading = fetchStatus === 'loading';
+  const creating = createStatus === 'loading';
+
+  const filter = useSelector(selectTaskFilter);
+  const query = useSelector(selectTaskQuery);
+  const sort = useSelector(selectTaskSort);
+
+  // Step 14I: Local state that remains inside component
   const [text, setText] = useState('');
   const [priority, setPriority] = useState('medium');
   const [submitError, setSubmitError] = useState(null);
-  const [filter, setFilter] = useState('all');
-  const [query, setQuery] = useState('');
-  const [sort, setSort] = useState('smart');
-  const [creating, setCreating] = useState(false);
-  const [completingId, setCompletingId] = useState(null);
   const [deleteTarget, setDeleteTarget] = useState(null);
-  const [deletingId, setDeletingId] = useState(null);
 
+  // Step 14C: Initial fetch effect
+  useEffect(() => {
+    if (fetchStatus === 'idle') {
+      dispatch(fetchTodos());
+    }
+  }, [dispatch, fetchStatus]);
+
+  // Keyboard shortcut listener
   useEffect(() => {
     const handleShortcut = (event) => {
       const target = event.target;
@@ -56,30 +100,7 @@ export default function TodoDashboard({ onLogout, user }) {
     return () => window.removeEventListener('keydown', handleShortcut);
   }, []);
 
-  const stats = useMemo(() => {
-    const completed = todos.filter((todo) => todo.is_completed).length;
-    return { total: todos.length, completed, pending: todos.length - completed };
-  }, [todos]);
-
   const progress = stats.total ? Math.round((stats.completed / stats.total) * 100) : 0;
-
-  const visibleTodos = useMemo(() => {
-    const priorityWeight = { HIGH: 3, MEDIUM: 2, LOW: 1 };
-    const normalizedQuery = query.trim().toLowerCase();
-    return todos
-      .filter((todo) => {
-        if (filter === 'active' && todo.is_completed) return false;
-        if (filter === 'completed' && !todo.is_completed) return false;
-        return !normalizedQuery || todo.title.toLowerCase().includes(normalizedQuery);
-      })
-      .sort((a, b) => {
-        if (sort === 'newest') return new Date(b.created_at) - new Date(a.created_at);
-        if (sort === 'oldest') return new Date(a.created_at) - new Date(b.created_at);
-        if (a.is_completed !== b.is_completed) return Number(a.is_completed) - Number(b.is_completed);
-        const priorityDifference = (priorityWeight[String(b.priority).toUpperCase()] || 0) - (priorityWeight[String(a.priority).toUpperCase()] || 0);
-        return priorityDifference || new Date(b.created_at) - new Date(a.created_at);
-      });
-  }, [todos, filter, query, sort]);
 
   const today = new Intl.DateTimeFormat(undefined, {
     weekday: 'long',
@@ -92,10 +113,12 @@ export default function TodoDashboard({ onLogout, user }) {
   const currentHour = new Date().getHours();
   const greeting = currentHour < 12 ? 'Good morning' : currentHour < 18 ? 'Good afternoon' : 'Good evening';
 
+  // Step 14E: create handler
   const handleSubmit = async (event) => {
     event.preventDefault();
     const cleanTitle = text.trim();
     setSubmitError(null);
+
     if (cleanTitle.length < 3) {
       setSubmitError('Use at least 3 characters so the task is clear.');
       return;
@@ -105,39 +128,40 @@ export default function TodoDashboard({ onLogout, user }) {
       return;
     }
 
-    setCreating(true);
-    const result = await addTodo(cleanTitle, priority);
-    setCreating(false);
-    if (result.success) {
+    try {
+      await dispatch(createTodo({ title: cleanTitle, priority })).unwrap();
       setText('');
       toast.success('Task added to your plan.');
-    } else {
-      setSubmitError(result.error);
+    } catch (err) {
+      setSubmitError(err);
     }
   };
 
+  // Step 14F: complete handler
   const handleComplete = async (id) => {
-    setCompletingId(id);
-    const result = await completeTodo(id);
-    setCompletingId(null);
-    result.success ? toast.success('Nice work — task completed.') : toast.error(result.error);
+    try {
+      await dispatch(completeTodo(id)).unwrap();
+      toast.success('Nice work — task completed.');
+    } catch (err) {
+      toast.error(err);
+    }
   };
 
+  // Step 14G: delete handler
   const handleRemove = async () => {
     if (!deleteTarget) return;
-    setDeletingId(deleteTarget.id);
-    const result = await removeTodo(deleteTarget.id);
-    setDeletingId(null);
-    if (result.success) {
+
+    try {
+      await dispatch(deleteTodo(deleteTarget.id)).unwrap();
       setDeleteTarget(null);
       toast.success('Task removed.');
-    } else {
-      toast.error(result.error);
+    } catch (err) {
+      toast.error(err);
     }
   };
 
   const renderTasks = () => {
-    if (loading) {
+    if (loading && !todos.length) {
       return (
         <div className="divide-y divide-[var(--border)]" aria-label="Loading tasks">
           {[1, 2, 3, 4].map((item) => (
@@ -155,7 +179,8 @@ export default function TodoDashboard({ onLogout, user }) {
         <div className="m-4 flex flex-col items-start gap-4 rounded-2xl border border-red-200 bg-red-50 p-5 sm:flex-row sm:items-center">
           <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white text-[var(--danger)]"><AlertTriangle className="h-5 w-5" /></span>
           <div className="flex-1"><p className="font-extrabold text-red-900">We could not sync your tasks</p><p className="mt-1 text-sm text-red-700">{error}</p></div>
-          <Button variant="secondary" size="sm" onClick={refresh}><RefreshCw className="h-3.5 w-3.5" />Try again</Button>
+          {/* Step 14D: refresh button handler */}
+          <Button variant="secondary" size="sm" onClick={() => dispatch(fetchTodos())}><RefreshCw className="h-3.5 w-3.5" />Try again</Button>
         </div>
       );
     }
@@ -176,13 +201,14 @@ export default function TodoDashboard({ onLogout, user }) {
     return (
       <div className="divide-y divide-[var(--border)]">
         {visibleTodos.map((todo) => (
+          /* Step 14H: TodoItem row props */
           <TodoItem
             key={todo.id}
             todo={todo}
             onComplete={handleComplete}
             onDelete={() => setDeleteTarget(todo)}
-            isCompleting={completingId === todo.id}
-            isDeleting={deletingId === todo.id}
+            isCompleting={Boolean(completingIds[todo.id])}
+            isDeleting={Boolean(deletingIds[todo.id])}
           />
         ))}
       </div>
@@ -239,19 +265,20 @@ export default function TodoDashboard({ onLogout, user }) {
                   <label className="relative min-w-0 sm:w-60">
                     <span className="sr-only">Search tasks</span>
                     <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--text-muted)]" />
-                    <input id="task-search" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search tasks..." className="h-10 w-full rounded-xl border border-[var(--border)] bg-stone-50 pl-9 pr-10 text-xs font-semibold focus:border-[var(--primary)] focus:bg-white" />
+                    <input id="task-search" value={query} onChange={(event) => dispatch(queryChanged(event.target.value))} placeholder="Search tasks..." className="h-10 w-full rounded-xl border border-[var(--border)] bg-stone-50 pl-9 pr-10 text-xs font-semibold focus:border-[var(--primary)] focus:bg-white" />
                     <kbd className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 rounded-md border border-[var(--border)] bg-white px-1.5 py-0.5 font-mono text-[9px] text-[var(--text-muted)]">/</kbd>
                   </label>
                   <label className="relative">
                     <span className="sr-only">Sort tasks</span>
                     <ArrowDownUp className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-[var(--text-muted)]" />
-                    <select value={sort} onChange={(event) => setSort(event.target.value)} className="h-10 appearance-none rounded-xl border border-[var(--border)] bg-stone-50 py-0 pl-8 pr-8 text-xs font-bold text-[var(--text-secondary)] focus:border-[var(--primary)]">
+                    <select value={sort} onChange={(event) => dispatch(sortChanged(event.target.value))} className="h-10 appearance-none rounded-xl border border-[var(--border)] bg-stone-50 py-0 pl-8 pr-8 text-xs font-bold text-[var(--text-secondary)] focus:border-[var(--primary)]">
                       <option value="smart">Smart order</option>
                       <option value="newest">Newest first</option>
                       <option value="oldest">Oldest first</option>
                     </select>
                   </label>
-                  <Button variant="secondary" size="icon" onClick={refresh} disabled={loading} aria-label="Refresh tasks"><RefreshCw className={['h-4 w-4', loading ? 'animate-spin' : ''].join(' ')} /></Button>
+                  {/* Step 14D: refresh button handler */}
+                  <Button variant="secondary" size="icon" onClick={() => dispatch(fetchTodos())} disabled={loading} aria-label="Refresh tasks"><RefreshCw className={['h-4 w-4', loading ? 'animate-spin' : ''].join(' ')} /></Button>
                 </div>
               </div>
 
@@ -261,7 +288,7 @@ export default function TodoDashboard({ onLogout, user }) {
                   { value: 'active', label: 'Open', count: stats.pending },
                   { value: 'completed', label: 'Done', count: stats.completed },
                 ].map((item) => (
-                  <button key={item.value} type="button" onClick={() => setFilter(item.value)} aria-pressed={filter === item.value} className={['flex flex-1 items-center justify-center gap-1.5 rounded-lg px-3 py-2 text-xs font-bold transition', filter === item.value ? 'bg-white text-[var(--text-primary)] shadow-sm' : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'].join(' ')}>
+                  <button key={item.value} type="button" onClick={() => dispatch(filterChanged(item.value))} aria-pressed={filter === item.value} className={['flex flex-1 items-center justify-center gap-1.5 rounded-lg px-3 py-2 text-xs font-bold transition', filter === item.value ? 'bg-white text-[var(--text-primary)] shadow-sm' : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'].join(' ')}>
                     {item.label}<span className="text-[10px] text-[var(--text-muted)]">{item.count}</span>
                   </button>
                 ))}
@@ -301,7 +328,14 @@ export default function TodoDashboard({ onLogout, user }) {
         </div>
       </main>
 
-      <ConfirmModal open={Boolean(deleteTarget)} title="Delete this task?" description={deleteTarget ? '“' + deleteTarget.title + '” will be permanently removed from your list.' : ''} isLoading={Boolean(deletingId)} onCancel={() => setDeleteTarget(null)} onConfirm={handleRemove} />
+      <ConfirmModal
+        open={Boolean(deleteTarget)}
+        title="Delete this task?"
+        description={deleteTarget ? '“' + deleteTarget.title + '” will be permanently removed from your list.' : ''}
+        isLoading={Boolean(deleteTarget && deletingIds[deleteTarget.id])}
+        onCancel={() => setDeleteTarget(null)}
+        onConfirm={handleRemove}
+      />
     </div>
   );
 }

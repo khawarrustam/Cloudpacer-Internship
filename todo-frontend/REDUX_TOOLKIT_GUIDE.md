@@ -524,6 +524,24 @@ Feature folders ka matlab: feature ka related Redux code ek jagah. `components` 
 
 Har phase ke baad app run/test karo. Sab kuch ek hi baar replace karoge to bug ka source samajhna mushkil hoga.
 
+### Section 8 line-number summary
+
+Yeh line numbers committed pre-migration version `f373040` ke hain. Blue link par click karoge to GitHub exact lines highlight karega.
+
+| Phase | Paste/edit location |
+|---|---|
+| Phase 1 | Terminal command hai; kisi source-code line par paste nahi karna. |
+| Phase 2 | `src/features/taskView/taskViewSlice.js` **new file, line 1**. |
+| Phase 3 | `src/app/store.js` **new file, line 1**. |
+| Phase 4 | [`src/main.jsx` lines 1-13 replace karo](https://github.com/khawarrustam/Cloudpacer-Internship/blob/f373040/todo-frontend/src/main.jsx#L1-L13). |
+| Phase 5 imports | [`TodoDashboard.jsx` lines 1-19](https://github.com/khawarrustam/Cloudpacer-Internship/blob/f373040/todo-frontend/src/components/TodoDashboard.jsx#L1-L19). |
+| Phase 5 local state | [`TodoDashboard.jsx` lines 32-34 remove/replace karo](https://github.com/khawarrustam/Cloudpacer-Internship/blob/f373040/todo-frontend/src/components/TodoDashboard.jsx#L32-L34). |
+| Phase 5 search | [`TodoDashboard.jsx` line 242](https://github.com/khawarrustam/Cloudpacer-Internship/blob/f373040/todo-frontend/src/components/TodoDashboard.jsx#L242): `setQuery` replace karo. |
+| Phase 5 sort | [`TodoDashboard.jsx` line 248](https://github.com/khawarrustam/Cloudpacer-Internship/blob/f373040/todo-frontend/src/components/TodoDashboard.jsx#L248): `setSort` replace karo. |
+| Phase 5 filter | [`TodoDashboard.jsx` line 264](https://github.com/khawarrustam/Cloudpacer-Internship/blob/f373040/todo-frontend/src/components/TodoDashboard.jsx#L264): `setFilter` replace karo. |
+
+Note: ek edit ke baad local lines shift ho sakti hain. Is surat mein `Ctrl+F` se `setQuery`, `setSort`, ya `setFilter` search karo.
+
 ### Phase 1 — packages install karo
 
 Frontend directory mein:
@@ -542,7 +560,7 @@ Roles:
 
 Pehle API ke baghair filter/search/sort Redux par shift karo. Is se action → reducer → selector → UI flow samajh aayega.
 
-Create `src/features/taskView/taskViewSlice.js`:
+Paste location: `src/features/taskView/taskViewSlice.js` **new file, line 1**.
 
 ```js
 import { createSlice } from '@reduxjs/toolkit';
@@ -588,7 +606,7 @@ export default taskViewSlice.reducer;
 
 ### Phase 3 — store banao
 
-Create `src/app/store.js`:
+Paste location: `src/app/store.js` **new file, line 1**.
 
 ```js
 import { configureStore } from '@reduxjs/toolkit';
@@ -610,7 +628,7 @@ export const store = configureStore({
 
 ### Phase 4 — root par Provider lagao
 
-`src/main.jsx` ka pattern:
+Paste location: [`src/main.jsx` ki current lines 1-13](https://github.com/khawarrustam/Cloudpacer-Internship/blob/f373040/todo-frontend/src/main.jsx#L1-L13) ko neeche wale poore block se replace karo.
 
 ```jsx
 import React from 'react';
@@ -635,6 +653,8 @@ ReactDOM.createRoot(document.getElementById('root')).render(
 Provider ke baghair `useSelector`/`useDispatch` use karne par “could not find react-redux context value” type error aayega.
 
 ### Phase 5 — Dashboard ke filter/search/sort connect karo
+
+Edit locations: imports [`lines 1-19`](https://github.com/khawarrustam/Cloudpacer-Internship/blob/f373040/todo-frontend/src/components/TodoDashboard.jsx#L1-L19), local filter state [`lines 32-34`](https://github.com/khawarrustam/Cloudpacer-Internship/blob/f373040/todo-frontend/src/components/TodoDashboard.jsx#L32-L34), aur JSX handlers [`lines 242, 248, 264`](https://github.com/khawarrustam/Cloudpacer-Internship/blob/f373040/todo-frontend/src/components/TodoDashboard.jsx#L242-L264).
 
 Old local state remove:
 

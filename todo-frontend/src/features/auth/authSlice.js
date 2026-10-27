@@ -1,29 +1,7 @@
 import { createAsyncThunk, createSlice } from '@reduxjs/toolkit';
 import { authApi } from '../../api/authApi';
-
-function readStoredUser() {
-  const token = localStorage.getItem('auth_token');
-  const uid = localStorage.getItem('user_uid');
-  const email = localStorage.getItem('user_email');
-
-  return token && uid ? { uid, email: email || '' } : null;
-}
-
-function saveSession(data) {
-  localStorage.setItem('auth_token', data.token);
-  localStorage.setItem('user_uid', data.uid);
-  localStorage.setItem('user_email', data.email || '');
-}
-
-function clearSession() {
-  localStorage.removeItem('auth_token');
-  localStorage.removeItem('user_uid');
-  localStorage.removeItem('user_email');
-}
-
-function getErrorMessage(error, fallback) {
-  return error.response?.data?.detail || fallback;
-}
+import { getApiErrorMessage } from '../../api/errors';
+import { clearSession, readStoredUser, saveSession } from './authStorage';
 
 export const loginUser = createAsyncThunk(
   'auth/loginUser',
@@ -34,7 +12,10 @@ export const loginUser = createAsyncThunk(
       return { uid: data.uid, email: data.email || email };
     } catch (error) {
       return rejectWithValue(
-        getErrorMessage(error, 'Login failed. Please check your credentials.'),
+        getApiErrorMessage(
+          error,
+          'Login failed. Please check your credentials.',
+        ),
       );
     }
   },
@@ -52,7 +33,9 @@ export const signupUser = createAsyncThunk(
       saveSession(data);
       return { uid: data.uid, email: data.email || email };
     } catch (error) {
-      return rejectWithValue(getErrorMessage(error, 'Signup failed'));
+      return rejectWithValue(
+        getApiErrorMessage(error, 'Signup failed'),
+      );
     }
   },
 );
@@ -60,7 +43,6 @@ export const signupUser = createAsyncThunk(
 const initialState = {
   user: readStoredUser(),
   status: 'idle',
-  error: null,
 };
 
 const authSlice = createSlice({
@@ -70,47 +52,38 @@ const authSlice = createSlice({
     loggedOut(state) {
       state.user = null;
       state.status = 'idle';
-      state.error = null;
     },
     sessionExpired(state) {
       state.user = null;
       state.status = 'idle';
-      state.error = 'Your session expired. Please sign in again.';
-    },
-    clearAuthError(state) {
-      state.error = null;
     },
   },
   extraReducers: (builder) => {
     builder
       .addCase(loginUser.pending, (state) => {
         state.status = 'loading';
-        state.error = null;
       })
       .addCase(loginUser.fulfilled, (state, action) => {
         state.status = 'succeeded';
         state.user = action.payload;
       })
-      .addCase(loginUser.rejected, (state, action) => {
+      .addCase(loginUser.rejected, (state) => {
         state.status = 'failed';
-        state.error = action.payload || action.error.message;
       })
       .addCase(signupUser.pending, (state) => {
         state.status = 'loading';
-        state.error = null;
       })
       .addCase(signupUser.fulfilled, (state, action) => {
         state.status = 'succeeded';
         state.user = action.payload;
       })
-      .addCase(signupUser.rejected, (state, action) => {
+      .addCase(signupUser.rejected, (state) => {
         state.status = 'failed';
-        state.error = action.payload || action.error.message;
       });
   },
 });
 
-export const { loggedOut, sessionExpired, clearAuthError } = authSlice.actions;
+export const { loggedOut, sessionExpired } = authSlice.actions;
 
 export const logoutUser = () => (dispatch) => {
   clearSession();
@@ -125,6 +98,5 @@ export const expireSession = () => (dispatch) => {
 export const selectCurrentUser = (state) => state.auth.user;
 export const selectIsAuthenticated = (state) => Boolean(state.auth.user);
 export const selectAuthStatus = (state) => state.auth.status;
-export const selectAuthError = (state) => state.auth.error;
 
 export default authSlice.reducer;

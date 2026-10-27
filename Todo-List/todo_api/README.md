@@ -1,468 +1,284 @@
-# 🧅 Todo API — DDD + Onion Architecture
+# Todo DDD backend
 
-> **A clean, production-ready Todo REST API** built with FastAPI, following Domain-Driven Design (DDD) and Onion Architecture patterns. Supports both **Firebase Firestore** and **In-Memory** storage.  
-> 📖 **Master Architecture Guide (DDD vs MVC in Roman Urdu):** [`../../README.md`](file:///Users/apple/internship-practice/README.md)
+A beginner-friendly FastAPI backend using Domain-Driven Design and Clean Architecture.
 
-**Author:** RanaKhawarAli
+Roman Urdu: Backend ko chhoti layers mein divide kiya gaya hai. Har layer ka aik clear kaam hai, is liye code ko trace karna asaan hai.
 
----
+## Start here
 
-## 📖 Table of Contents
+This API supports:
 
-- [What is DDD?](#-what-is-ddd-domain-driven-design)
-- [What is Onion Architecture?](#-what-is-onion-architecture)
-- [How This Project Follows DDD + Onion](#-how-this-project-follows-ddd--onion)
-- [Project Structure](#-project-structure)
-- [How Everything Connects](#-how-everything-connects-the-full-flow)
-- [Layer-by-Layer Breakdown](#-layer-by-layer-breakdown)
-- [How to Run](#-how-to-run)
-- [API Endpoints](#-api-endpoints)
-- [Testing with Postman](#-testing-with-postman)
-- [Key DDD Concepts Used](#-key-ddd-concepts-used)
+- signup and login with Firebase Authentication
+- create a todo
+- list the signed-in user's todos
+- complete a todo
+- delete a todo
+- temporary in-memory storage or Firebase Firestore
 
----
+## What DDD means here
 
-## 🧠 What is DDD (Domain-Driven Design)?
+DDD means the business rules live in the domain, away from FastAPI and Firebase.
 
-**DDD** means you design your code around the **business problem**, not the technology.
+Examples:
 
-Think of it this way:
+- a title must contain 3 to 120 characters
+- priority must be LOW, MEDIUM, or HIGH
+- a completed todo cannot be completed again
+- one user cannot change another user's todo
 
-> ❌ **Without DDD:** "I have a database table called `todos`, let me write CRUD operations."
->
-> ✅ **With DDD:** "In my business, a **Todo** has rules — it needs a title (min 3 chars), a priority (LOW/MEDIUM/HIGH), and once completed, it can't be completed again. Let me write code that **enforces these rules** first, and connect the database later."
+Roman Urdu: Business rules `domain` folder mein hain. API aur database sirf bahar ki details hain.
 
-**Key idea:** Your business rules live in one place (the **Domain layer**), and they don't care whether you use Firebase, PostgreSQL, MongoDB, or even a text file.
+## Easy architecture
 
----
-
-## 🧅 What is Onion Architecture?
-
-Onion Architecture organizes your code in **layers**, like the layers of an onion:
-
-```
-                    ┌──────────────────────────────────┐
-                    │       Presentation Layer          │  ← API / Routes (FastAPI Router)
-                    │   (what the outside world sees)   │
-                    ├──────────────────────────────────┤
-                    │       Application Layer           │  ← Use Cases (business workflows)
-                    │   (orchestrates the actions)      │
-                    ├──────────────────────────────────┤
-                    │         Domain Layer              │  ← Entities, Value Objects, Rules
-                    │   (the HEART of your app)         │     (pure business logic)
-                    ├──────────────────────────────────┤
-                    │      Infrastructure Layer         │  ← Database, Firebase, External APIs
-                    │   (technical details / adapters)  │
-                    └──────────────────────────────────┘
+```text
+HTTP request
+    |
+    v
+Presentation layer
+FastAPI route and request schema
+    |
+    v
+Application layer
+Use case runs one workflow
+    |
+    v
+Domain layer
+Entity checks business rules
+    |
+    v
+Repository interface
+    |
+    v
+Infrastructure layer
+Memory or Firestore saves data
 ```
 
-### The Golden Rule
+The dependency direction stays simple:
 
-> **Inner layers NEVER depend on outer layers.**
-
-- `Domain` knows nothing about `Application`, `Presentation`, or `Infrastructure`
-- `Application` knows about `Domain`, but NOT about `Presentation` or `Infrastructure`
-- `Infrastructure` **implements** interfaces defined by `Domain`
-
-This means you can **swap Firebase for PostgreSQL** without touching a single line of business logic!
-
----
-
-## 🔗 How This Project Follows DDD + Onion
-
-Here's the mapping from theory to actual code:
-
-| DDD / Onion Concept | Our Code | File |
-|---|---|---|
-| **Entity (Aggregate Root)** | `TodoItem` class | `src/domain/entities.py` |
-| **Value Object** | `TaskTitle`, `Priority` | `src/domain/value_objects.py` |
-| **Domain Exception** | `DomainError`, `TaskAlreadyCompletedError` | `src/domain/exceptions.py` |
-| **Repository Interface (Port)** | `ITodoRepository` (abstract class) | `src/domain/repositories.py` |
-| **Use Case (Application Service)** | `CreateTodoUseCase`, `CompleteTodoUseCase`, `ListTodosUseCase` | `src/application/use_cases/` |
-| **DTOs (Data Transfer Objects)** | `CreateTodoCommand`, `TodoDTO` | `src/application/dtos.py` |
-| **Repository Implementation (Adapter)** | `FirestoreTodoRepository`, `InMemoryTodoRepository` | `src/infrastructure/repositories/` |
-| **API / Presentation** | FastAPI Router, Pydantic Schemas | `src/presentation/api/` |
-| **Dependency Injection (Wiring)** | `main.py` | `main.py` |
-
----
-
-## 📁 Project Structure
-
+```text
+Presentation -> Application -> Domain
+Infrastructure -------------> Domain
+bootstrap.py connects the real objects
 ```
+
+Roman Urdu: Andar wali domain layer ko FastAPI ya Firebase import nahi karna chahiye.
+
+## Folder guide
+
+```text
 todo_api/
-├── main.py                          # 🔌 Entry point — wires everything together
-├── requirements.txt                 # 📦 Python dependencies
-├── serviceAccountKey.json           # 🔑 Firebase credentials (gitignored)
-├── Todo_API.postman_collection.json # 📬 Postman collection for testing
-│
-└── src/
-    ├── domain/                      # 🧅 LAYER 1: Core Business Logic (innermost)
-    │   ├── entities.py              #     TodoItem — the main business object
-    │   ├── value_objects.py         #     TaskTitle, Priority — validated types
-    │   ├── exceptions.py            #     Business rule violations
-    │   └── repositories.py          #     ITodoRepository — abstract interface
-    │
-    ├── application/                 # 🧅 LAYER 2: Use Cases (orchestration)
-    │   ├── dtos.py                  #     Commands & DTOs — data going in/out
-    │   └── use_cases/
-    │       ├── create_todo.py       #     CreateTodoUseCase
-    │       ├── complete_todo.py     #     CompleteTodoUseCase
-    │       └── list_todos.py        #     ListTodosUseCase
-    │
-    ├── infrastructure/              # 🧅 LAYER 3: Technical Details (outermost)
-    │   └── repositories/
-    │       ├── in_memory_todo_repo.py    # InMemoryTodoRepository (for testing)
-    │       └── firestore_todo_repo.py    # FirestoreTodoRepository (production)
-    │
-    └── presentation/                # 🧅 LAYER 3: API / Routes (outermost)
-        └── api/
-            ├── schemas.py           #     Pydantic request/response models
-            └── todo_router.py       #     FastAPI endpoints
+|-- main.py                    # Creates the FastAPI app
+|-- requirements.txt
+|-- clear_db.py                # Optional Firebase cleanup script
+|-- reformat_logs.py           # Checks print lines for emojis
+|
++-- src/
+    |-- bootstrap.py           # Connects repositories and use cases
+    |
+    |-- domain/
+    |   |-- entities.py        # TodoItem and complete rule
+    |   |-- value_objects.py   # TaskTitle and Priority
+    |   |-- exceptions.py      # Named business errors
+    |   |-- repositories.py    # Todo storage contract
+    |   +-- auth_repositories.py
+    |
+    |-- application/
+    |   |-- dtos.py            # Commands and TodoDTO
+    |   |-- mappers.py         # TodoItem -> TodoDTO
+    |   +-- use_cases/         # Create, list, complete, delete, auth
+    |
+    |-- infrastructure/
+    |   +-- repositories/
+    |       |-- in_memory_todo_repo.py
+    |       |-- firestore_todo_repo.py
+    |       +-- firebase_auth_repo.py
+    |
+    |-- presentation/
+    |   +-- api/
+    |       |-- todo_router.py
+    |       |-- auth_router.py
+    |       |-- schemas.py
+    |       |-- auth_schemas.py
+    |       +-- dependencies.py
+    |
+    +-- shared/
+        +-- console.py          # Easy English + Roman Urdu prints
 ```
 
----
+## One request from start to finish
 
-## ⚡ How Everything Connects (The Full Flow)
+Example: `POST /todos`
 
-Let's trace what happens when you call **`POST /todos`** to create a new todo:
+1. `todo_router.py` receives JSON.
+2. Pydantic validates the request.
+3. The router creates `CreateTodoCommand`.
+4. `CreateTodoUseCase` asks `TodoItem.create` to build a valid entity.
+5. The use case calls the repository contract.
+6. Memory or Firestore saves the entity.
+7. `todo_to_dto` makes plain output data.
+8. FastAPI returns JSON.
 
-```
-  Client (Postman/Browser)
-       │
-       ▼
-  ┌─────────────────────────────────────────────────────┐
-  │ 1. PRESENTATION — todo_router.py                     │
-  │    • Receives HTTP POST request                      │
-  │    • Validates JSON body with Pydantic (schemas.py)  │
-  │    • Creates a CreateTodoCommand (DTO)               │
-  │    • Calls use_case.execute(command)                 │
-  └──────────────────────┬──────────────────────────────┘
-                         │
-                         ▼
-  ┌─────────────────────────────────────────────────────┐
-  │ 2. APPLICATION — create_todo.py (Use Case)           │
-  │    • Receives the command                            │
-  │    • Calls TodoItem.create() (Domain factory)        │
-  │    • Calls todo_repo.save(todo)                      │
-  │    • Converts entity → TodoDTO and returns it        │
-  └──────────────────────┬──────────────────────────────┘
-                         │
-            ┌────────────┴────────────┐
-            ▼                         ▼
-  ┌──────────────────┐    ┌──────────────────────────┐
-  │ 3a. DOMAIN        │    │ 3b. INFRASTRUCTURE       │
-  │  TodoItem.create()│    │  FirestoreTodoRepository │
-  │  • Validates title│    │  • .save() → Firestore   │
-  │  • Sets UUID      │    │  • .get_by_id()          │
-  │  • Sets priority  │    │  • .get_all()            │
-  │  • Sets timestamp │    │                          │
-  └──────────────────┘    └──────────────────────────┘
-```
+Roman Urdu: Request router se use case, phir domain, phir repository tak jati hai. Result isi flow se wapas aata hai.
 
-### Step-by-Step (Simple English):
+## Requirements
 
-1. **You send a request** → `POST /todos` with `{"title": "Learn DDD", "priority": "HIGH"}`
+- Python 3.10 or newer
+- a Firebase project for signup and login
+- a Firebase service account JSON file
+- the Firebase Web API key
 
-2. **Router receives it** (`todo_router.py`) → Pydantic validates the JSON, creates a `CreateTodoCommand`
+Important: `USE_FIREBASE=false` only changes todo storage to memory. Authentication still uses Firebase.
 
-3. **Use Case runs** (`create_todo.py`) → Calls `TodoItem.create("Learn DDD", Priority.HIGH)`
+Roman Urdu: Memory mode mein todos temporary hotay hain, lekin login phir bhi Firebase se hota hai.
 
-4. **Domain validates** (`entities.py` + `value_objects.py`):
-   - `TaskTitle("Learn DDD")` → ✅ valid (3-120 chars)
-   - `Priority.HIGH` → ✅ valid enum value
-   - Generates UUID, sets `created_at` timestamp
+## Firebase setup
 
-5. **Repository saves** (`firestore_todo_repo.py`) → Converts entity to dict, saves to Firestore
+1. Open Firebase Console.
+2. Enable Email/Password in Authentication.
+3. Download a service account JSON file.
+4. Save it in `todo_api` as `serviceAccountKey.json`.
+5. Copy the Web API key from Project Settings.
 
-6. **Response returns** → Use case converts entity to `TodoDTO`, router sends JSON back to client
+The credentials file is ignored by Git. Never commit it.
 
----
+## Install and run
 
-## 🔍 Layer-by-Layer Breakdown
+Open PowerShell in this folder:
 
-### Layer 1: Domain (The Heart ❤️)
-
-This is the **most important layer**. It contains your business rules and knows NOTHING about databases, APIs, or frameworks.
-
-#### `entities.py` — TodoItem (Aggregate Root)
-
-```python
-@dataclass
-class TodoItem:
-    id: str
-    title: TaskTitle          # Not just a string — a validated Value Object!
-    priority: Priority        # Not just a string — a validated Enum!
-    is_completed: bool
-    created_at: datetime
-    completed_at: datetime | None
-
-    @classmethod
-    def create(cls, title, priority):
-        # Factory method — creates a valid todo with UUID + timestamp
-        ...
-
-    def mark_as_completed(self):
-        # Business Rule: Can't complete a todo that's already completed!
-        if self.is_completed:
-            raise TaskAlreadyCompletedError(...)
-        self.is_completed = True
+```powershell
+cd "Todo-List\todo_api"
+python -m venv .venv
+.\.venv\Scripts\Activate.ps1
+python -m pip install -r requirements.txt
 ```
 
-**Why is this important?** The business rule "a completed task cannot be completed again" lives HERE, not in the database or API layer. No matter who calls this code, the rule is always enforced.
+Set the Firebase values for the current PowerShell window:
 
-#### `value_objects.py` — TaskTitle & Priority
-
-```python
-@dataclass(frozen=True)       # frozen = immutable (can't change after creation)
-class TaskTitle:
-    value: str
-
-    def __post_init__(self):
-        if len(self.value) < 3:     # Business rule: min 3 chars
-            raise InvalidTaskTitleError(...)
-        if len(self.value) > 120:   # Business rule: max 120 chars
-            raise InvalidTaskTitleError(...)
-
-class Priority(str, Enum):    # Only 3 valid values
-    LOW = "LOW"
-    MEDIUM = "MEDIUM"
-    HIGH = "HIGH"
+```powershell
+$env:FIREBASE_CREDENTIALS_PATH="serviceAccountKey.json"
+$env:FIREBASE_WEB_API_KEY="your-firebase-web-api-key"
 ```
 
-**Why Value Objects?** A plain `str` can be anything — `""`, `"x"`, even 10,000 chars. A `TaskTitle` is ALWAYS valid. If it exists, it's guaranteed to be 3-120 characters.
+Choose todo storage.
 
-#### `repositories.py` — ITodoRepository (Port/Interface)
+### Easy local storage
 
-```python
-class ITodoRepository(ABC):           # ABC = Abstract Base Class
-    @abstractmethod
-    def save(self, todo: TodoItem) -> None: ...
-
-    @abstractmethod
-    def get_by_id(self, todo_id: str) -> Optional[TodoItem]: ...
-
-    @abstractmethod
-    def get_all(self) -> List[TodoItem]: ...
+```powershell
+$env:USE_FIREBASE="false"
+uvicorn main:app --reload
 ```
 
-**Why an interface?** The domain says "I need a repository that can save, get_by_id, and get_all." It does NOT say "I need Firebase" or "I need PostgreSQL." This is the **Dependency Inversion Principle** — the domain defines the contract, infrastructure implements it.
+Todos disappear when the server stops.
 
----
+### Firestore storage
 
-### Layer 2: Application (The Orchestrator 🎯)
-
-Use cases coordinate the workflow. They don't contain business logic — they just call domain methods in the right order.
-
-#### `create_todo.py` — CreateTodoUseCase
-
-```python
-class CreateTodoUseCase:
-    def __init__(self, todo_repo: ITodoRepository):   # Receives repo via DI
-        self.todo_repo = todo_repo
-
-    def execute(self, cmd: CreateTodoCommand) -> TodoDTO:
-        todo = TodoItem.create(title=cmd.title, priority=Priority(cmd.priority))
-        self.todo_repo.save(todo)     # Save via interface (doesn't know if it's Firebase or Memory)
-        return TodoDTO(...)           # Convert to DTO for the outside world
+```powershell
+$env:USE_FIREBASE="true"
+uvicorn main:app --reload
 ```
 
-**Notice:** The use case depends on `ITodoRepository` (interface), NOT on `FirestoreTodoRepository` (implementation). This is the magic of Onion Architecture!
+Open:
 
----
+- API health: `http://127.0.0.1:8000/`
+- Swagger docs: `http://127.0.0.1:8000/docs`
 
-### Layer 3: Infrastructure (The Adapter 🔧)
+## API routes
 
-This layer provides **concrete implementations** of the interfaces defined by the domain.
+| Method | Route | Login needed | Purpose |
+|---|---|---:|---|
+| POST | `/auth/signup` | No | Create an account |
+| POST | `/auth/login` | No | Get a Firebase ID token |
+| GET | `/todos` | Yes | List your todos |
+| POST | `/todos` | Yes | Create a todo |
+| PATCH | `/todos/{id}/complete` | Yes | Complete a todo |
+| DELETE | `/todos/{id}` | Yes | Delete a todo |
+| GET | `/` | No | Health check |
 
-#### Two implementations — same interface:
+Protected routes need this header:
 
-| Implementation | Use Case | Storage |
-|---|---|---|
-| `InMemoryTodoRepository` | Local dev / testing | Python dictionary |
-| `FirestoreTodoRepository` | Production | Google Cloud Firestore |
-
-Both implement `ITodoRepository`. The rest of the app doesn't know which one is being used!
-
----
-
-### Layer 3: Presentation (The Gateway 🌐)
-
-FastAPI router that receives HTTP requests and converts them to use case calls.
-
-```python
-@router.post("", status_code=201)
-def create_todo(req: CreateTodoRequest, use_case = Depends(get_create_use_case)):
-    cmd = CreateTodoCommand(title=req.title, priority=req.priority)
-    return use_case.execute(cmd)   # Delegates to application layer
+```text
+Authorization: Bearer YOUR_FIREBASE_ID_TOKEN
 ```
 
----
-
-### Wiring It All Together: `main.py`
-
-`main.py` is the **Composition Root** — where all dependencies are created and connected:
-
-```python
-# 1. Choose repository based on environment
-if USE_FIREBASE:
-    todo_repo = FirestoreTodoRepository(db=firestore.client())
-else:
-    todo_repo = InMemoryTodoRepository()
-
-# 2. Create use cases with the chosen repository
-create_use_case = CreateTodoUseCase(todo_repo=todo_repo)
-complete_use_case = CompleteTodoUseCase(todo_repo=todo_repo)
-list_use_case = ListTodosUseCase(todo_repo=todo_repo)
-
-# 3. Inject into FastAPI router
-app.dependency_overrides[get_create_use_case] = lambda: create_use_case
-```
-
-**This is Dependency Injection (DI)** — the use cases don't create their own repositories. Instead, `main.py` decides which implementation to use and "injects" it.
-
----
-
-## 🚀 How to Run
-
-### Prerequisites
-
-- Python 3.11+
-- pip
-
-### 1. Clone & Setup
-
-```bash
-cd Todo-List/todo_api
-
-# Create virtual environment
-python3 -m venv venv
-source venv/bin/activate     # Mac/Linux
- venv\Scripts\activate      # Windows
-
-# Install dependencies
-pip install -r requirements.txt
-```
-
-### 2. Run WITHOUT Firebase (In-Memory)
-
-No credentials needed — data lives in memory (resets on restart):
-
-```bash
-source venv/bin/activate
-python main.py
-```
-
-### 3. Run WITH Firebase (Firestore)
-
-1. Place your `serviceAccountKey.json` in the `todo_api/` folder
-2. Run:
-
-```bash
-source venv/bin/activate
-USE_FIREBASE=true python main.py
-```
-
-### 4. Access the API
-
-| URL | Description |
-|---|---|
-| `http://127.0.0.1:8000` | Health check |
-| `http://127.0.0.1:8000/docs` | 📚 Swagger UI (interactive API docs) |
-| `http://127.0.0.1:8000/redoc` | 📖 ReDoc (alternative docs) |
-
----
-
-## 📡 API Endpoints
-
-| Method | Endpoint | Description | Request Body |
-|---|---|---|---|
-| `GET` | `/` | Health check | — |
-| `POST` | `/todos` | Create a new todo | `{"title": "...", "priority": "HIGH"}` |
-| `GET` | `/todos` | List all todos | — |
-| `PATCH` | `/todos/{id}/complete` | Mark a todo as complete | — |
-| `DELETE` | `/todos/{id}` | Delete one of the authenticated user's todos | — |
-
-### Example: Create a Todo
-
-```bash
-curl -X POST http://127.0.0.1:8000/todos \
-  -H "Content-Type: application/json" \
-  -d '{"title": "Learn Onion Architecture", "priority": "HIGH"}'
-```
-
-**Response (201 Created):**
+Example create body:
 
 ```json
 {
-  "id": "a1b2c3d4-...",
-  "title": "Learn Onion Architecture",
-  "priority": "HIGH",
-  "is_completed": false,
-  "created_at": "2026-09-28T15:30:00+00:00",
-  "completed_at": null
+  "title": "Read the DDD flow",
+  "priority": "HIGH"
 }
 ```
 
-### Error Responses
+## Print output
 
-| Scenario | Status Code | Example |
-|---|---|---|
-| Title too short (< 3 chars) | `422` | `{"title": "AB"}` |
-| Missing title | `422` | `{"priority": "HIGH"}` |
-| Todo not found | `404` | `PATCH /todos/wrong-id/complete` |
-| Already completed | `400` | Completing the same todo twice |
+Runtime prints use this format:
 
----
-
-## 📬 Testing with Postman
-
-1. Import `Todo_API.postman_collection.json` into Postman
-2. Run requests in this order:
-   - **Create Todo** → automatically saves the `todo_id`
-   - **List Todos** → verify it was created
-   - **Complete Todo** → uses the saved `todo_id`
-   - **Error Cases** → test validation and business rules
-
----
-
-## 📚 Key DDD Concepts Used
-
-| Concept | What It Means | Where In Our Code |
-|---|---|---|
-| **Entity** | An object with a unique ID that has a lifecycle | `TodoItem` (has `id`, can change state) |
-| **Value Object** | An immutable object defined by its value, not ID | `TaskTitle`, `Priority` (no ID, just validated data) |
-| **Aggregate Root** | The main entity that enforces all business rules | `TodoItem` (owns `mark_as_completed()` rule) |
-| **Repository** | Abstraction for data storage | `ITodoRepository` (interface) |
-| **Use Case** | A single business action | `CreateTodoUseCase`, `CompleteTodoUseCase` |
-| **DTO** | Data structure for crossing layer boundaries | `CreateTodoCommand`, `TodoDTO` |
-| **Dependency Inversion** | High-level modules don't depend on low-level ones | Domain defines `ITodoRepository`, Infrastructure implements it |
-| **Dependency Injection** | Dependencies are provided, not created internally | `main.py` injects repos into use cases |
-
----
-
-## 🧪 Why This Architecture Matters
-
-```
-❌ Without Onion:
-   Router → directly calls Firebase → business rules scattered everywhere
-
-✅ With Onion:
-   Router → Use Case → Domain Entity → Repository Interface → Firebase
-   (each layer has ONE job, and can be tested/swapped independently)
+```text
+[Application] Todo marked as complete and saved.
+  Roman Urdu: Todo complete karke save kar diya gaya.
 ```
 
-### Real-World Benefits:
+All prints are routed through `src/shared/console.py`. They use plain text and no emojis.
 
-1. **Swap databases easily** — Switch from Firebase to PostgreSQL? Just write a new `PostgresTodoRepository` that implements `ITodoRepository`. Zero changes to business logic.
+Check print statements with:
 
-2. **Test without a database** — Use `InMemoryTodoRepository` in tests. No Firebase needed.
+```powershell
+python reformat_logs.py
+```
 
-3. **Business rules in one place** — "Title must be 3-120 chars" is in `TaskTitle`, not scattered across API routes and database queries.
+## Run tests
 
-4. **Team-friendly** — Frontend, backend, and database teams can work independently because layers have clear boundaries.
+```powershell
+python -m pytest -q
+```
 
----
+The use-case tests use `InMemoryTodoRepository`, so they do not write to Firestore.
 
-## 📄 License
+## How to add a new todo action
 
-MIT License — feel free to use this as a learning reference!
+Example: rename a todo.
+
+1. Put the rename rule on `TodoItem`.
+2. Add `RenameTodoCommand` in `application/dtos.py`.
+3. Add `RenameTodoUseCase`.
+4. Add any needed method to `ITodoRepository`.
+5. Implement that method in both repositories.
+6. Add the HTTP route.
+7. Connect the use case in `bootstrap.py`.
+8. Add a test.
+
+Roman Urdu: Naya feature pehle business rule se start karo, phir bahar API tak jao.
+
+## Common problems
+
+### `Default app does not exist`
+
+Make sure the app starts through `main.py` and the service account path is correct.
+
+### Firebase says the API key is invalid
+
+Set the correct `FIREBASE_WEB_API_KEY`, then restart Uvicorn.
+
+### Login works but todos disappear
+
+You are using `USE_FIREBASE=false`. Use Firestore mode to keep todos after a restart.
+
+### Browser shows a CORS error
+
+Use the Vite URL `http://localhost:5173` or `http://127.0.0.1:5173`. Add another allowed origin in `main.py` only if your frontend runs elsewhere.
+
+### Port 8000 is busy
+
+Run on another port and also update the frontend `VITE_API_URL`:
+
+```powershell
+uvicorn main:app --reload --port 8001
+```
+
+## Safe cleanup script
+
+`clear_db.py` permanently deletes Firebase todos and authentication users. Run it only when you intentionally want to clear development data:
+
+```powershell
+python clear_db.py
+```

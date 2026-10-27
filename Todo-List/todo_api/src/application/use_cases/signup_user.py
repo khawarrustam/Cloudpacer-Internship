@@ -1,5 +1,9 @@
+"""Use case for registering a user."""
+
 from dataclasses import dataclass
+
 from src.domain.auth_repositories import IAuthRepository, UserData
+from src.shared.console import print_step
 
 
 @dataclass(frozen=True)
@@ -11,26 +15,22 @@ class SignupCommand:
 
 class SignupUserUseCase:
     def __init__(self, auth_repo: IAuthRepository):
-        self._auth_repo = auth_repo
+        self.auth_repo = auth_repo
 
-    def execute(self, cmd: SignupCommand) -> UserData:
-        print(f"   📂 File    : src/application/use_cases/signup_user.py")
-        print(f"   🔧 Function: SignupUserUseCase.execute()")
-        print(f"   🏛️  Layer   : APPLICATION LAYER (Use Case / Orchestrator)")
-        print(f"   📦 Command : SignupCommand(email={cmd.email}, display_name={cmd.display_name})")
-        print(f"   ➡️  Delegating to Infrastructure Layer")
-        print(f"              Calling: self._auth_repo.create_user()")
-        print(f"              📂 Repo : src/infrastructure/repositories/firebase_auth_repo.py")
-
-        result = self._auth_repo.create_user(
-            email=cmd.email,
-            password=cmd.password,
-            display_name=cmd.display_name
+    def execute(self, command: SignupCommand) -> UserData:
+        print_step(
+            "Application",
+            f"Creating account for {command.email}.",
+            f"{command.email} ka account ban raha hai.",
         )
-
-        print(f"   ✅ Infrastructure returned UserData to Use Case")
-        print(f"              UID   : {result.uid}")
-        print(f"              Email : {result.email}")
-        print(f"   ↩️  Returning UserData back to Presentation Layer (auth_router.py)")
-
-        return result
+        user = self.auth_repo.create_user(
+            email=command.email,
+            password=command.password,
+            display_name=command.display_name,
+        )
+        print_step(
+            "Application",
+            "User account created.",
+            "User account ban gaya.",
+        )
+        return user

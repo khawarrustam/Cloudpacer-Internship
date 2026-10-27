@@ -1,45 +1,47 @@
-import os
+"""Check that Python print statements do not contain emoji characters."""
+
+from pathlib import Path
 import re
 
-def process_file(filepath):
-    with open(filepath, 'r') as f:
-        content = f.read()
+EMOJI_PATTERN = re.compile("[\U0001F300-\U0001FAFF]")
 
-    # Remove all standard verbose headers
-    content = re.sub(r'\s*print\(f"   📂 File    : .*?"\)\n', '', content)
-    content = re.sub(r'\s*print\(f"   🔧 Function: .*?"\)\n', '', content)
-    content = re.sub(r'\s*print\(f"   🏛️  Layer   : .*?"\)\n', '', content)
-    content = re.sub(r'\s*print\(f"   🌐 Implements: .*?"\)\n', '', content)
-    content = re.sub(r'\s*print\(f"   📂 Repo : .*?"\)\n', '', content)
-    content = re.sub(r'\s*print\(f"              📂 File: .*?"\)\n', '', content)
-    
-    # Replace step lines to be sleeker
-    content = re.sub(r'print\(f"   ➡️  STEP [A-Z0-9]+: (.*?)"\)', r'print(f"   ├─ ➡️  \1")', content)
-    content = re.sub(r'print\(f"   ✅ STEP [A-Z0-9]+: (.*?)"\)', r'print(f"   ├─ ✅ \1")', content)
-    content = re.sub(r'print\(f"   📤 STEP [A-Z0-9]+: (.*?)"\)', r'print(f"   └─ 📤 \1")', content)
 
-    # Remove horizontal bars
-    content = re.sub(r'\s*print\("="[\*0-9]+ \+ "\\n"\)\n', '', content)
-    content = re.sub(r'\s*print\("\\n" \+ "="[\*0-9]+\)\n', '', content)
-    content = re.sub(r'\s*print\("="[\*0-9]+\)\n', '', content)
-    content = re.sub(r'\s*print\("-"[\*0-9]+\)\n', '', content)
+def find_emoji_prints(source_directory: Path) -> list[str]:
+    """Return print lines that still contain emojis."""
+    matches = []
+    project_files = [
+        source_directory / "main.py",
+        source_directory / "clear_db.py",
+        *list((source_directory / "src").rglob("*.py")),
+    ]
 
-    # Simplify other prints
-    content = re.sub(r'\s*print\("📥 \[DDD\] REQUEST RECEIVED — PRESENTATION LAYER"\)\n', '', content)
+    # English: Check project code only, not installed venv packages.
+    # Roman Urdu: Sirf project code check karo, venv packages nahi.
+    for path in project_files:
+        for line_number, line in enumerate(
+            path.read_text(encoding="utf-8").splitlines(),
+            start=1,
+        ):
+            if "print(" in line and EMOJI_PATTERN.search(line):
+                matches.append(f"{path}:{line_number}: {line.strip()}")
 
-    # Indentations
-    content = re.sub(r'print\(f"              (.*?)"\)', r'print(f"   │    \1")', content)
-    content = re.sub(r'print\(f"   ✅ (.*?)"\)', r'print(f"   ├─ ✅ \1")', content)
-    content = re.sub(r'print\(f"   ❌ (.*?)"\)', r'print(f"   └─ ❌ \1")', content)
-    content = re.sub(r'print\(f"   ↩️  (.*?)"\)', r'print(f"   └─ ↩️  \1")', content)
+    return matches
 
-    with open(filepath, 'w') as f:
-        f.write(content)
 
-src_dir = '/Users/apple/internship-practice/Todo-List/todo_api/src'
-for root, dirs, files in os.walk(src_dir):
-    for file in files:
-        if file.endswith('.py'):
-            process_file(os.path.join(root, file))
+if __name__ == "__main__":
+    source = Path(__file__).parent
+    problems = find_emoji_prints(source)
 
-print("Logs reformatted safely!")
+    if problems:
+        print(
+            "Emoji print statements found. "
+            "Roman Urdu: Emoji walay print statements milay."
+        )
+        for problem in problems:
+            print(problem)
+        raise SystemExit(1)
+
+    print(
+        "Print check passed. "
+        "Roman Urdu: Print statements ka check pass ho gaya."
+    )

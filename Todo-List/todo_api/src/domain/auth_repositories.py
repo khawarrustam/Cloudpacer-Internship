@@ -1,25 +1,34 @@
-import abc
+"""Authentication contract and its plain result objects."""
+
+from abc import ABC, abstractmethod
 from dataclasses import dataclass
+from typing import Optional
+
 
 @dataclass(frozen=True)
 class UserData:
     uid: str
     email: str
-    token: str = None
+    token: Optional[str] = None
+
 
 @dataclass(frozen=True)
 class LoginData:
     uid: str
     email: str
-    id_token: str           # Firebase ID token — verifiable server-side
+    id_token: str
 
-class IAuthRepository(abc.ABC):
-    @abc.abstractmethod
-    def create_user(self, email: str, password: str, display_name: str) -> UserData:
-        """Register a new user, return UserData with token."""
-        pass
 
-    @abc.abstractmethod
+class IAuthRepository(ABC):
+    @abstractmethod
+    def create_user(
+        self,
+        email: str,
+        password: str,
+        display_name: str,
+    ) -> UserData:
+        """Register and return a user."""
+
+    @abstractmethod
     def sign_in(self, email: str, password: str) -> LoginData:
-        """Sign in existing user, return LoginData with verifiable ID token."""
-        pass
+        """Check login details and return a Firebase token."""

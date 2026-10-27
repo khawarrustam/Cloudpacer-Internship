@@ -1,133 +1,61 @@
-"""
-=============================================================================
-COMPOSITION ROOT — Main Entry Point & Dependency Injection (Clean Architecture)
-=============================================================================
-Clean Architecture / Onion Architecture mein yeh file "Composition Root" kehlati hai.
-Yani woh wahid jagah jahan system ki tamam layers aapas mein connect (wire) hoti hain:
-1. Environment configuration check karna (Firebase use karna hai ya In-Memory).
-2. Muta'aliqa Repository Adapter instantiate karna.
-3. Use Cases banana aur unhe Repository inject karna.
-4. FastAPI Router ke dependency placeholders ko actual use cases se override karna.
-5. Application server start karna.
+"""FastAPI entry point.
 
-Chalanay Ka Tareeqa:
-  uvicorn main:app --host 127.0.0.1 --port 8000 --reload
-
-Kahan Connected Hai:
-- Yeh file poore project ki saari layers (Domain, Infrastructure, Application, Presentation)
-  ko aapas mein jorti hai.
-=============================================================================
+English: This file creates the app and connects the main modules.
+Roman Urdu: Yeh file app banati hai aur main modules ko connect karti hai.
 """
 
-# ---------------------------------------------------------------------------
-# LIBRARIES / IMPORTS
-# ---------------------------------------------------------------------------
-import os
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-import firebase_admin
-from firebase_admin import credentials, firestore
-
-# DOMAIN LAYER IMPORT: Abstract Repository Interface (Port)
-from src.domain.repositories import ITodoRepository
-
-# INFRASTRUCTURE LAYER IMPORTS: Concrete Database Adapters
-from src.infrastructure.repositories.in_memory_todo_repo import InMemoryTodoRepository
-from src.infrastructure.repositories.firestore_todo_repo import FirestoreTodoRepository
-
-# APPLICATION LAYER IMPORTS: Business Workflows (Use Cases)
-from src.application.use_cases.create_todo import CreateTodoUseCase
-from src.application.use_cases.complete_todo import CompleteTodoUseCase
-from src.application.use_cases.list_todos import ListTodosUseCase
-from src.application.use_cases.delete_todo import DeleteTodoUseCase
-
-# PRESENTATION LAYER IMPORTS: HTTP Router aur Dependency Injection placeholders
-from src.presentation.api.todo_router import (
-    router as todo_router,
-    get_create_use_case,
-    get_complete_use_case,
-    get_list_use_case,
-    get_delete_use_case,
+from src.bootstrap import (
+    create_todo_repository,
+    initialize_firebase,
+    wire_dependencies,
 )
 from src.presentation.api.auth_router import router as auth_router
+from src.presentation.api.todo_router import router as todo_router
 
 
-# ---------------------------------------------------------------------------
-# FASTAPI APPLICATION SETUP:
-# ---------------------------------------------------------------------------
-app = FastAPI(
-    title="Todo Onion Architecture API",
-    description="Domain-Driven Design + Onion Clean Architecture with FastAPI & Firebase/In-Memory",
-)
-
-# ---------------------------------------------------------------------------
-# CORS MIDDLEWARE SETUP:
-# ---------------------------------------------------------------------------
-# CORS (Cross-Origin Resource Sharing) allow karna zaroori hai taake 
-# frontend (port 5173) backend (port 8000) se baat kar sake.
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"], # For development, we allow all origins. In production, replace with ["http://localhost:5173"]
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
-
-
-# ---------------------------------------------------------------------------
-# DEPENDENCY INJECTION / WIRING (Layers ko aapas mein jorna):
-# ---------------------------------------------------------------------------
-
-# Step 1: Database Adapter ka intekhab
-USE_FIREBASE = os.getenv("USE_FIREBASE", "false").lower() == "true"
-
-if USE_FIREBASE:
-    cred_path = os.getenv("FIREBASE_CREDENTIALS_PATH", "serviceAccountKey.json")
-    if not firebase_admin._apps:
-        if os.path.exists(cred_path):
-            cred = credentials.Certificate(cred_path)
-            firebase_admin.initialize_app(cred)
-        else:
-            firebase_admin.initialize_app()
-    db = firestore.client()
-    todo_repo: ITodoRepository = FirestoreTodoRepository(db=db)
-    print("Database: Running with Firebase Firestore")
-else:
-    todo_repo: ITodoRepository = InMemoryTodoRepository()
-    print("Database: Running with In-Memory Repository (No credentials needed)")
-
-
-# Step 2: Use Cases ko Instantiate karna aur Repository Inject karna
-create_use_case = CreateTodoUseCase(todo_repo=todo_repo)
-complete_use_case = CompleteTodoUseCase(todo_repo=todo_repo)
-list_use_case = ListTodosUseCase(todo_repo=todo_repo)
-delete_use_case = DeleteTodoUseCase(todo_repo=todo_repo)
-
-
-# Step 3: FastAPI Dependency Overrides
-app.dependency_overrides[get_create_use_case] = lambda: create_use_case
-app.dependency_overrides[get_complete_use_case] = lambda: complete_use_case
-app.dependency_overrides[get_list_use_case] = lambda: list_use_case
-app.dependency_overrides[get_delete_use_case] = lambda: delete_use_case
-
-
-# Step 4: Router ko Main App mein Shamil (Include) karna
-app.include_router(todo_router)
-app.include_router(auth_router)
-
-
-# ---------------------------------------------------------------------------
-# HEALTH CHECK ENDPOINT:
-# ---------------------------------------------------------------------------
-@app.get("/", tags=["Health"])
 def health_check():
-    return {"status": "ok", "architecture": "Onion / DDD"}
+    """Small endpoint used to check that the server is running."""
+    return {"status": "ok", "architecture": "DDD / Clean Architecture"}
 
 
-# ---------------------------------------------------------------------------
-# DIRECT EXECUTION SERVER (Uvicorn):
-# ---------------------------------------------------------------------------
+def create_app() -> FastAPI:
+    """Build and return the configured FastAPI application."""
+    application = FastAPI(
+        title="Todo DDD API",
+        description="A beginner-friendly Todo API using DDD and Clean Architecture.",
+    )
+
+    # English: CORS lets the frontend call this API from another port.
+    # Roman Urdu: CORS frontend ko doosre port se API call karne deta hai.
+    application.add_middleware(
+        CORSMiddleware,
+        allow_origins=["http://localhost:5173", "http://127.0.0.1:5173"],
+        allow_credentials=True,
+        allow_methods=["*"],
+        allow_headers=["*"],
+    )
+
+    initialize_firebase()
+    todo_repo = create_todo_repository()
+    wire_dependencies(application, todo_repo)
+
+    application.include_router(auth_router)
+    application.include_router(todo_router)
+    application.add_api_route(
+        "/",
+        health_check,
+        methods=["GET"],
+        tags=["Health"],
+    )
+    return application
+
+
+app = create_app()
+
+
 if __name__ == "__main__":
     import uvicorn
 

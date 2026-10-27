@@ -1,109 +1,86 @@
+"""HTTP routes for signup and login."""
+
 from fastapi import APIRouter, Depends, HTTPException, status
-from src.presentation.api.auth_schemas import (
-    SignupRequest, AuthResponse, LoginRequest, LoginResponse
-)
-from src.application.use_cases.signup_user import SignupUserUseCase, SignupCommand
-from src.application.use_cases.signin_user import SigninUserUseCase, SigninCommand
-from src.infrastructure.repositories.firebase_auth_repo import FirebaseAuthRepository
+
+from src.application.use_cases.signin_user import SigninCommand, SigninUserUseCase
+from src.application.use_cases.signup_user import SignupCommand, SignupUserUseCase
 from src.domain.exceptions import ValidationException
+from src.presentation.api.auth_schemas import (
+    AuthResponse,
+    LoginRequest,
+    LoginResponse,
+    SignupRequest,
+)
+from src.shared.console import print_error, print_step
 
 router = APIRouter(prefix="/auth", tags=["Auth"])
 
 
-# ---------------------------------------------------------------------------
-# DEPENDENCY PROVIDERS
-# ---------------------------------------------------------------------------
+# English: bootstrap.py replaces these placeholders with real use cases.
+# Roman Urdu: bootstrap.py in placeholders ki jagah real use cases deta hai.
 def get_signup_use_case() -> SignupUserUseCase:
-    print(f"   🔧 [DDD] Dependency Injection: get_signup_use_case()")
-    print(f"           📂 File: src/presentation/api/auth_router.py")
-    auth_repo = FirebaseAuthRepository()
-    return SignupUserUseCase(auth_repo)
+    raise NotImplementedError
 
 
 def get_signin_use_case() -> SigninUserUseCase:
-    print(f"   🔧 [DDD] Dependency Injection: get_signin_use_case()")
-    print(f"           📂 File: src/presentation/api/auth_router.py")
-    auth_repo = FirebaseAuthRepository()
-    return SigninUserUseCase(auth_repo)
+    raise NotImplementedError
 
 
-# ---------------------------------------------------------------------------
-# POST /auth/signup — Register new user
-# ---------------------------------------------------------------------------
 @router.post("/signup", response_model=AuthResponse, status_code=status.HTTP_201_CREATED)
-def signup(req: SignupRequest, use_case: SignupUserUseCase = Depends(get_signup_use_case)):
-    print("\n" + "="*60)
-    print("📥 [DDD] REQUEST RECEIVED — PRESENTATION LAYER")
-    print("="*60)
-    print(f"   📂 File    : src/presentation/api/auth_router.py")
-    print(f"   🔧 Function: signup()")
-    print(f"   🌐 Route   : POST /auth/signup")
-    print(f"   📧 Email   : {req.email}")
-    print(f"   👤 Name    : {req.display_name}")
-    print(f"   🔑 Password: {'*' * len(req.password)} ({len(req.password)} chars)")
-    print("-"*60)
-
-    cmd = SignupCommand(
-        email=req.email,
-        password=req.password,
-        display_name=req.display_name
+def signup(
+    request: SignupRequest,
+    use_case: SignupUserUseCase = Depends(get_signup_use_case),
+):
+    print_step(
+        "API",
+        f"Signup request received for {request.email}.",
+        f"{request.email} ke liye signup request mili.",
+    )
+    command = SignupCommand(
+        email=request.email,
+        password=request.password,
+        display_name=request.display_name,
     )
 
     try:
-        user_data = use_case.execute(cmd)
-        response = AuthResponse(
-            uid=user_data.uid,
-            email=user_data.email,
+        user = use_case.execute(command)
+        return AuthResponse(
+            uid=user.uid,
+            email=user.email,
             message="User created successfully",
-            token=user_data.token
+            token=user.token,
         )
-        print(f"   📤 Sending 201 Created | uid={user_data.uid}")
-        print("="*60 + "\n")
-        return response
-
-    except ValidationException as e:
-        print(f"   ❌ ValidationException: {str(e)}")
-        print("="*60 + "\n")
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
-    except Exception as e:
-        print(f"   ❌ Unexpected Error: {type(e).__name__} — {str(e)}")
-        print("="*60 + "\n")
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+    except ValidationException as error:
+        print_error("API", str(error), f"Signup fail hua: {error}")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(error),
+        ) from error
 
 
-# ---------------------------------------------------------------------------
-# POST /auth/login — Sign in existing user
-# ---------------------------------------------------------------------------
-@router.post("/login", response_model=LoginResponse, status_code=status.HTTP_200_OK)
-def login(req: LoginRequest, use_case: SigninUserUseCase = Depends(get_signin_use_case)):
-    print("\n" + "="*60)
-    print("📥 [DDD] REQUEST RECEIVED — PRESENTATION LAYER")
-    print("="*60)
-    print(f"   📂 File    : src/presentation/api/auth_router.py")
-    print(f"   🔧 Function: login()")
-    print(f"   🌐 Route   : POST /auth/login")
-    print(f"   📧 Email   : {req.email}")
-    print("-"*60)
-
-    cmd = SigninCommand(email=req.email, password=req.password)
+@router.post("/login", response_model=LoginResponse)
+def login(
+    request: LoginRequest,
+    use_case: SigninUserUseCase = Depends(get_signin_use_case),
+):
+    print_step(
+        "API",
+        f"Login request received for {request.email}.",
+        f"{request.email} ke liye login request mili.",
+    )
+    command = SigninCommand(email=request.email, password=request.password)
 
     try:
-        login_data = use_case.execute(cmd)
-        response = LoginResponse(
+        login_data = use_case.execute(command)
+        return LoginResponse(
             uid=login_data.uid,
             email=login_data.email,
             token=login_data.id_token,
-            message="Login successful"
+            message="Login successful",
         )
-        print(f"   📤 Sending 200 OK | uid={login_data.uid}")
-        print("="*60 + "\n")
-        return response
-
-    except ValidationException as e:
-        print(f"   ❌ ValidationException: {str(e)}")
-        print("="*60 + "\n")
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail=str(e))
-    except Exception as e:
-        print(f"   ❌ Unexpected Error: {type(e).__name__} — {str(e)}")
-        print("="*60 + "\n")
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+    except ValidationException as error:
+        print_error("API", str(error), f"Login fail hua: {error}")
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail=str(error),
+        ) from error

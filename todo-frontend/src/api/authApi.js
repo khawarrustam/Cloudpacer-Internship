@@ -6,7 +6,6 @@ export const authApi = {
     return response.data;
   },
   async login(data) {
-    // Assuming your DDD API has a /auth/login endpoint
     const response = await apiClient.post('/auth/login', data);
     return response.data;
   },

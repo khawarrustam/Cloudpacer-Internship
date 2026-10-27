@@ -1,11 +1,9 @@
-"""
-=============================================================================
-APPLICATION LAYER — Sign In Use Case (Clean Architecture / DDD)
-=============================================================================
-"""
+"""Use case for signing in a user."""
 
 from dataclasses import dataclass
+
 from src.domain.auth_repositories import IAuthRepository, LoginData
+from src.shared.console import print_step
 
 
 @dataclass(frozen=True)
@@ -16,23 +14,21 @@ class SigninCommand:
 
 class SigninUserUseCase:
     def __init__(self, auth_repo: IAuthRepository):
-        self._auth_repo = auth_repo
+        self.auth_repo = auth_repo
 
-    def execute(self, cmd: SigninCommand) -> LoginData:
-        print(f"   📂 File    : src/application/use_cases/signin_user.py")
-        print(f"   🔧 Function: SigninUserUseCase.execute()")
-        print(f"   🏛️  Layer   : APPLICATION LAYER (Use Case / Orchestrator)")
-        print(f"   📦 Command : SigninCommand(email={cmd.email})")
-        print(f"   ➡️  Delegating to Infrastructure Layer")
-        print(f"              Calling: self._auth_repo.sign_in()")
-
-        result = self._auth_repo.sign_in(
-            email=cmd.email,
-            password=cmd.password,
+    def execute(self, command: SigninCommand) -> LoginData:
+        print_step(
+            "Application",
+            f"Signing in {command.email}.",
+            f"{command.email} login kar raha hai.",
         )
-
-        print(f"   ✅ Infrastructure returned LoginData to Use Case")
-        print(f"              UID   : {result.uid}")
-        print(f"              Email : {result.email}")
-        print(f"   ↩️  Returning LoginData back to Presentation Layer (auth_router.py)")
-        return result
+        login_data = self.auth_repo.sign_in(
+            email=command.email,
+            password=command.password,
+        )
+        print_step(
+            "Application",
+            "Sign-in completed.",
+            "Login mukammal ho gaya.",
+        )
+        return login_data

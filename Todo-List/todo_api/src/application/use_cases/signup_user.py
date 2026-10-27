@@ -3,7 +3,7 @@
 from dataclasses import dataclass
 
 from src.domain.auth_repositories import IAuthRepository, UserData
-from src.shared.console import print_step
+from src.shared.console import module_file, print_flow, print_step
 
 
 @dataclass(frozen=True)
@@ -18,10 +18,19 @@ class SignupUserUseCase:
         self.auth_repo = auth_repo
 
     def execute(self, command: SignupCommand) -> UserData:
-        print_step(
-            "Application",
-            f"Creating account for {command.email}.",
-            f"{command.email} ka account ban raha hai.",
+        print_flow(
+            source="src/presentation/api/auth_router.py",
+            destination="src/application/use_cases/signup_user.py",
+            data=f"email={command.email}, display_name={command.display_name}",
+            english="The router sent safe signup data to the use case.",
+            roman_urdu="Router ne safe signup data use case ko bheja.",
+        )
+        print_flow(
+            source="src/application/use_cases/signup_user.py",
+            destination=module_file(self.auth_repo),
+            data=f"email={command.email}, password=hidden",
+            english="Sending signup data to the authentication repository.",
+            roman_urdu="Signup data authentication repository ko ja raha hai.",
         )
         user = self.auth_repo.create_user(
             email=command.email,

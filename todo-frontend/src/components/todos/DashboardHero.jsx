@@ -13,6 +13,18 @@ function getGreeting() {
   return 'Good evening';
 }
 
+function getProgressMessage(progress, totalTodos) {
+  if (progress === 100 && totalTodos > 0) {
+    return 'Perfect finish';
+  }
+
+  if (progress >= 50) {
+    return 'You are in motion';
+  }
+
+  return 'Build some momentum';
+}
+
 export default function DashboardHero({ user, stats, progress }) {
   const today = new Intl.DateTimeFormat(undefined, {
     weekday: 'long',
@@ -20,11 +32,9 @@ export default function DashboardHero({ user, stats, progress }) {
     day: 'numeric',
   }).format(new Date());
 
-  const progressMessage = progress === 100 && stats.total
-    ? 'Perfect finish'
-    : progress >= 50
-      ? 'You are in motion'
-      : 'Build some momentum';
+  // English: Stats are calculated by a Redux selector, not inside this UI.
+  // Roman Urdu: Stats Redux selector banata hai, yeh UI nahi banati.
+  const progressMessage = getProgressMessage(progress, stats.total);
 
   return (
     <section className="hero-panel relative mb-8 overflow-hidden rounded-[2rem] px-5 py-6 text-white sm:px-8 sm:py-8 lg:px-10">

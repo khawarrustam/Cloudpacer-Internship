@@ -29,6 +29,9 @@ import {
 // Roman Urdu: Todo data Redux mein hai; yeh hook UI ko asaan values aur actions deta hai.
 export function useTodos() {
   const dispatch = useDispatch();
+
+  // English: Selectors read values from Redux without changing them.
+  // Roman Urdu: Selectors Redux values ko bina change kiye read karte hain.
   const todos = useSelector(selectAllTodos);
   const visibleTodos = useSelector(selectVisibleTodos);
   const stats = useSelector(selectTodoStats);
@@ -49,6 +52,21 @@ export function useTodos() {
     }
   }, [dispatch, fetchStatus]);
 
+  // English: Each function sends one clear action to Redux.
+  // Roman Urdu: Har function Redux ko aik clear action bhejta hai.
+  const refresh = () => dispatch(fetchTodos());
+  const addTodo = (todo) => dispatch(createTodo(todo)).unwrap();
+  const finishTodo = (id) => dispatch(completeTodo(id)).unwrap();
+  const removeTodo = (id) => dispatch(deleteTodo(id)).unwrap();
+
+  // English: These actions change only the list view, not backend data.
+  // Roman Urdu: Yeh actions sirf list view change karte hain, backend data nahi.
+  const setFilter = (value) => dispatch(filterChanged(value));
+  const setQuery = (value) => dispatch(queryChanged(value));
+  const setSort = (value) => dispatch(sortChanged(value));
+
+  // English: Components receive simple values and functions from this object.
+  // Roman Urdu: Components ko is object se simple values aur functions milte hain.
   return {
     todos,
     visibleTodos,
@@ -61,12 +79,12 @@ export function useTodos() {
     creating: createStatus === 'loading',
     completingIds,
     deletingIds,
-    refresh: () => dispatch(fetchTodos()),
-    addTodo: (todo) => dispatch(createTodo(todo)).unwrap(),
-    finishTodo: (id) => dispatch(completeTodo(id)).unwrap(),
-    removeTodo: (id) => dispatch(deleteTodo(id)).unwrap(),
-    setFilter: (value) => dispatch(filterChanged(value)),
-    setQuery: (value) => dispatch(queryChanged(value)),
-    setSort: (value) => dispatch(sortChanged(value)),
+    refresh,
+    addTodo,
+    finishTodo,
+    removeTodo,
+    setFilter,
+    setQuery,
+    setSort,
   };
 }

@@ -5,6 +5,8 @@ import Input from './ui/Input';
 import { toast } from './ui/Toast';
 
 export default function AuthForm({ onSignup, onLogin, loading }) {
+  // English: Input text stays local because it is only needed by this form.
+  // Roman Urdu: Input text local hai kyun ke sirf is form ko chahiye.
   const [isLogin, setIsLogin] = useState(true);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -15,6 +17,9 @@ export default function AuthForm({ onSignup, onLogin, loading }) {
   const handleSubmit = async (event) => {
     event.preventDefault();
     setError(null);
+
+    // English: These functions dispatch Redux actions through useAuth.
+    // Roman Urdu: Yeh functions useAuth ke through Redux actions dispatch karte hain.
     const result = isLogin ? await onLogin(email, password) : await onSignup(email, password, name);
     if (result.success) {
       toast.success(isLogin ? 'Welcome back to TodoFlow.' : 'Your workspace is ready.');

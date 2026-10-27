@@ -16,6 +16,8 @@ export function useAuth() {
   const isLoggedIn = useSelector(selectIsAuthenticated);
   const status = useSelector(selectAuthStatus);
 
+  // English: unwrap lets this hook use normal try/catch with a Redux thunk.
+  // Roman Urdu: unwrap Redux thunk ke sath normal try/catch use karne deta hai.
   const runAuthAction = async (action) => {
     try {
       await dispatch(action).unwrap();
@@ -35,6 +37,8 @@ export function useAuth() {
 
   const logout = () => dispatch(logoutUser());
 
+  // English: App.jsx receives only the auth values and actions it needs.
+  // Roman Urdu: App.jsx ko sirf zaroori auth values aur actions milte hain.
   return {
     user,
     isLoggedIn,

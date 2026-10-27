@@ -1,6 +1,8 @@
 import apiClient from './client';
 
 export const todoApi = {
+  // English: Redux thunks call these four small backend functions.
+  // Roman Urdu: Redux thunks in chaar chhote backend functions ko call karte hain.
   async getAll() {
     const response = await apiClient.get('/todos');
     return response.data;

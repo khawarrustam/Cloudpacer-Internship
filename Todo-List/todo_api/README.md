@@ -211,14 +211,34 @@ Example create body:
 
 ## Print output
 
-Runtime prints use this format:
+Backend runtime prints show the complete data direction:
 
 ```text
-[Application] Todo marked as complete and saved.
-  Roman Urdu: Todo complete karke save kar diya gaya.
+[DATA FLOW]
+  FROM LAYER : PRESENTATION LAYER
+  FROM       : src/presentation/api/todo_router.py
+  TO LAYER   : APPLICATION LAYER
+  TO         : src/application/use_cases/create_todo.py
+  DATA       : title=Learn DDD, priority=HIGH
+  English: The router sent a create command to the use case.
+  Roman Urdu: Router ne create command use case ko bheji.
 ```
 
+The flow continues through these labels:
+
+- `CLIENT / HTTP`: React frontend or request headers
+- `PRESENTATION LAYER`: FastAPI routers and dependencies
+- `APPLICATION LAYER`: use cases, commands, DTOs, and mappers
+- `DOMAIN LAYER`: entities, value objects, and business rules
+- `INFRASTRUCTURE LAYER`: repository adapter files
+- `INFRASTRUCTURE STORAGE`: temporary RAM storage
+- `EXTERNAL SERVICE`: Firebase or Firestore
+
 All prints are routed through `src/shared/console.py`. They use plain text and no emojis.
+
+Passwords and tokens are always shown as `hidden`; their real values are never printed.
+
+Roman Urdu: Har print layer aur file dono batata hai: data kahan se aaya aur kahan ja raha hai. Password aur token kabhi print nahi hotay.
 
 Check print statements with:
 

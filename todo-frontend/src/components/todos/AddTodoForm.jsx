@@ -17,6 +17,8 @@ function validateTitle(title) {
 }
 
 export default function AddTodoForm({ creating, onAdd }) {
+  // English: Form fields are temporary, so local state is enough for them.
+  // Roman Urdu: Form fields temporary hain, is liye local state theek hai.
   const [title, setTitle] = useState('');
   const [priority, setPriority] = useState('medium');
   const [error, setError] = useState(null);
@@ -32,6 +34,8 @@ export default function AddTodoForm({ creating, onAdd }) {
     }
 
     try {
+      // English: onAdd goes to useTodos, which dispatches the Redux thunk.
+      // Roman Urdu: onAdd useTodos mein ja kar Redux thunk dispatch karta hai.
       await onAdd({ title: cleanTitle, priority });
       setTitle('');
       setError(null);

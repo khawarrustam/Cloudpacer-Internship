@@ -11,7 +11,7 @@ from src.presentation.api.auth_schemas import (
     LoginResponse,
     SignupRequest,
 )
-from src.shared.console import print_error, print_step
+from src.shared.console import print_error, print_flow
 
 router = APIRouter(prefix="/auth", tags=["Auth"])
 
@@ -31,10 +31,12 @@ def signup(
     request: SignupRequest,
     use_case: SignupUserUseCase = Depends(get_signup_use_case),
 ):
-    print_step(
-        "API",
-        f"Signup request received for {request.email}.",
-        f"{request.email} ke liye signup request mili.",
+    print_flow(
+        source="Frontend -> POST /auth/signup",
+        destination="src/presentation/api/auth_router.py -> signup",
+        data=f"email={request.email}, password=hidden",
+        english="The frontend sent signup data to the auth router.",
+        roman_urdu="Frontend ne signup data auth router ko bheja.",
     )
     command = SignupCommand(
         email=request.email,
@@ -44,12 +46,20 @@ def signup(
 
     try:
         user = use_case.execute(command)
-        return AuthResponse(
+        response = AuthResponse(
             uid=user.uid,
             email=user.email,
             message="User created successfully",
             token=user.token,
         )
+        print_flow(
+            source="src/application/use_cases/signup_user.py",
+            destination="Frontend <- HTTP 201 response",
+            data=f"uid={user.uid}, token=hidden",
+            english="Safe signup response is going back to the frontend.",
+            roman_urdu="Safe signup response frontend ko wapas ja raha hai.",
+        )
+        return response
     except ValidationException as error:
         print_error("API", str(error), f"Signup fail hua: {error}")
         raise HTTPException(
@@ -63,21 +73,31 @@ def login(
     request: LoginRequest,
     use_case: SigninUserUseCase = Depends(get_signin_use_case),
 ):
-    print_step(
-        "API",
-        f"Login request received for {request.email}.",
-        f"{request.email} ke liye login request mili.",
+    print_flow(
+        source="Frontend -> POST /auth/login",
+        destination="src/presentation/api/auth_router.py -> login",
+        data=f"email={request.email}, password=hidden",
+        english="The frontend sent login data to the auth router.",
+        roman_urdu="Frontend ne login data auth router ko bheja.",
     )
     command = SigninCommand(email=request.email, password=request.password)
 
     try:
         login_data = use_case.execute(command)
-        return LoginResponse(
+        response = LoginResponse(
             uid=login_data.uid,
             email=login_data.email,
             token=login_data.id_token,
             message="Login successful",
         )
+        print_flow(
+            source="src/application/use_cases/signin_user.py",
+            destination="Frontend <- HTTP 200 response",
+            data=f"uid={login_data.uid}, token=hidden",
+            english="Safe login response is going back to the frontend.",
+            roman_urdu="Safe login response frontend ko wapas ja raha hai.",
+        )
+        return response
     except ValidationException as error:
         print_error("API", str(error), f"Login fail hua: {error}")
         raise HTTPException(

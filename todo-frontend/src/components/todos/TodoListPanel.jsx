@@ -25,18 +25,31 @@ function LoadingRows() {
   );
 }
 
+// English: Simple if blocks are easier to read than nested conditions in JSX.
+// Roman Urdu: Simple if blocks JSX ki nested conditions se zyada asaan hain.
+function getEmptyStateText(filter, query) {
+  if (query.trim()) {
+    return {
+      title: 'No matching tasks',
+      message: 'Try a different search phrase or clear your filters.',
+    };
+  }
+
+  if (filter === 'completed') {
+    return {
+      title: 'Nothing completed yet',
+      message: 'Complete a task and it will appear here.',
+    };
+  }
+
+  return {
+    title: 'Your list is clear',
+    message: 'Add one meaningful task and start with that.',
+  };
+}
+
 function EmptyState({ filter, query }) {
-  const hasSearch = Boolean(query.trim());
-  const title = hasSearch
-    ? 'No matching tasks'
-    : filter === 'completed'
-      ? 'Nothing completed yet'
-      : 'Your list is clear';
-  const message = hasSearch
-    ? 'Try a different search phrase or clear your filters.'
-    : filter === 'completed'
-      ? 'Complete a task and it will appear here.'
-      : 'Add one meaningful task and start with that.';
+  const { title, message } = getEmptyStateText(filter, query);
 
   return (
     <div className="px-6 py-16 text-center">
@@ -84,6 +97,8 @@ export default function TodoListPanel({
   onComplete,
   onDelete,
 }) {
+  // English: These values and actions come from Redux through useTodos.
+  // Roman Urdu: Yeh values aur actions useTodos ke through Redux se aate hain.
   const filters = [
     { value: 'all', label: 'All', count: stats.total },
     { value: 'active', label: 'Open', count: stats.pending },
@@ -91,6 +106,9 @@ export default function TodoListPanel({
   ];
 
   let content;
+
+  // English: Choose one clear screen state: loading, error, empty, or list.
+  // Roman Urdu: Aik clear state choose karo: loading, error, empty, ya list.
   if (loading && !todos.length) {
     content = <LoadingRows />;
   } else if (error) {

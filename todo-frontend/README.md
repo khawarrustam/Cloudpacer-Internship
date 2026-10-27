@@ -159,8 +159,30 @@ Now:
 - `useAuth` is a small Redux interface for authentication.
 - `useTodos` is a small Redux interface for todos.
 - Local `useState` is only used for temporary form or modal values.
+- Frontend data flow is explained with English and Roman Urdu comments.
+- Backend flow is not printed in the browser console; backend terminal owns those logs.
 
 Roman Urdu: Shared data aik jagah Redux mein hai. Form ka temporary text local state mein hai.
+
+### Redux flow to remember
+
+```text
+Component -> custom hook -> dispatch(thunk) -> API
+API response -> fulfilled reducer -> Redux state -> selector -> component
+```
+
+Roman Urdu: Component action dispatch karta hai. API result reducer Redux mein save karta hai, phir selector updated data component ko deta hai.
+
+### Redux files and their simple jobs
+
+- `store.js`: joins all Redux slices in one store.
+- `authSlice.js`: keeps the login user and login status.
+- `todosSlice.js`: loads, adds, completes, and deletes todos.
+- `taskViewSlice.js`: keeps search, filter, and sort choices.
+- `todosSelectors.js`: reads Redux data and prepares the visible list.
+- `useAuth.js` and `useTodos.js`: give components short, easy functions.
+
+Roman Urdu: Slice data save karta hai, selector data read karta hai, aur hook component ko easy functions deta hai.
 
 ## Important files to learn first
 

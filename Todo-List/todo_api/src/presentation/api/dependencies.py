@@ -6,7 +6,7 @@ from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from firebase_admin import auth
 
-from src.shared.console import print_error, print_step
+from src.shared.console import print_error, print_flow, print_step
 
 bearer_scheme = HTTPBearer(auto_error=True)
 
@@ -21,10 +21,12 @@ def get_current_user(
     credentials: HTTPAuthorizationCredentials = Depends(bearer_scheme),
 ) -> CurrentUser:
     """Verify the Firebase token and return the signed-in user."""
-    print_step(
-        "Auth",
-        "Checking the Firebase login token.",
-        "Firebase login token check ho raha hai.",
+    print_flow(
+        source="HTTP Authorization header",
+        destination="Firebase Admin -> verify_id_token",
+        data="bearer_token=hidden",
+        english="Sending the hidden token to Firebase for verification.",
+        roman_urdu="Hidden token verification ke liye Firebase ko ja raha hai.",
     )
 
     try:
@@ -40,6 +42,13 @@ def get_current_user(
             "Auth",
             f"Token is valid for {user.email}.",
             f"{user.email} ka token valid hai.",
+        )
+        print_flow(
+            source="Firebase verified token",
+            destination="Protected FastAPI todo route",
+            data=f"uid={user.uid}, email={user.email}",
+            english="Verified user data is going to the requested route.",
+            roman_urdu="Verified user data requested route ko ja raha hai.",
         )
         return user
     except auth.ExpiredIdTokenError as error:

@@ -10,7 +10,12 @@ import FocusCard from './todos/FocusCard';
 import TodoListPanel from './todos/TodoListPanel';
 
 export default function TodoDashboard({ onLogout, user }) {
+  // English: Shared todo data comes from Redux through this custom hook.
+  // Roman Urdu: Shared todo data is custom hook ke through Redux se aata hai.
   const todoState = useTodos();
+
+  // English: The selected delete item is temporary UI state, so it stays local.
+  // Roman Urdu: Selected delete item temporary UI state hai, is liye local hai.
   const [deleteTarget, setDeleteTarget] = useState(null);
   useKeyboardShortcuts();
 
@@ -19,11 +24,15 @@ export default function TodoDashboard({ onLogout, user }) {
     : 0;
 
   const handleAdd = async (todo) => {
+    // English: This calls the Redux createTodo thunk through useTodos.
+    // Roman Urdu: Yeh useTodos ke through Redux createTodo thunk call karta hai.
     await todoState.addTodo(todo);
     toast.success('Task added to your plan.');
   };
 
   const handleComplete = async (id) => {
+    // English: Redux updates the matching todo after the backend succeeds.
+    // Roman Urdu: Backend success ke baad Redux matching todo update karta hai.
     try {
       await todoState.finishTodo(id);
       toast.success('Nice work - task completed.');
@@ -33,6 +42,8 @@ export default function TodoDashboard({ onLogout, user }) {
   };
 
   const handleRemove = async () => {
+    // English: The modal chooses the id; Redux performs the delete request.
+    // Roman Urdu: Modal id choose karta hai; Redux delete request chalata hai.
     if (!deleteTarget) return;
 
     try {

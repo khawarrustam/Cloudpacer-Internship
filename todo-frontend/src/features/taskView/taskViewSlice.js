@@ -1,6 +1,8 @@
 import { createSlice } from '@reduxjs/toolkit';
 
 const initialState = {
+  // English: These values only control how the todo list looks.
+  // Roman Urdu: Yeh values sirf todo list ka view control karti hain.
   filter: 'all',
   query: '',
   sort: 'smart',
@@ -10,6 +12,8 @@ const taskViewSlice = createSlice({
   name: 'taskView',
   initialState,
   reducers: {
+    // English: Each reducer changes one simple view setting.
+    // Roman Urdu: Har reducer aik simple view setting change karta hai.
     filterChanged(state, action) {
       state.filter = action.payload;
     },

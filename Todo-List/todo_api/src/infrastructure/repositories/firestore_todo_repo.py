@@ -13,6 +13,7 @@ from google.cloud.firestore_v1.base_query import FieldFilter
 from src.domain.entities import TodoItem
 from src.domain.repositories import ITodoRepository
 from src.domain.value_objects import Priority, TaskTitle
+from src.shared.console import print_flow
 
 
 class FirestoreTodoRepository(ITodoRepository):
@@ -67,6 +68,13 @@ class FirestoreTodoRepository(ITodoRepository):
 
     def save(self, todo: TodoItem) -> None:
         document = self._to_document(todo)
+        print_flow(
+            source="src/infrastructure/repositories/firestore_todo_repo.py -> save",
+            destination="Firestore todo document",
+            data=f"todo_id={todo.id}, owner_uid={todo.owner_uid}",
+            english="Converting and sending the todo to Firestore.",
+            roman_urdu="Todo convert hokar Firestore ko ja raha hai.",
+        )
 
         if todo.owner_uid:
             self._user_collection(todo.owner_uid).document(todo.id).set(
@@ -83,13 +91,28 @@ class FirestoreTodoRepository(ITodoRepository):
         todo_id: str,
         owner_uid: str = "",
     ) -> Optional[TodoItem]:
+        print_flow(
+            source="src/infrastructure/repositories/firestore_todo_repo.py -> get_by_id",
+            destination="FirestoreTodoRepository -> get_by_id",
+            data=f"todo_id={todo_id}, owner_uid={owner_uid or 'not supplied'}",
+            english="Looking for one todo in Firestore.",
+            roman_urdu="Firestore mein aik todo dhoonda ja raha hai.",
+        )
         if owner_uid:
             snapshot = self._user_collection(owner_uid).document(todo_id).get()
-            return (
+            todo = (
                 self._to_entity(snapshot.to_dict())
                 if snapshot.exists
                 else None
             )
+            print_flow(
+                source="Firestore todo document",
+                destination="Calling file in src/application/use_cases/",
+                data=f"todo_found={bool(todo)}",
+                english="Returning the Firestore lookup result.",
+                roman_urdu="Firestore lookup result wapas ja raha hai.",
+            )
+            return todo
 
         # English: Unscoped lookup is only for trusted admin work.
         # Roman Urdu: Owner ke baghair lookup sirf trusted admin kaam ke liye hai.
@@ -106,19 +129,42 @@ class FirestoreTodoRepository(ITodoRepository):
 
     def get_all(self) -> List[TodoItem]:
         documents = self.db.collection_group(self.collection_name).stream()
-        return [
+        todos = [
             self._to_entity(document.to_dict())
             for document in documents
         ]
+        print_flow(
+            source="Firestore all todo documents",
+            destination="src/application/use_cases/list_todos.py",
+            data=f"todo_count={len(todos)}",
+            english="Returning all Firestore todos to the list use case.",
+            roman_urdu="Tamam Firestore todos list use case ko wapas ja rahe hain.",
+        )
+        return todos
 
     def get_by_owner(self, owner_uid: str) -> List[TodoItem]:
         documents = self._user_collection(owner_uid).stream()
-        return [
+        todos = [
             self._to_entity(document.to_dict())
             for document in documents
         ]
+        print_flow(
+            source="Firestore user todo documents",
+            destination="src/application/use_cases/list_todos.py",
+            data=f"owner_uid={owner_uid}, todo_count={len(todos)}",
+            english="Returning this user's Firestore todos.",
+            roman_urdu="Is user ke Firestore todos wapas ja rahe hain.",
+        )
+        return todos
 
     def delete(self, todo_id: str, owner_uid: str = "") -> None:
+        print_flow(
+            source="src/application/use_cases/delete_todo.py",
+            destination="Firestore delete operation",
+            data=f"todo_id={todo_id}, owner_uid={owner_uid or 'not supplied'}",
+            english="Sending the todo id to Firestore for deletion.",
+            roman_urdu="Todo id delete honay ke liye Firestore ko ja rahi hai.",
+        )
         if owner_uid:
             self._user_collection(owner_uid).document(todo_id).delete()
             return

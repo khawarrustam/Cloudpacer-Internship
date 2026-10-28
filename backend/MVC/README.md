@@ -14,7 +14,6 @@
 backend/MVC/
 ├── main_mvc.py                     # 🔌 Entry point (run MVC server on port 8001)
 ├── requirements.txt                # 📦 Dependencies (FastAPI + firebase-admin)
-├── serviceAccountKey.json          # 🔑 Local Firebase credentials (Git-ignored)
 │
 └── src_mvc/
     ├── models/                     # 📊 MODEL — Data schema + business validation helpers
@@ -36,8 +35,10 @@ backend/MVC/
 
 ### Prerequisites
 - Python 3.11+
-- `serviceAccountKey.json` present in this folder, or
-  `FIREBASE_CREDENTIALS_PATH` set to an existing credential file.
+- `serviceAccountKey.json` present in either `backend/MVC` or `backend/DDD`.
+
+The MVC backend checks both folders automatically. No credential environment
+variable is required.
 
 ### Setup & Run
 
@@ -46,9 +47,6 @@ cd backend\MVC
 python -m venv .venv
 .\.venv\Scripts\Activate.ps1
 python -m pip install -r requirements.txt
-
-# Skip this line when serviceAccountKey.json is in the current folder.
-$env:FIREBASE_CREDENTIALS_PATH = "..\DDD\serviceAccountKey.json"
 
 # Run the server (port 8001 to avoid conflict with DDD on 8000)
 python main_mvc.py

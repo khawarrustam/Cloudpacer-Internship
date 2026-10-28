@@ -18,6 +18,7 @@ Kahan Connected Hai:
 # 'os' library: Operating system se interact karne ke liye (jaise environment variables
 # parhna aur check karna ke serviceAccountKey.json file exist karti hai ya nahi).
 import os
+from pathlib import Path
 
 # 'firebase_admin': Google Firebase ka official Python SDK hai, jo app initialize karne ke liye use hota hai.
 import firebase_admin
@@ -29,6 +30,26 @@ from firebase_admin import credentials, firestore
 
 # Global variable jo database client ka reference save rakhega
 _db = None
+
+
+def find_credentials_path() -> Path | None:
+    """Find Firebase credentials without requiring a PowerShell variable.
+
+    Search order:
+    1. Optional FIREBASE_CREDENTIALS_PATH override.
+    2. A serviceAccountKey.json file inside backend/MVC.
+    3. The existing serviceAccountKey.json file inside backend/DDD.
+    """
+    configured_path = os.getenv("FIREBASE_CREDENTIALS_PATH")
+    if configured_path:
+        return Path(configured_path).expanduser().resolve()
+
+    mvc_directory = Path(__file__).resolve().parents[2]
+    candidates = (
+        mvc_directory / "serviceAccountKey.json",
+        mvc_directory.parent / "DDD" / "serviceAccountKey.json",
+    )
+    return next((path for path in candidates if path.is_file()), None)
 
 
 def get_db():
@@ -57,7 +78,7 @@ async def connect_db() -> None:
     - Application startup par Firebase Firestore ke sath safe aur authenticated connection banata hai.
 
     Kaise kaam karta hai:
-    1. Environment variable 'FIREBASE_CREDENTIALS_PATH' ya default 'serviceAccountKey.json' path check karta hai.
+    1. MVC aur DDD folders mein serviceAccountKey.json automatically check karta hai.
     2. Agar Firebase app pehle se initialize nahi hai, toh check karta hai file mojood hai ya nahi.
     3. Agar file mojood ho toh certificate se initialize karta hai, warna default environment credentials use karta hai.
     4. `firestore.client()` call karke global `_db` variable mein client store kar leta hai.
@@ -66,9 +87,9 @@ async def connect_db() -> None:
     - `main_mvc.py` ke `lifespan(app)` startup event mein call hota hai.
     """
     global _db
-    cred_path = os.getenv("FIREBASE_CREDENTIALS_PATH", "serviceAccountKey.json")
+    cred_path = find_credentials_path()
     if not firebase_admin._apps:
-        if os.path.exists(cred_path):
+        if cred_path is not None:
             cred = credentials.Certificate(cred_path)
             firebase_admin.initialize_app(cred)
         else:

@@ -1,8 +1,58 @@
-"""Simple backend console messages for learning and debugging.
+"""Small, consistent logging helpers for the DDD backend.
 
-English: Keep every print format in one file.
-Roman Urdu: Har print ka format aik hi file mein rakha gaya hai.
+The default console shows request boundaries and important business events.
+Detailed layer-to-layer flow remains available at DEBUG level for maintainers,
+but normal local development requires no logging setup.
 """
+
+from contextvars import ContextVar, Token
+from http import HTTPStatus
+from itertools import count
+import logging
+import os
+import re
+import sys
+
+
+LOGGER_NAME = "todoflow.ddd"
+DEFAULT_LOG_LEVEL = "INFO"
+_request_numbers = count(1)
+_current_request: ContextVar[str | None] = ContextVar(
+    "todoflow_current_request",
+    default=None,
+)
+_SENSITIVE_VALUE = re.compile(
+    r"(?i)\b(password|token|authorization)\s*=\s*([^,\s]+)"
+)
+
+
+def _configured_level() -> int:
+    """Read a safe logging level from the environment."""
+    level_name = os.getenv("TODOFLOW_LOG_LEVEL", DEFAULT_LOG_LEVEL).upper()
+    return getattr(logging, level_name, logging.INFO)
+
+
+def _build_logger() -> logging.Logger:
+    """Create one stdout handler without duplicating messages on reload."""
+    logger = logging.getLogger(LOGGER_NAME)
+    logger.setLevel(_configured_level())
+    logger.propagate = False
+
+    if not any(getattr(handler, "_todoflow_handler", False) for handler in logger.handlers):
+        handler = logging.StreamHandler(sys.stdout)
+        handler._todoflow_handler = True  # type: ignore[attr-defined]
+        handler.setFormatter(
+            logging.Formatter(
+                "%(asctime)s | %(levelname)-5s | %(message)s",
+                datefmt="%H:%M:%S",
+            )
+        )
+        logger.addHandler(handler)
+
+    return logger
+
+
+logger = _build_logger()
 
 
 def module_file(instance: object) -> str:
@@ -12,27 +62,98 @@ def module_file(instance: object) -> str:
 
 
 def find_layer(location: str) -> str:
-    """Return the architecture layer for a file, client, or external service."""
-    clean_location = location.lower()
+    """Return a short architecture-layer name for a code location."""
+    clean_location = location.lower().replace("\\", "/")
 
-    # English: Check project layers before general service words.
-    # Roman Urdu: General service words se pehle project layers check karo.
     if "src/presentation/" in clean_location or "fastapi" in clean_location:
-        return "PRESENTATION LAYER"
+        return "Presentation"
     if "src/application/" in clean_location:
-        return "APPLICATION LAYER"
+        return "Application"
     if "src/domain/" in clean_location:
-        return "DOMAIN LAYER"
+        return "Domain"
     if "src/infrastructure/" in clean_location:
-        return "INFRASTRUCTURE LAYER"
+        return "Infrastructure"
     if "frontend" in clean_location or "http authorization" in clean_location:
-        return "CLIENT / HTTP"
+        return "Client"
     if "firebase" in clean_location or "firestore" in clean_location:
-        return "EXTERNAL SERVICE"
+        return "Firebase"
     if "ram" in clean_location or "temporary memory" in clean_location:
-        return "INFRASTRUCTURE STORAGE"
+        return "Memory"
 
-    return "BACKEND FLOW"
+    return "Backend"
+
+
+def _short_location(location: str) -> str:
+    """Make a file/service label compact enough for one console line."""
+    normalized = location.replace("\\", "/")
+    return normalized.removeprefix("src/")
+
+
+def _safe_data(data: str) -> str:
+    """Hide common secret values before any diagnostic data is logged."""
+    return _SENSITIVE_VALUE.sub(lambda match: f"{match.group(1)}=hidden", data)
+
+
+def _message(english: str, roman_urdu: str) -> str:
+    """Put the translation on its own indented line for readability."""
+    show_urdu = os.getenv("TODOFLOW_SHOW_URDU", "true").lower() == "true"
+    if not show_urdu:
+        return english
+    return f"{english}\n         |       |      {roman_urdu}"
+
+
+def _area(area: str) -> str:
+    """Add the active HTTP request to important application events."""
+    request_label = _current_request.get()
+    return f"{request_label} | {area}" if request_label else area
+
+
+def begin_request(method: str, path: str) -> Token[str | None]:
+    """Open one readable HTTP request group and return its context token."""
+    request_number = next(_request_numbers)
+    request_label = f"#{request_number:03d} {method.upper()} {path}"
+    token = _current_request.set(request_label)
+    logger.info("REQUEST  | %s", request_label)
+    return token
+
+
+def finish_request(
+    token: Token[str | None],
+    method: str,
+    path: str,
+    status_code: int,
+    duration_ms: float,
+) -> None:
+    """Close a successful HTTP request group."""
+    request_label = _current_request.get() or f"{method.upper()} {path}"
+    try:
+        status_text = HTTPStatus(status_code).phrase
+    except ValueError:
+        status_text = "Unknown"
+    logger.info(
+        "RESPONSE | %s | %s %s | %.0f ms\n",
+        request_label,
+        status_code,
+        status_text,
+        duration_ms,
+    )
+    _current_request.reset(token)
+
+
+def fail_request(
+    token: Token[str | None],
+    method: str,
+    path: str,
+    duration_ms: float,
+) -> None:
+    """Close a failed HTTP request group without exposing exception details."""
+    request_label = _current_request.get() or f"{method.upper()} {path}"
+    logger.exception(
+        "RESPONSE | %s | 500 Internal Server Error | %.0f ms\n",
+        request_label,
+        duration_ms,
+    )
+    _current_request.reset(token)
 
 
 def print_flow(
@@ -42,24 +163,24 @@ def print_flow(
     english: str,
     roman_urdu: str,
 ) -> None:
-    """Show where safe data came from and where it is going."""
-    print("\n[DATA FLOW]")
-    print(f"  FROM LAYER : {find_layer(source)}")
-    print(f"  FROM       : {source}")
-    print(f"  TO LAYER   : {find_layer(destination)}")
-    print(f"  TO         : {destination}")
-    print(f"  DATA       : {data}")
-    print(f"  English: {english}")
-    print(f"  Roman Urdu: {roman_urdu}")
+    """Log detailed layer-to-layer flow at DEBUG level only."""
+    source_label = f"{find_layer(source)}:{_short_location(source)}"
+    destination_label = f"{find_layer(destination)}:{_short_location(destination)}"
+    logger.debug(
+        "%s | FLOW | %s -> %s | %s | %s",
+        _current_request.get() or "Background",
+        source_label,
+        destination_label,
+        _safe_data(data),
+        _message(english, roman_urdu),
+    )
 
 
 def print_step(area: str, english: str, roman_urdu: str) -> None:
-    """Print one action in easy English and Roman Urdu."""
-    print(f"[{area}] {english}")
-    print(f"  Roman Urdu: {roman_urdu}")
+    """Log a concise normal application event."""
+    logger.info("%s | %s", _area(area), _message(english, roman_urdu))
 
 
 def print_error(area: str, english: str, roman_urdu: str) -> None:
-    """Print one error in easy English and Roman Urdu."""
-    print(f"[{area} ERROR] {english}")
-    print(f"  Roman Urdu: {roman_urdu}")
+    """Log a concise application error."""
+    logger.error("%s | %s", _area(area), _message(english, roman_urdu))

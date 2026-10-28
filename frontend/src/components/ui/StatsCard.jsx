@@ -1,5 +1,6 @@
 import React from 'react';
 
+// A small display component used for totals derived by memoized Redux selectors.
 export default function StatsCard({ label, value, detail, icon: Icon, tone = 'blue' }) {
   const tones = {
     blue: 'bg-blue-50 text-blue-700',

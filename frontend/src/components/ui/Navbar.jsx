@@ -2,6 +2,7 @@ import React from 'react';
 import { Check, LogOut, SunMedium } from 'lucide-react';
 import Button from './Button';
 
+// Keep navigation presentational; authentication state and logout behavior come from Redux.
 export default function Navbar({ user, onLogout }) {
   const email = user?.email || 'Signed in';
   const initial = email.charAt(0).toUpperCase();

@@ -1,149 +1,78 @@
-# Todo DDD backend
+# TodoFlow DDD API
 
-A beginner-friendly FastAPI backend using Domain-Driven Design and Clean Architecture.
+The primary TodoFlow backend is a FastAPI service organized with
+Domain-Driven Design (DDD) and Clean Architecture. Business rules remain
+independent of FastAPI, Firebase, and storage implementation details.
 
-Roman Urdu: Backend ko chhoti layers mein divide kiya gaya hai. Har layer ka aik clear kaam hai, is liye code ko trace karna asaan hai.
+## Capabilities
 
-## Start here
+- Firebase email/password signup and login
+- Authenticated todo creation, listing, completion, and deletion
+- In-memory storage for local development
+- Firestore storage for persistent environments
+- Dependency injection through a single composition root
+- Focused unit tests for use cases and API handlers
+- Concise production-style logs with optional architecture tracing
 
-This API supports:
-
-- signup and login with Firebase Authentication
-- create a todo
-- list the signed-in user's todos
-- complete a todo
-- delete a todo
-- temporary in-memory storage or Firebase Firestore
-
-## What DDD means here
-
-DDD means the business rules live in the domain, away from FastAPI and Firebase.
-
-Examples:
-
-- a title must contain 3 to 120 characters
-- priority must be LOW, MEDIUM, or HIGH
-- a completed todo cannot be completed again
-- one user cannot change another user's todo
-
-Roman Urdu: Business rules `domain` folder mein hain. API aur database sirf bahar ki details hain.
-
-## Easy architecture
+## Architecture
 
 ```text
 HTTP request
     |
     v
-Presentation layer
-FastAPI route and request schema
+Presentation      FastAPI routers and request/response schemas
     |
     v
-Application layer
-Use case runs one workflow
+Application       Use cases, commands, DTOs, and mapping
     |
     v
-Domain layer
-Entity checks business rules
+Domain            Entities, value objects, rules, and repository contracts
+    ^
     |
-    v
-Repository interface
-    |
-    v
-Infrastructure layer
-Memory or Firestore saves data
+Infrastructure    Firebase, Firestore, and in-memory repository adapters
 ```
 
-The dependency direction stays simple:
+Dependencies point toward the domain. `src/bootstrap.py` is the composition
+root that selects adapters and connects them to application use cases.
+
+## Project structure
 
 ```text
-Presentation -> Application -> Domain
-Infrastructure -------------> Domain
-bootstrap.py connects the real objects
-```
-
-Roman Urdu: Andar wali domain layer ko FastAPI ya Firebase import nahi karna chahiye.
-
-## Folder guide
-
-```text
-DDD/
-|-- main.py                    # Creates the FastAPI app
-|-- requirements.txt           # Runtime dependencies
-|-- requirements-dev.txt       # Runtime dependencies plus test tools
+backend/DDD/
+|-- main.py
+|-- requirements.txt
+|-- requirements-dev.txt
 |-- scripts/
-|   |-- clear_firebase.py      # Optional Firebase cleanup script
-|   +-- check_prints.py        # Checks print lines for emojis
-|
-+-- src/
-    |-- bootstrap.py           # Connects repositories and use cases
-    |
-    |-- domain/
-    |   |-- entities.py        # TodoItem and complete rule
-    |   |-- value_objects.py   # TaskTitle and Priority
-    |   |-- exceptions.py      # Named business errors
-    |   |-- repositories.py    # Todo storage contract
-    |   +-- auth_repositories.py
-    |
-    |-- application/
-    |   |-- dtos.py            # Commands and TodoDTO
-    |   |-- mappers.py         # TodoItem -> TodoDTO
-    |   +-- use_cases/         # Create, list, complete, delete, auth
-    |
-    |-- infrastructure/
-    |   +-- repositories/
-    |       |-- in_memory_todo_repo.py
-    |       |-- firestore_todo_repo.py
-    |       +-- firebase_auth_repo.py
-    |
-    |-- presentation/
-    |   +-- api/
-    |       |-- todo_router.py
-    |       |-- auth_router.py
-    |       |-- schemas.py
-    |       |-- auth_schemas.py
-    |       +-- dependencies.py
-    |
-    +-- shared/
-        +-- console.py          # Easy English + Roman Urdu prints
+|   |-- check_prints.py
+|   `-- clear_firebase.py
+|-- src/
+|   |-- application/
+|   |   |-- use_cases/
+|   |   |-- dtos.py
+|   |   `-- mappers.py
+|   |-- domain/
+|   |   |-- entities.py
+|   |   |-- value_objects.py
+|   |   |-- exceptions.py
+|   |   `-- repositories.py
+|   |-- infrastructure/repositories/
+|   |-- presentation/api/
+|   |-- shared/console.py
+|   `-- bootstrap.py
+`-- tests/
 ```
-
-## One request from start to finish
-
-Example: `POST /todos`
-
-1. `todo_router.py` receives JSON.
-2. Pydantic validates the request.
-3. The router creates `CreateTodoCommand`.
-4. `CreateTodoUseCase` asks `TodoItem.create` to build a valid entity.
-5. The use case calls the repository contract.
-6. Memory or Firestore saves the entity.
-7. `todo_to_dto` makes plain output data.
-8. FastAPI returns JSON.
-
-Roman Urdu: Request router se use case, phir domain, phir repository tak jati hai. Result isi flow se wapas aata hai.
 
 ## Requirements
 
-- Python 3.10 or newer
-- a Firebase project for signup and login
-- a Firebase service account JSON file
+- Python 3.10+
+- A Firebase project with Email/Password authentication enabled
+- `serviceAccountKey.json` stored in `backend/DDD`
 
-Important: `USE_FIREBASE=false` only changes todo storage to memory. Authentication still uses Firebase.
+The credential file is ignored by Git and must never be committed.
 
-Roman Urdu: Memory mode mein todos temporary hotay hain, lekin login phir bhi Firebase se hota hai.
+## Installation
 
-## Firebase setup
-
-1. Open Firebase Console.
-2. Enable Email/Password in Authentication.
-3. Download a service account JSON file.
-4. Save it in `backend/DDD` as `serviceAccountKey.json`.
-
-The credentials file is ignored by Git. Never commit it.
-
-## Install and run
-
-Open PowerShell in this folder:
+From the repository root:
 
 ```powershell
 cd backend\DDD
@@ -152,148 +81,106 @@ python -m venv .venv
 python -m pip install -r requirements-dev.txt
 ```
 
-The backend automatically uses `serviceAccountKey.json` and the configured Web
-API key. The only environment variable needed at runtime selects todo storage.
+## Running locally
 
-### Easy local storage
-
-```powershell
-$env:USE_FIREBASE="false"
-uvicorn main:app --reload
-```
-
-Todos disappear when the server stops.
-
-### Firestore storage
+Use in-memory todo storage during development:
 
 ```powershell
-$env:USE_FIREBASE="true"
-uvicorn main:app --reload
+$env:USE_FIREBASE = "false"
+python -m uvicorn main:app --reload
 ```
 
-Open:
+Use Firestore for persistent todo storage:
 
-- API health: `http://127.0.0.1:8000/`
-- Swagger docs: `http://127.0.0.1:8000/docs`
+```powershell
+$env:USE_FIREBASE = "true"
+python -m uvicorn main:app --reload
+```
 
-## API routes
+Firebase Authentication is used in both modes. `USE_FIREBASE` changes only the
+todo repository.
 
-| Method | Route | Login needed | Purpose |
+Service URLs:
+
+- API: <http://127.0.0.1:8000>
+- Swagger UI: <http://127.0.0.1:8000/docs>
+- ReDoc: <http://127.0.0.1:8000/redoc>
+
+## Configuration
+
+| Variable | Default | Purpose |
+|---|---|---|
+| `USE_FIREBASE` | `false` | Select in-memory or Firestore todo storage |
+| `FIREBASE_CREDENTIALS_PATH` | `serviceAccountKey.json` | Optional credential-path override |
+| `FIREBASE_WEB_API_KEY` | Project default | Optional Firebase Web API-key override |
+
+Only `USE_FIREBASE` is normally required.
+
+## API endpoints
+
+| Method | Endpoint | Authentication | Description |
 |---|---|---:|---|
-| POST | `/auth/signup` | No | Create an account |
-| POST | `/auth/login` | No | Get a Firebase ID token |
-| GET | `/todos` | Yes | List your todos |
-| POST | `/todos` | Yes | Create a todo |
-| PATCH | `/todos/{id}/complete` | Yes | Complete a todo |
-| DELETE | `/todos/{id}` | Yes | Delete a todo |
-| GET | `/` | No | Health check |
+| `GET` | `/` | No | Health check |
+| `POST` | `/auth/signup` | No | Create a Firebase user and return a token |
+| `POST` | `/auth/login` | No | Authenticate and return a token |
+| `GET` | `/todos` | Yes | List the current user's todos |
+| `POST` | `/todos` | Yes | Create a todo |
+| `PATCH` | `/todos/{todo_id}/complete` | Yes | Complete a todo |
+| `DELETE` | `/todos/{todo_id}` | Yes | Delete a todo |
 
-Protected routes need this header:
-
-```text
-Authorization: Bearer YOUR_FIREBASE_ID_TOKEN
-```
-
-Example create body:
-
-```json
-{
-  "title": "Read the DDD flow",
-  "priority": "HIGH"
-}
-```
-
-## Print output
-
-Backend runtime prints show the complete data direction:
+Protected routes expect:
 
 ```text
-[DATA FLOW]
-  FROM LAYER : PRESENTATION LAYER
-  FROM       : src/presentation/api/todo_router.py
-  TO LAYER   : APPLICATION LAYER
-  TO         : src/application/use_cases/create_todo.py
-  DATA       : title=Learn DDD, priority=HIGH
-  English: The router sent a create command to the use case.
-  Roman Urdu: Router ne create command use case ko bheji.
+Authorization: Bearer <firebase-id-token>
 ```
 
-The flow continues through these labels:
+## Logging
 
-- `CLIENT / HTTP`: React frontend or request headers
-- `PRESENTATION LAYER`: FastAPI routers and dependencies
-- `APPLICATION LAYER`: use cases, commands, DTOs, and mappers
-- `DOMAIN LAYER`: entities, value objects, and business rules
-- `INFRASTRUCTURE LAYER`: repository adapter files
-- `INFRASTRUCTURE STORAGE`: temporary RAM storage
-- `EXTERNAL SERVICE`: Firebase or Firestore
+Logging works automatically without additional PowerShell commands. Every
+meaningful request is shown as a small group; browser `OPTIONS` checks,
+duplicate Uvicorn access lines, mapper loops, and low-level layer noise are
+hidden from the default output:
 
-All prints are routed through `src/shared/console.py`. They use plain text and no emojis.
-
-Passwords and tokens are always shown as `hidden`; their real values are never printed.
-
-Roman Urdu: Har print layer aur file dono batata hai: data kahan se aaya aur kahan ja raha hai. Password aur token kabhi print nahi hotay.
-
-Check print statements with:
-
-```powershell
-python scripts/check_prints.py
+```text
+10:42:11 | INFO  | REQUEST  | #001 GET /todos
+10:42:11 | INFO  | #001 GET /todos | Auth | Token is valid.
+         |       |      Token valid hai.
+10:42:12 | INFO  | #001 GET /todos | Application | Found 3 todo(s).
+         |       |      3 todo milay.
+10:42:12 | INFO  | RESPONSE | #001 GET /todos | 200 OK | 184 ms
 ```
 
-## Run tests
+Common password, token, and authorization values are redacted before any
+diagnostic data is written.
+
+## Tests and checks
 
 ```powershell
 python -m pytest -q
+python scripts/check_prints.py
 ```
 
-The use-case tests use `InMemoryTodoRepository`, so they do not write to Firestore.
+Tests use the in-memory repository and do not write todo data to Firestore.
 
-## How to add a new todo action
+## Maintenance utility
 
-Example: rename a todo.
-
-1. Put the rename rule on `TodoItem`.
-2. Add `RenameTodoCommand` in `application/dtos.py`.
-3. Add `RenameTodoUseCase`.
-4. Add any needed method to `ITodoRepository`.
-5. Implement that method in both repositories.
-6. Add the HTTP route.
-7. Connect the use case in `bootstrap.py`.
-8. Add a test.
-
-Roman Urdu: Naya feature pehle business rule se start karo, phir bahar API tak jao.
-
-## Common problems
-
-### `Default app does not exist`
-
-Make sure the app starts through `main.py` and the service account path is correct.
-
-### Firebase says the API key is invalid
-
-Make sure the service account belongs to the Firebase project configured by the
-application, then restart Uvicorn.
-
-### Login works but todos disappear
-
-You are using `USE_FIREBASE=false`. Use Firestore mode to keep todos after a restart.
-
-### Browser shows a CORS error
-
-Use the Vite URL `http://localhost:5173` or `http://127.0.0.1:5173`. Add another allowed origin in `main.py` only if your frontend runs elsewhere.
-
-### Port 8000 is busy
-
-Run on another port and also update the frontend `VITE_API_URL`:
-
-```powershell
-uvicorn main:app --reload --port 8001
-```
-
-## Safe cleanup script
-
-`scripts/clear_firebase.py` permanently deletes Firebase todos and authentication users. Run it only when you intentionally want to clear development data:
+The following command permanently deletes Firebase users and todos. Run it
+only against a disposable development project:
 
 ```powershell
 python scripts/clear_firebase.py
 ```
+
+## Troubleshooting
+
+- **Frontend cannot connect:** confirm the API is running on port `8000`.
+- **Login fails:** confirm Email/Password authentication is enabled.
+- **Todos disappear after restart:** use `USE_FIREBASE=true` for persistence.
+- **Port 8000 is busy:** use another Uvicorn port and update `VITE_API_URL`.
+
+## Related documentation
+
+- [Repository run guide](../../README.md)
+- [Architecture comparison](../../docs/architecture.md)
+- [Postman testing guide](../../docs/api-testing.md)
+- [Frontend documentation](../../frontend/README.md)

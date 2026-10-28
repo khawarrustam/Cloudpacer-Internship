@@ -1,243 +1,157 @@
-# TodoFlow frontend
+# TodoFlow Frontend
 
-A beginner-friendly React frontend for the Todo DDD API.
+TodoFlow's frontend is a responsive React application powered by Redux Toolkit,
+Axios, Tailwind CSS, and Vite. It communicates with the DDD API by default.
 
-Roman Urdu: Yeh React frontend simple modules mein divide hai. Har module ka aik clear kaam hai, is liye code ko parhna aur change karna asaan hai.
+## Capabilities
 
-## Start here
+- Firebase-backed signup and login through the backend
+- Create, search, filter, sort, complete, and delete todos
+- Persistent browser session storage
+- Per-action loading states and user-friendly API errors
+- Keyboard shortcuts and accessible dialogs/forms
+- Memoized derived state through Redux selectors
 
-The app uses:
+## Technology
 
-- React for the screen
-- Redux Toolkit for shared state
-- Axios for backend requests
-- Tailwind CSS for styling
-- Vite for local development and builds
+| Technology | Responsibility |
+|---|---|
+| React | Component rendering and local interaction state |
+| Redux Toolkit | Shared authentication, todo, and view state |
+| Axios | API client and authorization headers |
+| Tailwind CSS | Responsive styling |
+| Vite | Development server and production builds |
 
-The frontend runs on `http://localhost:5173` and calls the backend on `http://127.0.0.1:8000` by default.
+## Application flow
 
-## Run the frontend
+```text
+Component
+    |
+    v
+Custom hook
+    |
+    v
+Redux action / async thunk
+    |
+    v
+API module -> Axios client -> DDD backend
+    |
+    v
+Reducer -> selector -> updated component
+```
 
-First start the backend. Then open a second PowerShell window:
+Components do not call Axios directly. API details remain in `src/api`, async
+work remains in Redux thunks, and selectors prepare data for rendering.
+
+## Project structure
+
+```text
+frontend/
+|-- src/
+|   |-- api/                 # Axios client and endpoint modules
+|   |-- app/                 # Redux store configuration
+|   |-- components/
+|   |   |-- todos/           # Dashboard feature components
+|   |   `-- ui/              # Reusable UI primitives
+|   |-- features/
+|   |   |-- auth/            # Session state and persistence
+|   |   |-- todos/           # Todo thunks, reducers, and selectors
+|   |   `-- taskView/        # Filter, search, and sort state
+|   |-- hooks/               # Component-friendly Redux interfaces
+|   |-- App.jsx
+|   `-- main.jsx
+|-- package.json
+`-- vite.config.js
+```
+
+## Requirements
+
+- Node.js 18+
+- npm
+- The DDD backend running on port `8000`
+
+## Installation
+
+From the repository root:
 
 ```powershell
 cd frontend
 npm ci
+```
+
+## Running locally
+
+Start the DDD backend first, then run:
+
+```powershell
 npm run dev
 ```
 
-Open the URL shown by Vite, normally:
+Open <http://localhost:5173>.
 
-```text
-http://localhost:5173
-```
+## Configuration
 
-To make a production build:
-
-```powershell
-npm run build
-```
-
-## Optional environment setting
-
-Create `.env` inside `frontend` only when the backend uses another URL:
+The default API URL is `http://127.0.0.1:8000`. To use another backend URL,
+create `frontend/.env`:
 
 ```env
 VITE_API_URL=http://127.0.0.1:8000
 ```
 
-Roman Urdu: Agar backend isi default URL par hai to `.env` ki zaroorat nahi.
+Restart the Vite development server after changing environment values.
 
-## Easy architecture
+## Redux state
 
-```text
-main.jsx
-  |
-  +-- Redux Provider and Toast Provider
-        |
-        +-- App.jsx
-              |
-              +-- useAuth
-              |     +-- authSlice
-              |     +-- authApi
-              |     +-- authStorage
-              |
-              +-- TodoDashboard
-                    +-- useTodos
-                    |     +-- todosSlice
-                    |     +-- taskViewSlice
-                    |     +-- todoApi
-                    |
-                    +-- DashboardHero
-                    +-- TodoListPanel
-                    +-- AddTodoForm
-                    +-- FocusCard
-```
+| Slice | Owns |
+|---|---|
+| `auth` | Current user and authentication request status |
+| `todos` | Server todo records and mutation loading states |
+| `taskView` | Search query, selected filter, and sort order |
 
-Roman Urdu: `App.jsx` sirf decide karta hai login screen dikhani hai ya dashboard. Detail hooks aur small components mein hai.
+Local component state is reserved for short-lived UI values such as form
+fields, modal visibility, and focus behavior. Server data has one source of
+truth in Redux.
 
-## Folder guide
+## Important files
 
-```text
-src/
-|-- api/
-|   |-- client.js          # Axios setup and login token
-|   |-- authApi.js         # Signup and login requests
-|   |-- todoApi.js         # Todo CRUD requests
-|   +-- errors.js          # API error messages
-|
-|-- app/
-|   +-- store.js           # All Redux slices connect here
-|
-|-- components/
-|   |-- AuthForm.jsx
-|   |-- TodoDashboard.jsx  # Small dashboard coordinator
-|   |-- TodoItem.jsx
-|   |-- todos/             # Dashboard sections
-|   +-- ui/                # Reusable buttons, cards, inputs
-|
-|-- features/
-|   |-- auth/
-|   |   |-- authSlice.js
-|   |   +-- authStorage.js
-|   |-- todos/
-|   |   |-- todosSlice.js
-|   |   +-- todosSelectors.js
-|   +-- taskView/
-|       +-- taskViewSlice.js
-|
-|-- hooks/
-|   |-- useAuth.js
-|   |-- useTodos.js
-|   +-- useKeyboardShortcuts.js
-|
-|-- App.jsx
-|-- main.jsx
-+-- index.css
-```
+- `src/main.jsx` — application providers and session-expiry wiring
+- `src/app/store.js` — root Redux store
+- `src/api/client.js` — Axios base URL, bearer token, and `401` handling
+- `src/features/auth/authSlice.js` — authentication thunks and session state
+- `src/features/todos/todosSlice.js` — todo request lifecycle
+- `src/features/todos/todosSelectors.js` — memoized stats and visible todos
+- `src/hooks/useAuth.js` and `src/hooks/useTodos.js` — component-facing APIs
+- `src/components/TodoDashboard.jsx` — dashboard composition
 
-## Data flow in simple steps
+## Available commands
 
-### Login
+| Command | Purpose |
+|---|---|
+| `npm run dev` | Start the Vite development server |
+| `npm run build` | Create a production build in `dist` |
+| `npm run preview` | Preview the production build locally |
 
-1. `AuthForm` calls `login` from `useAuth`.
-2. `useAuth` dispatches `loginUser`.
-3. `authSlice` calls `authApi.login`.
-4. The token is saved by `authStorage`.
-5. Redux stores the user, so `App` shows the dashboard.
-
-Roman Urdu: Form se action Redux ko jata hai, API call hoti hai, phir user state update hoti hai.
-
-### Load todos
-
-1. `TodoDashboard` calls `useTodos`.
-2. `useTodos` dispatches `fetchTodos` once.
-3. `todosSlice` calls `todoApi.getAll`.
-4. Redux stores the returned list.
-5. Selectors filter and sort the list.
-6. `TodoListPanel` shows the result.
-
-### Add, complete, or delete
-
-The screen calls one simple function from `useTodos`:
-
-- `addTodo`
-- `finishTodo`
-- `removeTodo`
-
-The hook dispatches the correct Redux action. The slice updates state after the backend succeeds.
-
-Roman Urdu: UI ko Axios ya Redux thunk ki detail nahi pata. UI sirf simple hook function call karti hai.
-
-## Why Redux is used once
-
-The old code had two possible state systems: Redux and separate `useState` todo/auth hooks. That could make two copies of the same data.
-
-Now:
-
-- Redux is the only shared data source.
-- `useAuth` is a small Redux interface for authentication.
-- `useTodos` is a small Redux interface for todos.
-- Local `useState` is only used for temporary form or modal values.
-- Frontend data flow is explained with English and Roman Urdu comments.
-- Backend flow is not printed in the browser console; backend terminal owns those logs.
-
-Roman Urdu: Shared data aik jagah Redux mein hai. Form ka temporary text local state mein hai.
-
-### Redux flow to remember
-
-```text
-Component -> custom hook -> dispatch(thunk) -> API
-API response -> fulfilled reducer -> Redux state -> selector -> component
-```
-
-Roman Urdu: Component action dispatch karta hai. API result reducer Redux mein save karta hai, phir selector updated data component ko deta hai.
-
-### Redux files and their simple jobs
-
-- `store.js`: joins all Redux slices in one store.
-- `authSlice.js`: keeps the login user and login status.
-- `todosSlice.js`: loads, adds, completes, and deletes todos.
-- `taskViewSlice.js`: keeps search, filter, and sort choices.
-- `todosSelectors.js`: reads Redux data and prepares the visible list.
-- `useAuth.js` and `useTodos.js`: give components short, easy functions.
-
-Roman Urdu: Slice data save karta hai, selector data read karta hai, aur hook component ko easy functions deta hai.
-
-## Important files to learn first
-
-Read these in order:
-
-1. `src/App.jsx`
-2. `src/hooks/useAuth.js`
-3. `src/hooks/useTodos.js`
-4. `src/features/todos/todosSlice.js`
-5. `src/api/todoApi.js`
-6. `src/components/TodoDashboard.jsx`
-7. `src/components/todos/`
-
-## Adding a new backend action
-
-Example: add an edit feature.
-
-1. Add `update(id, data)` in `todoApi.js`.
-2. Add an async thunk in `todosSlice.js`.
-3. Update the todo in the fulfilled reducer.
-4. Expose a simple `editTodo` function from `useTodos.js`.
-5. Call it from a small UI component.
-
-Roman Urdu: Har feature API se slice, phir hook, phir component tak seedha flow follow karta hai.
-
-## Common problems
-
-### The page says it cannot connect
-
-Make sure the backend is running:
+## Production build
 
 ```powershell
-cd ..\backend\DDD
-uvicorn main:app --reload
-```
-
-### Login fails
-
-Authentication uses Firebase. Check that the backend service account belongs to
-the Firebase project configured by the application.
-
-### The session expires
-
-A `401` response clears the saved session automatically. Log in again.
-
-### The wrong backend is called
-
-Check `VITE_API_URL` in `.env`, then restart `npm run dev`.
-
-## Useful commands
-
-```powershell
-npm run dev
 npm run build
 npm run preview
 ```
 
-The project currently has no ESLint configuration file, so use `npm run build` as the main frontend verification command.
+Generated `dist` output is excluded from Git.
+
+## Troubleshooting
+
+- **Network error:** confirm the DDD API is running at the configured URL.
+- **CORS error:** use `localhost:5173` or `127.0.0.1:5173`, both allowed by the
+  DDD backend.
+- **Login fails:** verify Firebase Authentication through the backend.
+- **Session expires:** a backend `401` clears local session data automatically.
+- **Environment change is ignored:** restart `npm run dev`.
+
+## Related documentation
+
+- [Repository run guide](../README.md)
+- [DDD backend documentation](../backend/DDD/README.md)
+- [Redux Toolkit learning guide](REDUX_TOOLKIT_GUIDE.md)
+- [Architecture comparison](../docs/architecture.md)

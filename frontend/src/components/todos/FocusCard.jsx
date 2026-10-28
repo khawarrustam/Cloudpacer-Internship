@@ -2,6 +2,7 @@ import React from 'react';
 import { Command, Target } from 'lucide-react';
 import Card from '../ui/Card';
 
+// Derive encouraging copy from existing progress instead of storing duplicate UI state.
 export default function FocusCard({ progress, pending, hasTodos }) {
   const title = progress === 100 && hasTodos
     ? 'Make room for tomorrow.'

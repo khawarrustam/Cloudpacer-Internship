@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { AlertCircle, CheckCircle, X } from 'lucide-react';
 
+// A browser event keeps API/Redux code independent from this visual notification layer.
 export function ToastProvider({ children }) {
   const [toasts, setToasts] = useState([]);
 
@@ -9,6 +10,7 @@ export function ToastProvider({ children }) {
       const id = crypto.randomUUID?.() || Math.random().toString(36).slice(2);
       const nextToast = { id, ...event.detail };
       setToasts((current) => [...current, nextToast]);
+      // Remove each toast automatically while still allowing manual dismissal.
       window.setTimeout(() => setToasts((current) => current.filter((item) => item.id !== id)), 3500);
     };
     window.addEventListener('app-toast', handleToastEvent);

@@ -2,6 +2,7 @@ import React from 'react';
 import { Calendar, Check, Loader2, Trash2 } from 'lucide-react';
 import Badge from './ui/Badge';
 
+// Keep date parsing defensive because API dates may be missing while a request updates.
 function formatTaskDate(value) {
   if (!value) return '';
   const date = new Date(value);
@@ -9,6 +10,7 @@ function formatTaskDate(value) {
   return new Intl.DateTimeFormat(undefined, { month: 'short', day: 'numeric' }).format(date);
 }
 
+// This row only renders state and reports user intent; Redux mutations stay upstream.
 export default function TodoItem({ todo, onComplete, onDelete, isCompleting = false, isDeleting = false }) {
   const priority = String(todo.priority || '').toLowerCase();
   const priorityVariants = { high: 'danger', medium: 'warning', low: 'success' };

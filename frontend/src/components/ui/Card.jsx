@@ -1,5 +1,6 @@
 import React from 'react';
 
+// Reusable surface with an optional header keeps dashboard sections visually uniform.
 export default function Card({ children, className = '', title, subtitle, action }) {
   return (
     <section className={['card-surface p-5 sm:p-6', className].join(' ')}>

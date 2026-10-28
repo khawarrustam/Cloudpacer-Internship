@@ -1,5 +1,6 @@
 import React from 'react';
 
+// The generated ID connects the label and help text for screen-reader users.
 export default function Input({ label, error, hint, icon: Icon, ...props }) {
   const inputId = props.id || props.name || label?.toLowerCase().replace(/\s+/g, '-');
 

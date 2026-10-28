@@ -1,105 +1,120 @@
-# 🏗️ Todo MVC — Traditional MVC Architecture (with Firebase Firestore)
+# TodoFlow MVC API
 
-> The **exact same Todo List application** built with the **Model-View-Controller (MVC)** pattern using FastAPI + Firebase Firestore.  
-> Compare this side-by-side with the DDD/Onion version in [`backend/DDD`](../DDD/).  
-> 📖 **Comprehensive Master Architecture Guide:** [`docs/architecture.md`](../../docs/architecture.md)
+This FastAPI service implements the TodoFlow backend with the traditional
+Model-View-Controller (MVC) pattern. It exists beside the DDD service to make
+the architectural trade-offs easy to compare using the same domain problem.
 
-**Author:** RanaKhawarAli
+## Capabilities
 
----
+- Firebase user signup
+- Firestore-backed todo CRUD operations
+- FastAPI request validation and generated API documentation
+- Automatic Firebase credential discovery
+- A compact codebase suitable for learning traditional MVC
 
-## 📁 Project Structure
+## Architecture
+
+```text
+HTTP request
+    |
+    v
+Controller       FastAPI routes and workflow coordination
+    |       \
+    v        v
+Model          View
+Rules/data     Pydantic request and response schemas
+    |
+    v
+Database         Firebase Firestore connection
+```
+
+MVC uses fewer files than the DDD implementation, but controllers know more
+about persistence and orchestration. See the
+[architecture comparison](../../docs/architecture.md) for a detailed analysis.
+
+## Project structure
 
 ```text
 backend/MVC/
-├── main_mvc.py                     # 🔌 Entry point (run MVC server on port 8001)
-├── requirements.txt                # 📦 Dependencies (FastAPI + firebase-admin)
-│
-└── src_mvc/
-    ├── models/                     # 📊 MODEL — Data schema + business validation helpers
-    │   └── todo_model.py           #     create_todo_dict(), mark_completed(), validate_title()
-    │
-    ├── views/                      # 👁️ VIEW — Pydantic schemas (request/response)
-    │   └── todo_views.py           #     CreateTodoRequest, TodoResponse
-    │
-    ├── controllers/                # 🎮 CONTROLLER — Route handlers + orchestration + DB
-    │   └── todo_controller.py      #     POST, GET, PATCH, DELETE /todos
-    │
-    └── db/                         # 💾 DATABASE — Firebase Firestore connection
-        └── firebase.py             #     connect_db(), disconnect_db(), get_db()
+|-- main_mvc.py
+|-- requirements.txt
+`-- src_mvc/
+    |-- controllers/
+    |-- models/
+    |-- views/
+    `-- db/
 ```
 
----
+## Requirements
 
-## 🚀 How to Run
+- Python 3.10+
+- A Firebase project with Firestore enabled
+- `serviceAccountKey.json` in either `backend/MVC` or `backend/DDD`
 
-### Prerequisites
-- Python 3.11+
-- `serviceAccountKey.json` present in either `backend/MVC` or `backend/DDD`.
+The application checks both locations automatically. The credential file is
+ignored by Git and must never be committed.
 
-The MVC backend checks both folders automatically. No credential environment
-variable is required.
+## Installation
 
-### Setup & Run
+From the repository root:
 
 ```powershell
 cd backend\MVC
 python -m venv .venv
 .\.venv\Scripts\Activate.ps1
 python -m pip install -r requirements.txt
+```
 
-# Run the server (port 8001 to avoid conflict with DDD on 8000)
+## Running locally
+
+```powershell
 python main_mvc.py
 ```
 
-Server will start on: `http://127.0.0.1:8001`
+Service URLs:
 
----
+- API: <http://127.0.0.1:8001>
+- Swagger UI: <http://127.0.0.1:8001/docs>
+- ReDoc: <http://127.0.0.1:8001/redoc>
 
-## 📡 API Endpoints
+No Firebase environment variable is required for the repository's current
+folder layout. `FIREBASE_CREDENTIALS_PATH` remains available as an optional
+override for deployments.
+
+## API endpoints
 
 | Method | Endpoint | Description |
 |---|---|---|
-| `GET` | `/` | Health check (`{"status": "ok", "architecture": "MVC"}`) |
-| `POST` | `/todos` | Create a new todo |
-| `GET` | `/todos` | List all todos |
-| `GET` | `/todos/{id}` | Get a single todo |
-| `PATCH` | `/todos/{id}/complete` | Mark todo as completed (enforces business rule) |
-| `DELETE` | `/todos/{id}` | Delete a todo |
+| `GET` | `/` | Health check |
+| `POST` | `/auth/signup` | Create a Firebase user |
+| `GET` | `/todos` | List todos |
+| `GET` | `/todos/{todo_id}` | Get one todo |
+| `POST` | `/todos` | Create a todo |
+| `PATCH` | `/todos/{todo_id}/complete` | Complete a todo |
+| `DELETE` | `/todos/{todo_id}` | Delete a todo |
 
-### Swagger Docs
-- `http://127.0.0.1:8001/docs` — Interactive API docs
-- `http://127.0.0.1:8001/redoc` — ReDoc
+## DDD comparison
 
----
-
-## 🔀 Side-by-Side: MVC vs DDD/Onion
-
-### File-to-File Comparison
-
-| Responsibility | MVC (This Project) | DDD/Onion (`backend/DDD/`) |
+| Concern | MVC | DDD/Clean Architecture |
 |---|---|---|
-| **Data schema** | `src_mvc/models/todo_model.py` | `src/domain/entities.py` + `src/domain/value_objects.py` |
-| **Business rules** | `src_mvc/models/todo_model.py` | `src/domain/entities.py` (method on entity) |
-| **Exceptions** | `src_mvc/models/todo_model.py` | `src/domain/exceptions.py` |
-| **Request/Response** | `src_mvc/views/todo_views.py` | `src/presentation/api/schemas.py` + `src/application/dtos.py` |
-| **Route handlers** | `src_mvc/controllers/todo_controller.py` | `src/presentation/api/todo_router.py` |
-| **Workflow orchestration** | `src_mvc/controllers/todo_controller.py` | `src/application/use_cases/*.py` (3 files) |
-| **DB operations** | `src_mvc/db/firebase.py` + controller | `src/domain/repositories.py` (port) + `src/infrastructure/repositories/*.py` (adapter) |
-| **Entry point** | `main_mvc.py` (simple lifespan wiring) | `main.py` (composition root + DI container wiring) |
-| **Total files** | **6 files** | **14+ files** |
+| Business rules | Model helpers | Domain entities/value objects |
+| Workflow | Controllers | Application use cases |
+| Persistence | Controller/database layer | Repository interfaces and adapters |
+| Dependency injection | Direct imports | Composition root in `bootstrap.py` |
+| Test isolation | More infrastructure coupling | In-memory repository adapters |
+| Best fit | Small, straightforward services | Complex and evolving business domains |
 
----
+## Troubleshooting
 
-## 💡 Key Architectural Takeaway (Roman Urdu)
+- **Credential error:** confirm the JSON file exists in `backend/DDD` or
+  `backend/MVC`.
+- **Firestore request fails:** confirm Firestore is enabled for the project.
+- **Port 8001 is busy:** change the port in `main_mvc.py` or run Uvicorn with an
+  explicit port.
 
-MVC architecture mein Controller sab kuch khud karta hai:
-1. HTTP request receive karta hai (`todo_views.py`)
-2. Model function call karta hai (`todo_model.py`)
-3. Direct Firestore collection mein insert/read/update karta hai (`firebase.get_db()`)
-4. Response View return karta hai.
+## Related documentation
 
-**Fayda:** Boht fast aur kam files mein ban jata hai.  
-**Nuqsan:** Controller "Fat" ho jata hai aur database ke sath tightly coupled hota hai.
-
-Mukammal request/response flow aur SOLID principles breakdown ke liye parhein: [Architectural Master Guide](../../docs/architecture.md).
+- [Repository run guide](../../README.md)
+- [DDD backend documentation](../DDD/README.md)
+- [Architecture comparison](../../docs/architecture.md)
+- [Postman collections](../../postman/)

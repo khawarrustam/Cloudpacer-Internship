@@ -1,5 +1,6 @@
 import React from 'react';
 
+// Shared variants keep status and priority colors consistent across the application.
 export default function Badge({ children, variant = 'default', className = '' }) {
   const variants = {
     default: 'border-stone-200 bg-stone-100 text-stone-600',

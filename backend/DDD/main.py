@@ -14,6 +14,7 @@ from src.bootstrap import (
 )
 from src.presentation.api.auth_router import router as auth_router
 from src.presentation.api.todo_router import router as todo_router
+from src.shared.request_logging import install_request_logging
 
 
 def health_check():
@@ -37,6 +38,7 @@ def create_app() -> FastAPI:
         allow_methods=["*"],
         allow_headers=["*"],
     )
+    install_request_logging(application)
 
     initialize_firebase()
     todo_repo = create_todo_repository()

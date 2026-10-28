@@ -2,6 +2,7 @@ import React, { useEffect, useRef } from 'react';
 import { AlertTriangle, X } from 'lucide-react';
 import Button from './Button';
 
+// Controlled accessible dialog: the parent owns visibility and the destructive action.
 export default function ConfirmModal({
   open,
   title,
@@ -16,6 +17,7 @@ export default function ConfirmModal({
 
   useEffect(() => {
     if (!open) return undefined;
+    // Focus the non-destructive action first and support the standard Escape shortcut.
     cancelRef.current?.focus();
     const handleKeyDown = (event) => {
       if (event.key === 'Escape' && !isLoading) onCancel();

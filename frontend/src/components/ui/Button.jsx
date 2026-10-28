@@ -1,5 +1,6 @@
 import React from 'react';
 
+// forwardRef lets dialogs move keyboard focus to the safest action when opened.
 const Button = React.forwardRef(function Button({
   children,
   variant = 'primary',
@@ -22,11 +23,13 @@ const Button = React.forwardRef(function Button({
     lg: 'h-12 px-5 text-sm',
     icon: 'h-10 w-10 p-0',
   };
+  // Prevent duplicate API actions while a button-owned request is in flight.
+  const isDisabled = disabled || isLoading;
 
   return (
     <button
       ref={ref}
-      disabled={disabled || isLoading}
+      disabled={isDisabled}
       className={[
         'inline-flex items-center justify-center gap-2 rounded-xl font-bold transition duration-200 active:translate-y-0 active:scale-[0.98] disabled:pointer-events-none disabled:opacity-50',
         sizes[size],

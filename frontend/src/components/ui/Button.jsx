@@ -13,15 +13,12 @@ const Button = React.forwardRef(function Button({
   const variants = {
     primary: 'bg-[var(--primary)] text-white shadow-sm hover:bg-[var(--primary-hover)] hover:-translate-y-px',
     secondary: 'border border-[var(--border)] bg-white text-[var(--text-primary)] hover:border-[var(--border-strong)] hover:bg-stone-50',
-    danger: 'border border-red-200 bg-white text-[var(--danger)] hover:bg-red-50',
     solidDanger: 'bg-[var(--danger)] text-white hover:bg-red-700',
-    ghost: 'bg-transparent text-[var(--text-secondary)] hover:bg-black/5 hover:text-[var(--text-primary)]',
   };
   const sizes = {
     sm: 'h-9 px-3 text-xs',
     md: 'h-10 px-4 text-sm',
     lg: 'h-12 px-5 text-sm',
-    icon: 'h-10 w-10 p-0',
   };
   // Prevent duplicate API actions while a button-owned request is in flight.
   const isDisabled = disabled || isLoading;

@@ -1,104 +1,154 @@
-import React, { useState } from 'react';
-import { useTodos } from '../hooks/useTodos';
+import React, { useEffect, useState } from 'react';
+import { LogOut } from 'lucide-react';
+import { useDispatch, useSelector } from 'react-redux';
+import {
+  completeTodo,
+  createTodo,
+  deleteTodo,
+  fetchTodos,
+} from '../features/todos/todosSlice';
+import {
+  selectAllTodos,
+  selectCompletingIds,
+  selectCreateStatus,
+  selectDeletingIds,
+  selectTodoStats,
+  selectTodosError,
+  selectTodosFetchStatus,
+  selectVisibleTodos,
+} from '../features/todos/todosSelectors';
+import {
+  filterChanged,
+  queryChanged,
+  selectTaskFilter,
+  selectTaskQuery,
+  selectTaskSort,
+  sortChanged,
+} from '../features/taskView/taskViewSlice';
 import { useKeyboardShortcuts } from '../hooks/useKeyboardShortcuts';
-import Navbar from './ui/Navbar';
-import { toast } from './ui/Toast';
-import ConfirmModal from './ui/ConfirmModal';
 import AddTodoForm from './todos/AddTodoForm';
-import DashboardHero from './todos/DashboardHero';
-import FocusCard from './todos/FocusCard';
 import TodoListPanel from './todos/TodoListPanel';
+import Button from './ui/Button';
+import ConfirmModal from './ui/ConfirmModal';
+import { toast } from './ui/Toast';
 
 export default function TodoDashboard({ onLogout, user }) {
-  // English: Shared todo data comes from Redux through this custom hook.
-  // Roman Urdu: Shared todo data is custom hook ke through Redux se aata hai.
-  const todoState = useTodos();
+  // Component direct Redux hooks use karta hai, is liye data flow yahin visible hai.
+  const dispatch = useDispatch();
 
-  // English: The selected delete item is temporary UI state, so it stays local.
-  // Roman Urdu: Selected delete item temporary UI state hai, is liye local hai.
+  // Delete target local UI state hai; shared app data nahi, is liye Redux mein nahi hai.
   const [deleteTarget, setDeleteTarget] = useState(null);
   useKeyboardShortcuts();
 
-  const progress = todoState.stats.total
-    ? Math.round((todoState.stats.completed / todoState.stats.total) * 100)
-    : 0;
+  // Selectors Redux state read karte hain aur state change par component re-render hota hai.
+  const todos = useSelector(selectAllTodos);
+  const visibleTodos = useSelector(selectVisibleTodos);
+  const stats = useSelector(selectTodoStats);
+  const fetchStatus = useSelector(selectTodosFetchStatus);
+  const createStatus = useSelector(selectCreateStatus);
+  const completingIds = useSelector(selectCompletingIds);
+  const deletingIds = useSelector(selectDeletingIds);
+  const error = useSelector(selectTodosError);
+  const filter = useSelector(selectTaskFilter);
+  const query = useSelector(selectTaskQuery);
+  const sort = useSelector(selectTaskSort);
 
-  const handleAdd = async (todo) => {
-    // English: This calls the Redux createTodo thunk through useTodos.
-    // Roman Urdu: Yeh useTodos ke through Redux createTodo thunk call karta hai.
-    await todoState.addTodo(todo);
-    toast.success('Task added to your plan.');
+  // Dashboard pehli dafa open ho to backend se todos load karo.
+  useEffect(() => {
+    if (fetchStatus === 'idle') {
+      dispatch(fetchTodos());
+    }
+  }, [dispatch, fetchStatus]);
+
+  // Async thunks API call karte hain; fulfilled reducer Redux state update karta hai.
+  const handleAdd = async (newTodo) => {
+    await dispatch(createTodo(newTodo)).unwrap();
+    toast.success('Task added.');
   };
 
   const handleComplete = async (id) => {
-    // English: Redux updates the matching todo after the backend succeeds.
-    // Roman Urdu: Backend success ke baad Redux matching todo update karta hai.
     try {
-      await todoState.finishTodo(id);
-      toast.success('Nice work - task completed.');
-    } catch (error) {
-      toast.error(error);
+      await dispatch(completeTodo(id)).unwrap();
+      toast.success('Task completed.');
+    } catch (requestError) {
+      toast.error(requestError);
     }
   };
 
-  const handleRemove = async () => {
-    // English: The modal chooses the id; Redux performs the delete request.
-    // Roman Urdu: Modal id choose karta hai; Redux delete request chalata hai.
+  const handleDelete = async () => {
     if (!deleteTarget) return;
 
     try {
-      await todoState.removeTodo(deleteTarget.id);
+      await dispatch(deleteTodo(deleteTarget.id)).unwrap();
       setDeleteTarget(null);
-      toast.success('Task removed.');
-    } catch (error) {
-      toast.error(error);
+      toast.success('Task deleted.');
+    } catch (requestError) {
+      toast.error(requestError);
     }
+  };
+
+  // Related list props group ki hain; Redux hooks upar component mein direct visible hain.
+  const todoState = {
+    todos,
+    visibleTodos,
+    stats,
+    error,
+    filter,
+    query,
+    sort,
+    loading: fetchStatus === 'loading',
+    completingIds,
+    deletingIds,
+    refresh: () => dispatch(fetchTodos()),
+    setFilter: (value) => dispatch(filterChanged(value)),
+    setQuery: (value) => dispatch(queryChanged(value)),
+    setSort: (value) => dispatch(sortChanged(value)),
   };
 
   return (
     <div className="min-h-screen">
-      <Navbar user={user} onLogout={onLogout} />
-      <main className="mx-auto max-w-7xl px-4 pb-16 pt-8 sm:px-6 sm:pt-10 lg:px-8">
-        <DashboardHero user={user} stats={todoState.stats} progress={progress} />
+      <header className="border-b border-[var(--border)] bg-white">
+        <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-4 sm:px-6">
+          <div>
+            <h1 className="text-lg font-extrabold">TodoFlow</h1>
+            <p className="text-xs text-[var(--text-secondary)]">{user?.email}</p>
+          </div>
+          <Button variant="secondary" size="sm" onClick={onLogout}>
+            <LogOut className="h-4 w-4" />
+            Log out
+          </Button>
+        </div>
+      </header>
 
-        <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_360px]">
+      <main className="mx-auto max-w-6xl px-4 py-8 sm:px-6">
+        <div className="mb-6">
+          <h2 className="text-2xl font-extrabold">My tasks</h2>
+          <p className="mt-1 text-sm text-[var(--text-secondary)]">
+            {stats.pending} open · {stats.completed} completed
+          </p>
+        </div>
+
+        <div className="grid items-start gap-6 lg:grid-cols-[300px_minmax(0,1fr)]">
+          <AddTodoForm
+            creating={createStatus === 'loading'}
+            onAdd={handleAdd}
+          />
           <TodoListPanel
-            todos={todoState.todos}
-            visibleTodos={todoState.visibleTodos}
-            stats={todoState.stats}
-            loading={todoState.loading}
-            error={todoState.error}
-            filter={todoState.filter}
-            query={todoState.query}
-            sort={todoState.sort}
-            completingIds={todoState.completingIds}
-            deletingIds={todoState.deletingIds}
-            onRefresh={todoState.refresh}
-            onFilterChange={todoState.setFilter}
-            onQueryChange={todoState.setQuery}
-            onSortChange={todoState.setSort}
+            todoState={todoState}
             onComplete={handleComplete}
             onDelete={setDeleteTarget}
           />
-
-          <aside className="space-y-5 lg:sticky lg:top-24">
-            <AddTodoForm creating={todoState.creating} onAdd={handleAdd} />
-            <FocusCard
-              progress={progress}
-              pending={todoState.stats.pending}
-              hasTodos={Boolean(todoState.stats.total)}
-            />
-          </aside>
         </div>
       </main>
 
       <ConfirmModal
+        // Modal tab open hota hai jab user ne delete karne ke liye todo select kiya ho.
         open={Boolean(deleteTarget)}
-        title="Delete this task?"
-        description={deleteTarget ? `"${deleteTarget.title}" will be permanently removed from your list.` : ''}
-        isLoading={Boolean(deleteTarget && todoState.deletingIds[deleteTarget.id])}
+        title="Delete task?"
+        description={deleteTarget ? `Delete “${deleteTarget.title}”?` : ''}
+        isLoading={Boolean(deleteTarget && deletingIds[deleteTarget.id])}
         onCancel={() => setDeleteTarget(null)}
-        onConfirm={handleRemove}
+        onConfirm={handleDelete}
       />
     </div>
   );

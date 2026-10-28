@@ -25,23 +25,23 @@ Axios, Tailwind CSS, and Vite. It communicates with the DDD API by default.
 ## Application flow
 
 ```text
-Component
+App or TodoDashboard
+    |-- useSelector -----------> reads Redux state
     |
-    v
-Custom hook
-    |
-    v
-Redux action / async thunk
-    |
-    v
-API module -> Axios client -> DDD backend
-    |
-    v
-Reducer -> selector -> updated component
+    `-- dispatch(action)
+            |
+            v
+        async thunk -> API module -> DDD backend
+            |
+            v
+        reducer updates Redux state
+            |
+            `-------------> useSelector re-renders component
 ```
 
-Components do not call Axios directly. API details remain in `src/api`, async
-work remains in Redux thunks, and selectors prepare data for rendering.
+Components do not call Axios directly. `App.jsx` and `TodoDashboard.jsx` use
+Redux hooks directly, API details remain in `src/api`, and selectors prepare
+data for rendering.
 
 ## Project structure
 
@@ -51,13 +51,18 @@ frontend/
 |   |-- api/                 # Axios client and endpoint modules
 |   |-- app/                 # Redux store configuration
 |   |-- components/
-|   |   |-- todos/           # Dashboard feature components
-|   |   `-- ui/              # Reusable UI primitives
+|   |   |-- AuthForm.jsx
+|   |   |-- TodoDashboard.jsx
+|   |   |-- TodoItem.jsx
+|   |   |-- todos/
+|   |   |   |-- AddTodoForm.jsx
+|   |   |   `-- TodoListPanel.jsx
+|   |   `-- ui/              # Button, input, modal, and toast only
 |   |-- features/
 |   |   |-- auth/            # Session state and persistence
 |   |   |-- todos/           # Todo thunks, reducers, and selectors
 |   |   `-- taskView/        # Filter, search, and sort state
-|   |-- hooks/               # Component-friendly Redux interfaces
+|   |-- hooks/               # Keyboard shortcut behavior
 |   |-- App.jsx
 |   `-- main.jsx
 |-- package.json
@@ -120,8 +125,8 @@ truth in Redux.
 - `src/features/auth/authSlice.js` — authentication thunks and session state
 - `src/features/todos/todosSlice.js` — todo request lifecycle
 - `src/features/todos/todosSelectors.js` — memoized stats and visible todos
-- `src/hooks/useAuth.js` and `src/hooks/useTodos.js` — component-facing APIs
-- `src/components/TodoDashboard.jsx` — dashboard composition
+- `src/App.jsx` — direct authentication selectors and dispatch calls
+- `src/components/TodoDashboard.jsx` — direct todo selectors and dispatch calls
 
 ## Available commands
 

@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Manrope:wght@400;500;600;700;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap');
 
 @tailwind base;
 @tailwind components;
@@ -6,27 +6,14 @@
 
 :root {
   --bg-main: #f4f3ed;
-  --bg-surface: #ffffff;
-  --bg-muted: #eeece4;
-  --bg-subtle: #f7f9ff;
   --text-primary: #171917;
   --text-secondary: #62655f;
   --text-muted: #979a93;
   --primary: #3157d5;
   --primary-hover: #2547bd;
-  --primary-soft: #e9edff;
-  --primary-foreground: #ffffff;
-  --success: #3d7c4d;
-  --success-light: #edf7ed;
-  --warning: #b46a18;
-  --warning-light: #fff5e6;
   --danger: #b94343;
-  --danger-light: #fff0ef;
   --border: #deddd5;
   --border-strong: #c8c7be;
-  --radius-md: 0.75rem;
-  --radius-lg: 1rem;
-  --radius-xl: 1.4rem;
   --shadow-sm: 0 1px 2px rgb(23 25 23 / 0.04);
   --shadow-md: 0 14px 36px rgb(23 25 23 / 0.07);
 }
@@ -57,48 +44,6 @@
     @apply h-12 w-full rounded-xl border border-[var(--border)] bg-white px-4 text-sm text-[var(--text-primary)] placeholder:text-[var(--text-muted)] transition;
     @apply hover:border-[var(--border-strong)] focus:border-[var(--primary)] focus:ring-4 focus:ring-blue-500/10;
   }
-
-  .card-surface {
-    @apply rounded-[var(--radius-xl)] border border-[var(--border)] bg-white;
-    box-shadow: var(--shadow-sm);
-  }
-
-  .eyebrow {
-    @apply font-mono text-[10px] font-medium uppercase tracking-[0.2em] text-[var(--primary)];
-  }
-
-  .hero-panel {
-    isolation: isolate;
-    background:
-      radial-gradient(circle at 88% 15%, rgb(86 119 239 / 0.34), transparent 22rem),
-      linear-gradient(135deg, #171917 0%, #20241f 100%);
-    box-shadow: 0 24px 60px rgb(23 25 23 / 0.16);
-  }
-
-  .hero-panel::before {
-    content: '';
-    position: absolute;
-    inset: 0;
-    z-index: -1;
-    opacity: 0.13;
-    background-image: radial-gradient(circle, #fff 1px, transparent 1px);
-    background-size: 22px 22px;
-    mask-image: linear-gradient(to left, black, transparent 72%);
-  }
-
-  .new-task-card {
-    position: relative;
-    overflow: hidden;
-    box-shadow: var(--shadow-md);
-  }
-
-  .new-task-card::before {
-    content: '';
-    position: absolute;
-    inset: 0 0 auto;
-    height: 4px;
-    background: linear-gradient(90deg, var(--primary), #7592f4 60%, #9fce91);
-  }
 }
 
 @keyframes rise {
@@ -111,10 +56,8 @@
   to { opacity: 1; transform: translateX(0); }
 }
 
-.animate-fade-in { animation: rise 0.28s ease-out both; }
 .animate-slide-up { animation: rise 0.2s ease-out both; }
 .animate-toast-in { animation: toast-in 0.22s ease-out both; }
-.font-mono { font-family: 'DM Mono', ui-monospace, monospace; }
 
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {

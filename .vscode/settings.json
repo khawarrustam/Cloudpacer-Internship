@@ -1,14 +1,14 @@
 {
-  "python.defaultInterpreterPath": "${workspaceFolder}/Todo-List/todo_api/venv/bin/python",
+  "python.defaultInterpreterPath": "${workspaceFolder}/backend/DDD/.venv/Scripts/python.exe",
   "python.analysis.extraPaths": [
-    "${workspaceFolder}/Todo-List/todo_api",
-    "${workspaceFolder}/Todo-List/todo_api/src",
-    "${workspaceFolder}/Todo MVC"
+    "${workspaceFolder}/backend/DDD",
+    "${workspaceFolder}/backend/DDD/src",
+    "${workspaceFolder}/backend/MVC"
   ],
   "python.autoComplete.extraPaths": [
-    "${workspaceFolder}/Todo-List/todo_api",
-    "${workspaceFolder}/Todo-List/todo_api/src",
-    "${workspaceFolder}/Todo MVC"
+    "${workspaceFolder}/backend/DDD",
+    "${workspaceFolder}/backend/DDD/src",
+    "${workspaceFolder}/backend/MVC"
   ],
   "python.analysis.autoSearchPaths": true,
   "python.analysis.diagnosticMode": "openFilesOnly",

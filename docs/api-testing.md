@@ -10,7 +10,7 @@ Server is running at: `http://127.0.0.1:8000`
 2. Click **Import** (top-left corner)
 3. Drag and drop this file:
    ```
-   Todo-List/todo_api/Todo_API.postman_collection.json
+   postman/ddd-api.postman_collection.json
    ```
 4. You'll see **"Todo Onion Architecture API"** appear in your sidebar with 3 folders:
    - Health

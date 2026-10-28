@@ -2,7 +2,7 @@
 	"info": {
 		"_postman_id": "todo-mvc-api-collection",
 		"name": "Todo MVC Architecture API",
-		"description": "Traditional MVC Architecture Todo API with FastAPI & MongoDB.\n\nBase URL: http://127.0.0.1:8001\nRun: cd 'Todo MVC' && python main_mvc.py\n\n## Auth Flow\n1. Run **Signup** → token is auto-saved to `auth_token` variable\n2. All protected requests will automatically use the saved token",
+		"description": "Traditional MVC Architecture Todo API with FastAPI & Firebase.\n\nBase URL: http://127.0.0.1:8001\nRun: cd backend/MVC && python main_mvc.py\n\n## Auth Flow\n1. Run **Signup** → token is auto-saved to `auth_token` variable\n2. All protected requests will automatically use the saved token",
 		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
 	},
 	"variable": [

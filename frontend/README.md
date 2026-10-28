@@ -21,8 +21,8 @@ The frontend runs on `http://localhost:5173` and calls the backend on `http://12
 First start the backend. Then open a second PowerShell window:
 
 ```powershell
-cd todo-frontend
-npm install
+cd frontend
+npm ci
 npm run dev
 ```
 
@@ -40,7 +40,7 @@ npm run build
 
 ## Optional environment setting
 
-Create `.env` inside `todo-frontend` only when the backend uses another URL:
+Create `.env` inside `frontend` only when the backend uses another URL:
 
 ```env
 VITE_API_URL=http://127.0.0.1:8000
@@ -215,13 +215,14 @@ Roman Urdu: Har feature API se slice, phir hook, phir component tak seedha flow 
 Make sure the backend is running:
 
 ```powershell
-cd ..\Todo-List\todo_api
+cd ..\backend\DDD
 uvicorn main:app --reload
 ```
 
 ### Login fails
 
-Authentication uses Firebase. Check the backend Firebase service account and `FIREBASE_WEB_API_KEY`.
+Authentication uses Firebase. Check that the backend service account belongs to
+the Firebase project configured by the application.
 
 ### The session expires
 

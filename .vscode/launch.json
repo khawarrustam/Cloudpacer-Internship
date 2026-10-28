@@ -18,7 +18,7 @@
             ],
             "jinja": true,
             "justMyCode": true,
-            "cwd": "${workspaceFolder}/Todo-List/todo_api",
+            "cwd": "${workspaceFolder}/backend/DDD",
             "env": {
                 "USE_FIREBASE": "true",
                 "FIREBASE_CREDENTIALS_PATH": "serviceAccountKey.json"
@@ -40,7 +40,7 @@
             ],
             "jinja": true,
             "justMyCode": true,
-            "cwd": "${workspaceFolder}/Todo-List/todo_api",
+            "cwd": "${workspaceFolder}/backend/DDD",
             "env": {
                 "USE_FIREBASE": "false"
             },

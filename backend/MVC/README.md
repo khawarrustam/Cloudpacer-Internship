@@ -1,8 +1,8 @@
 # 🏗️ Todo MVC — Traditional MVC Architecture (with Firebase Firestore)
 
 > The **exact same Todo List application** built with the **Model-View-Controller (MVC)** pattern using FastAPI + Firebase Firestore.  
-> Compare this side-by-side with the DDD/Onion version in [`Todo-List/todo_api/`](file:///Users/apple/internship-practice/Todo-List/todo_api/).  
-> 📖 **Comprehensive Master Architecture Guide:** [`../README.md`](file:///Users/apple/internship-practice/README.md)
+> Compare this side-by-side with the DDD/Onion version in [`backend/DDD`](../DDD/).  
+> 📖 **Comprehensive Master Architecture Guide:** [`docs/architecture.md`](../../docs/architecture.md)
 
 **Author:** RanaKhawarAli
 
@@ -11,11 +11,10 @@
 ## 📁 Project Structure
 
 ```text
-Todo MVC/
+backend/MVC/
 ├── main_mvc.py                     # 🔌 Entry point (run MVC server on port 8001)
 ├── requirements.txt                # 📦 Dependencies (FastAPI + firebase-admin)
-├── serviceAccountKey.json          # 🔑 Firebase Credentials
-├── Todo_MVC_API.postman_collection.json # 📬 Postman collection for Port 8001
+├── serviceAccountKey.json          # 🔑 Local Firebase credentials (Git-ignored)
 │
 └── src_mvc/
     ├── models/                     # 📊 MODEL — Data schema + business validation helpers
@@ -37,18 +36,19 @@ Todo MVC/
 
 ### Prerequisites
 - Python 3.11+
-- `serviceAccountKey.json` present in this folder (or parent workspace).
+- `serviceAccountKey.json` present in this folder, or
+  `FIREBASE_CREDENTIALS_PATH` set to an existing credential file.
 
 ### Setup & Run
 
-```bash
-cd "Todo MVC"
+```powershell
+cd backend\MVC
+python -m venv .venv
+.\.venv\Scripts\Activate.ps1
+python -m pip install -r requirements.txt
 
-# Activate virtual environment
-source venv/bin/activate
-
-# Install dependencies (if not installed)
-pip install -r requirements.txt
+# Skip this line when serviceAccountKey.json is in the current folder.
+$env:FIREBASE_CREDENTIALS_PATH = "..\DDD\serviceAccountKey.json"
 
 # Run the server (port 8001 to avoid conflict with DDD on 8000)
 python main_mvc.py
@@ -79,7 +79,7 @@ Server will start on: `http://127.0.0.1:8001`
 
 ### File-to-File Comparison
 
-| Responsibility | MVC (This Project) | DDD/Onion (`Todo-List/todo_api/`) |
+| Responsibility | MVC (This Project) | DDD/Onion (`backend/DDD/`) |
 |---|---|---|
 | **Data schema** | `src_mvc/models/todo_model.py` | `src/domain/entities.py` + `src/domain/value_objects.py` |
 | **Business rules** | `src_mvc/models/todo_model.py` | `src/domain/entities.py` (method on entity) |
@@ -104,4 +104,4 @@ MVC architecture mein Controller sab kuch khud karta hai:
 **Fayda:** Boht fast aur kam files mein ban jata hai.  
 **Nuqsan:** Controller "Fat" ho jata hai aur database ke sath tightly coupled hota hai.
 
-Mukammal request/response flow aur SOLID principles breakdown ke liye parhein: [Architectural Master Guide (README.md)](file:///Users/apple/internship-practice/README.md).
+Mukammal request/response flow aur SOLID principles breakdown ke liye parhein: [Architectural Master Guide](../../docs/architecture.md).

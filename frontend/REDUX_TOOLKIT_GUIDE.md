@@ -1,5 +1,10 @@
 # TodoFlow ko Redux Toolkit par migrate karne ki complete guide
 
+> **Repository note:** The frontend is now located in `frontend/` and has
+> already been migrated to Redux Toolkit. The GitHub links below intentionally
+> retain the historical `todo-frontend/` path because they point to the
+> committed pre-Redux snapshot used by this learning guide.
+
 > Audience: React/Redux beginner
 >
 > Language: Roman Urdu + simple English
@@ -44,7 +49,7 @@ Yeh links GitHub ke committed **pre-Redux baseline `f373040`** ko point karti ha
 
 | Step | File and line | Kya karna hai? | Code kahan hai? |
 |---:|---|---|---|
-| 1 | `todo-frontend/package.json` dependencies | Install command run karo; JSON manually paste na karo. | [Phase 1](#phase-1--packages-install-karo) |
+| 1 | `frontend/package.json` dependencies | Install command run karo; JSON manually paste na karo. | [Phase 1](#phase-1--packages-install-karo) |
 | 2 | `src/features/taskView/taskViewSlice.js`, **new file line 1** | Poora taskView slice paste karo. | [Phase 2](#phase-2--sab-se-simple-taskviewslice) |
 | 3 | `src/app/store.js`, **new file line 1** | Initial store paste karo. | [Phase 3](#phase-3--store-banao) |
 | 4 | [`src/main.jsx` 1-13](https://github.com/khawarrustam/Cloudpacer-Internship/blob/f373040c05dac4a68b2f4b979f8a7832db39d706/todo-frontend/src/main.jsx#L1-L13) | Poora file Provider wale block se replace karo. | [Phase 4](#phase-4--root-par-provider-lagao) |
@@ -549,7 +554,7 @@ Note: ek edit ke baad local lines shift ho sakti hain. Is surat mein `Ctrl+F` se
 > Folder: repository root se command start karo.
 
 ```bash
-cd todo-frontend
+cd frontend
 npm install @reduxjs/toolkit react-redux
 ```
 
@@ -564,7 +569,7 @@ Pehle API ke baghair filter/search/sort Redux par shift karo. Is se action → r
 
 > **CREATE NEW FILE AND COPY THE WHOLE NEXT BLOCK**
 >
-> File: `todo-frontend/src/features/taskView/taskViewSlice.js`<br>
+> File: `frontend/src/features/taskView/taskViewSlice.js`<br>
 > Paste starting at: **line 1**<br>
 > Action: new blank file create karo, phir next code block ka copy button press karke poora block paste karo.
 
@@ -614,7 +619,7 @@ export default taskViewSlice.reducer;
 
 > **CREATE NEW FILE AND COPY THE WHOLE NEXT BLOCK**
 >
-> File: `todo-frontend/src/app/store.js`<br>
+> File: `frontend/src/app/store.js`<br>
 > Paste starting at: **line 1**<br>
 > Action: new blank file create karo, phir next code block poora paste karo.
 
@@ -640,7 +645,7 @@ export const store = configureStore({
 
 > **REPLACE THE WHOLE FILE WITH THE NEXT CODE BLOCK**
 >
-> File: `todo-frontend/src/main.jsx`<br>
+> File: `frontend/src/main.jsx`<br>
 > Old code: **lines 1-13**<br>
 > Paste starting at: **line 1**<br>
 > Action: `Ctrl+A` inside `main.jsx`, phir next code block copy/paste karo.
@@ -673,7 +678,7 @@ Provider ke baghair `useSelector`/`useDispatch` use karne par “could not find 
 
 > **DELETE — next block copy/paste nahi karna**
 >
-> File: `todo-frontend/src/components/TodoDashboard.jsx`<br>
+> File: `frontend/src/components/TodoDashboard.jsx`<br>
 > Delete old lines: **32-34**<br>
 > Action: file mein neeche wali three lines search karke delete karo.
 
@@ -687,7 +692,7 @@ const [sort, setSort] = useState('smart');
 
 > **ADD THE NEXT IMPORT BLOCK**
 >
-> File: `todo-frontend/src/components/TodoDashboard.jsx`<br>
+> File: `frontend/src/components/TodoDashboard.jsx`<br>
 > Add near: **lines 1-19**, doosre imports ke sath<br>
 > Action: next block ko file ke top par last import ke baad paste karo.
 
@@ -707,7 +712,7 @@ import {
 
 > **ADD THE NEXT STATE BLOCK**
 >
-> File: `todo-frontend/src/components/TodoDashboard.jsx`<br>
+> File: `frontend/src/components/TodoDashboard.jsx`<br>
 > Add after: `export default function TodoDashboard(...) {` — old baseline **line 27**<br>
 > Action: opening `{` ke baad component ke andar paste karo; imports ke beech paste mat karna.
 
@@ -722,7 +727,7 @@ const sort = useSelector(selectTaskSort);
 
 > **REPLACE ONE HANDLER AT A TIME**
 >
-> File: `todo-frontend/src/components/TodoDashboard.jsx`<br>
+> File: `frontend/src/components/TodoDashboard.jsx`<br>
 > Search old baseline lines: **242 (`setQuery`)**, **248 (`setSort`)**, **264 (`setFilter`)**<br>
 > Action: poori input/select/button line replace nahi karni; sirf matching `onChange` ya `onClick` expression replace karo.
 
@@ -746,7 +751,7 @@ taskView/filterChanged
 
 > **CREATE NEW FILE AND COPY THE WHOLE NEXT BLOCK**
 >
-> File: `todo-frontend/src/features/auth/authSlice.js`
+> File: `frontend/src/features/auth/authSlice.js`
 >
 > Paste starting at: **line 1**
 >
@@ -894,7 +899,7 @@ Why storage functions thunk ke aas paas hain, reducer mein nahi?
 
 > **REPLACE THE WHOLE STORE FILE WITH THE NEXT BLOCK**
 >
-> File: `todo-frontend/src/app/store.js`
+> File: `frontend/src/app/store.js`
 >
 > Current phase-3 file: **lines 1-8**
 >
@@ -921,7 +926,7 @@ export const store = configureStore({
 
 > **REPLACE THE WHOLE FILE WITH THE NEXT CODE BLOCK**
 >
-> File: `todo-frontend/src/App.jsx`
+> File: `frontend/src/App.jsx`
 >
 > Old pre-Redux code: **lines 1-104**
 >
@@ -1009,7 +1014,7 @@ Clean callback registration pattern use karo.
 
 > **REPLACE THE WHOLE API CLIENT FILE WITH THE NEXT BLOCK**
 >
-> File: `todo-frontend/src/api/client.js`
+> File: `frontend/src/api/client.js`
 >
 > Old pre-Redux code: **lines 1-33**
 >
@@ -1056,7 +1061,7 @@ export default apiClient;
 
 > **REPLACE THE WHOLE MAIN FILE WITH THE NEXT BLOCK**
 >
-> File: `todo-frontend/src/main.jsx`
+> File: `frontend/src/main.jsx`
 >
 > Action: Phase 4 wala `main.jsx` ab is complete version se replace karo. Paste starting at **line 1**.
 
@@ -1124,7 +1129,7 @@ App automatically renders AuthForm
 
 > **CREATE NEW FILE AND COPY THE WHOLE NEXT BLOCK**
 >
-> File: `todo-frontend/src/features/todos/todosSlice.js`
+> File: `frontend/src/features/todos/todosSlice.js`
 >
 > Paste starting at: **line 1**
 >
@@ -1298,7 +1303,7 @@ Notes:
 
 > **REPLACE THE WHOLE STORE FILE WITH THE NEXT BLOCK**
 >
-> File: `todo-frontend/src/app/store.js`
+> File: `frontend/src/app/store.js`
 >
 > Paste starting at: **line 1**
 >
@@ -1325,7 +1330,7 @@ export const store = configureStore({
 
 > **CREATE NEW FILE AND COPY THE WHOLE NEXT BLOCK**
 >
-> File: `todo-frontend/src/features/todos/todosSelectors.js`
+> File: `frontend/src/features/todos/todosSelectors.js`
 >
 > Paste starting at: **line 1**
 >
@@ -1403,7 +1408,7 @@ Warning: Redux state array ko direct `.sort()` mat karo outside reducer. Is code
 
 > **ADD THE NEXT IMPORT BLOCK**
 >
-> File: `todo-frontend/src/components/TodoDashboard.jsx`
+> File: `frontend/src/components/TodoDashboard.jsx`
 >
 > Add near old baseline: **lines 1-19**, doosre imports ke sath
 >
@@ -1433,7 +1438,7 @@ import {
 
 > **REPLACE THE OLD HOOK/REQUEST-STATE AREA WITH THE NEXT BLOCK**
 >
-> File: `todo-frontend/src/components/TodoDashboard.jsx`
+> File: `frontend/src/components/TodoDashboard.jsx`
 >
 > Old hook call: **line 28**
 >
@@ -1474,7 +1479,7 @@ useEffect(() => {
 
 ### Step 14D — refresh button handler replace karo
 
-> File: `todo-frontend/src/components/TodoDashboard.jsx`
+> File: `frontend/src/components/TodoDashboard.jsx`
 >
 > Old baseline: **line 254**, `onClick={refresh}` ko next expression se replace karo.
 
@@ -1666,7 +1671,7 @@ Sirf auth/todos samajhne ke baad:
 
 > **OPTIONAL: CREATE NEW FILE AND COPY THE WHOLE NEXT BLOCK**
 >
-> File: `todo-frontend/src/features/notifications/notificationsSlice.js`
+> File: `frontend/src/features/notifications/notificationsSlice.js`
 >
 > Paste starting at: **line 1**
 >

@@ -66,11 +66,13 @@ Roman Urdu: Andar wali domain layer ko FastAPI ya Firebase import nahi karna cha
 ## Folder guide
 
 ```text
-todo_api/
+DDD/
 |-- main.py                    # Creates the FastAPI app
-|-- requirements.txt
-|-- clear_db.py                # Optional Firebase cleanup script
-|-- reformat_logs.py           # Checks print lines for emojis
+|-- requirements.txt           # Runtime dependencies
+|-- requirements-dev.txt       # Runtime dependencies plus test tools
+|-- scripts/
+|   |-- clear_firebase.py      # Optional Firebase cleanup script
+|   +-- check_prints.py        # Checks print lines for emojis
 |
 +-- src/
     |-- bootstrap.py           # Connects repositories and use cases
@@ -125,7 +127,6 @@ Roman Urdu: Request router se use case, phir domain, phir repository tak jati ha
 - Python 3.10 or newer
 - a Firebase project for signup and login
 - a Firebase service account JSON file
-- the Firebase Web API key
 
 Important: `USE_FIREBASE=false` only changes todo storage to memory. Authentication still uses Firebase.
 
@@ -136,8 +137,7 @@ Roman Urdu: Memory mode mein todos temporary hotay hain, lekin login phir bhi Fi
 1. Open Firebase Console.
 2. Enable Email/Password in Authentication.
 3. Download a service account JSON file.
-4. Save it in `todo_api` as `serviceAccountKey.json`.
-5. Copy the Web API key from Project Settings.
+4. Save it in `backend/DDD` as `serviceAccountKey.json`.
 
 The credentials file is ignored by Git. Never commit it.
 
@@ -146,20 +146,14 @@ The credentials file is ignored by Git. Never commit it.
 Open PowerShell in this folder:
 
 ```powershell
-cd "Todo-List\todo_api"
+cd backend\DDD
 python -m venv .venv
 .\.venv\Scripts\Activate.ps1
-python -m pip install -r requirements.txt
+python -m pip install -r requirements-dev.txt
 ```
 
-Set the Firebase values for the current PowerShell window:
-
-```powershell
-$env:FIREBASE_CREDENTIALS_PATH="serviceAccountKey.json"
-$env:FIREBASE_WEB_API_KEY="your-firebase-web-api-key"
-```
-
-Choose todo storage.
+The backend automatically uses `serviceAccountKey.json` and the configured Web
+API key. The only environment variable needed at runtime selects todo storage.
 
 ### Easy local storage
 
@@ -243,7 +237,7 @@ Roman Urdu: Har print layer aur file dono batata hai: data kahan se aaya aur kah
 Check print statements with:
 
 ```powershell
-python reformat_logs.py
+python scripts/check_prints.py
 ```
 
 ## Run tests
@@ -277,7 +271,8 @@ Make sure the app starts through `main.py` and the service account path is corre
 
 ### Firebase says the API key is invalid
 
-Set the correct `FIREBASE_WEB_API_KEY`, then restart Uvicorn.
+Make sure the service account belongs to the Firebase project configured by the
+application, then restart Uvicorn.
 
 ### Login works but todos disappear
 
@@ -297,8 +292,8 @@ uvicorn main:app --reload --port 8001
 
 ## Safe cleanup script
 
-`clear_db.py` permanently deletes Firebase todos and authentication users. Run it only when you intentionally want to clear development data:
+`scripts/clear_firebase.py` permanently deletes Firebase todos and authentication users. Run it only when you intentionally want to clear development data:
 
 ```powershell
-python clear_db.py
+python scripts/clear_firebase.py
 ```

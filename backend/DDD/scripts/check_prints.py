@@ -6,13 +6,13 @@ import re
 EMOJI_PATTERN = re.compile("[\U0001F300-\U0001FAFF]")
 
 
-def find_emoji_prints(source_directory: Path) -> list[str]:
+def find_emoji_prints(project_directory: Path) -> list[str]:
     """Return print lines that still contain emojis."""
     matches = []
     project_files = [
-        source_directory / "main.py",
-        source_directory / "clear_db.py",
-        *list((source_directory / "src").rglob("*.py")),
+        project_directory / "main.py",
+        project_directory / "scripts" / "clear_firebase.py",
+        *list((project_directory / "src").rglob("*.py")),
     ]
 
     # English: Check project code only, not installed venv packages.
@@ -29,8 +29,8 @@ def find_emoji_prints(source_directory: Path) -> list[str]:
 
 
 if __name__ == "__main__":
-    source = Path(__file__).parent
-    problems = find_emoji_prints(source)
+    project = Path(__file__).resolve().parents[1]
+    problems = find_emoji_prints(project)
 
     if problems:
         print(

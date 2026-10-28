@@ -1,25 +1,33 @@
-# Environment files
+# Local configuration and credentials
 .env
+.env.*
 *.env
-
-# Credentials & Secrets
 *serviceAccountKey.json
-serviceAccountKey.json
 
 # Python
+.venv/
 venv/
 env/
 __pycache__/
-*.pyc
+*.py[cod]
+*.egg-info/
 .pytest_cache/
 .mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
 
-# OS
-.DS_Store
-Thumbs.db
-
-# Node
+# Node and frontend builds
 node_modules/
 dist/
 build/
 .next/
+
+# Logs and temporary files
+*.log
+*.tmp
+
+# Editors and operating systems
+.idea/
+.DS_Store
+Thumbs.db

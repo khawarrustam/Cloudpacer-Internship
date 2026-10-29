@@ -5,7 +5,8 @@ import Input from './ui/Input';
 import { toast } from './ui/Toast';
 
 export default function AuthForm({ onSignup, onLogin, loading }) {
-  // Form values temporary hain, is liye local state mein hain; Redux ki zaroorat nahi.
+  // English: Form values are temporary, so local state is simpler than Redux here.
+  // Roman Urdu: Form values temporary hain, is liye local state Redux se simple hai.
   const [isLogin, setIsLogin] = useState(true);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -14,7 +15,8 @@ export default function AuthForm({ onSignup, onLogin, loading }) {
   const [error, setError] = useState(null);
 
   const handleSubmit = async (event) => {
-    // Browser reload roko aur current mode ke mutabiq login ya signup call karo.
+    // English: Prevent page reload, then call login or signup for the current mode.
+    // Roman Urdu: Page reload roko, phir current mode ke mutabiq login ya signup call karo.
     event.preventDefault();
     setError(null);
 
@@ -30,6 +32,8 @@ export default function AuthForm({ onSignup, onLogin, loading }) {
     toast.success(isLogin ? 'Welcome back.' : 'Account created.');
   };
 
+  // English: The same form switches between login and signup without changing pages.
+  // Roman Urdu: Yehi form page change kiye baghair login aur signup ke darmiyan switch hota hai.
   const switchMode = () => {
     setIsLogin((current) => !current);
     setError(null);

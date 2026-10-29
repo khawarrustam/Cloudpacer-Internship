@@ -2,7 +2,8 @@ import React from 'react';
 import { Check, Loader2, Trash2 } from 'lucide-react';
 
 export default function TodoItem({ todo, onComplete, onDelete, isCompleting, isDeleting }) {
-  // TodoItem presentation component hai: data props se leta aur events parent ko deta hai.
+  // English: This presentation component receives data and sends user events to its parent.
+  // Roman Urdu: Ye presentation component data props se leta aur events parent ko deta hai.
   const priority = String(todo.priority || 'medium').toLowerCase();
 
   return (

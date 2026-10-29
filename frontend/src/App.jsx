@@ -11,15 +11,18 @@ import {
 } from './features/auth/authSlice';
 
 export default function App() {
-  // dispatch Redux ko action bhejta hai; thunk ho to API work bhi start hota hai.
+  // English: useDispatch gives this component the Redux dispatch function.
+  // Roman Urdu: useDispatch is component ko Redux dispatch function deta hai.
   const dispatch = useDispatch();
 
-  // useSelector store se sirf woh auth values read karta hai jo UI ko chahiye.
+  // English: useSelector reads only the authentication values required by this UI.
+  // Roman Urdu: useSelector store se sirf woh auth values read karta hai jo UI ko chahiye.
   const user = useSelector(selectCurrentUser);
   const isLoggedIn = useSelector(selectIsAuthenticated);
   const status = useSelector(selectAuthStatus);
 
-  // unwrap() thunk ko normal Promise banata hai, is liye success/error yahan handle hota hai.
+  // English: unwrap turns a dispatched thunk into a normal Promise for try/catch.
+  // Roman Urdu: unwrap dispatched thunk ko normal Promise banata hai taa-ke try/catch chale.
   const runAuthAction = async (action) => {
     try {
       await dispatch(action).unwrap();
@@ -37,7 +40,8 @@ export default function App() {
     runAuthAction(signupUser({ email, password, displayName }))
   );
 
-  // Login state decide karti hai ke auth form show ho ya todo dashboard.
+  // English: Authentication state decides which main screen is rendered.
+  // Roman Urdu: Login state decide karti hai ke auth form show ho ya todo dashboard.
   if (!isLoggedIn) {
     return (
       <AuthForm

@@ -1,6 +1,7 @@
 import React from 'react';
 
-// The generated ID connects the label and help text for screen-reader users.
+// English: The generated ID connects the input, label, and help text for accessibility.
+// Roman Urdu: Generated ID accessibility ke liye input, label aur help text ko jorti hai.
 export default function Input({ label, error, hint, ...props }) {
   const inputId = props.id || props.name || label?.toLowerCase().replace(/\s+/g, '-');
 

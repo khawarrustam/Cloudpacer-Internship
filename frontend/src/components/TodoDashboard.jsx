@@ -33,14 +33,20 @@ import ConfirmModal from './ui/ConfirmModal';
 import { toast } from './ui/Toast';
 
 export default function TodoDashboard({ onLogout, user }) {
-  // Component direct Redux hooks use karta hai, is liye data flow yahin visible hai.
+  // English: Redux hooks stay in the component so its data flow is easy to present.
+  // Roman Urdu: Redux hooks component mein hain taa-ke data flow presentation mein clear rahe.
   const dispatch = useDispatch();
 
-  // Delete target local UI state hai; shared app data nahi, is liye Redux mein nahi hai.
+  // English: The selected delete target is temporary UI state, not shared app data.
+  // Roman Urdu: Delete target temporary UI state hai, shared data nahi, is liye local hai.
   const [deleteTarget, setDeleteTarget] = useState(null);
+
+  // English: This custom hook enables '/' for search and 'n' for a new task.
+  // Roman Urdu: Ye custom hook '/' se search aur 'n' se new task focus karta hai.
   useKeyboardShortcuts();
 
-  // Selectors Redux state read karte hain aur state change par component re-render hota hai.
+  // English: Selectors read Redux state and re-render this component when values change.
+  // Roman Urdu: Selectors Redux state read karte hain aur change par component re-render hota hai.
   const todos = useSelector(selectAllTodos);
   const visibleTodos = useSelector(selectVisibleTodos);
   const stats = useSelector(selectTodoStats);
@@ -53,14 +59,16 @@ export default function TodoDashboard({ onLogout, user }) {
   const query = useSelector(selectTaskQuery);
   const sort = useSelector(selectTaskSort);
 
-  // Dashboard pehli dafa open ho to backend se todos load karo.
+  // English: Fetch todos once when the dashboard first enters the idle state.
+  // Roman Urdu: Dashboard pehli dafa idle ho to backend se todos load karo.
   useEffect(() => {
     if (fetchStatus === 'idle') {
       dispatch(fetchTodos());
     }
   }, [dispatch, fetchStatus]);
 
-  // Async thunks API call karte hain; fulfilled reducer Redux state update karta hai.
+  // English: Each handler dispatches an async thunk; its reducer updates Redux on success.
+  // Roman Urdu: Har handler async thunk dispatch karta hai; success par reducer Redux update karta hai.
   const handleAdd = async (newTodo) => {
     await dispatch(createTodo(newTodo)).unwrap();
     toast.success('Task added.');
@@ -87,7 +95,8 @@ export default function TodoDashboard({ onLogout, user }) {
     }
   };
 
-  // Related list props group ki hain; Redux hooks upar component mein direct visible hain.
+  // English: Related list props are grouped, while Redux hooks remain visible above.
+  // Roman Urdu: Related list props group hain, lekin Redux hooks upar direct visible hain.
   const todoState = {
     todos,
     visibleTodos,
@@ -141,8 +150,9 @@ export default function TodoDashboard({ onLogout, user }) {
         </div>
       </main>
 
+      {/* English: The modal opens only after the user selects a todo to delete. */}
+      {/* Roman Urdu: Modal tab khulta hai jab user delete ke liye todo select karta hai. */}
       <ConfirmModal
-        // Modal tab open hota hai jab user ne delete karne ke liye todo select kiya ho.
         open={Boolean(deleteTarget)}
         title="Delete task?"
         description={deleteTarget ? `Delete “${deleteTarget.title}”?` : ''}

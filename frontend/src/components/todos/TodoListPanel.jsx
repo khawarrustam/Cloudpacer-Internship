@@ -3,6 +3,8 @@ import TodoItem from '../TodoItem';
 import Button from '../ui/Button';
 
 function emptyMessage(filter, query) {
+  // English: Return a useful empty-state message for the active search or filter.
+  // Roman Urdu: Active search ya filter ke liye munasib empty-state message return karo.
   if (query.trim()) return 'No tasks match your search.';
   if (filter === 'completed') return 'No completed tasks yet.';
   if (filter === 'active') return 'No open tasks.';
@@ -10,7 +12,8 @@ function emptyMessage(filter, query) {
 }
 
 export default function TodoListPanel({ todoState, onComplete, onDelete }) {
-  // Dashboard Redux values aur actions ko aik simple object mein pass karta hai.
+  // English: The dashboard passes related Redux values and actions in one object.
+  // Roman Urdu: Dashboard related Redux values aur actions aik object mein pass karta hai.
   const {
     todos,
     visibleTodos,
@@ -35,7 +38,8 @@ export default function TodoListPanel({ todoState, onComplete, onDelete }) {
   ];
 
   const renderContent = () => {
-    // UI order: loading, error, empty state, phir actual todo list.
+    // English: Render priority is loading, error, empty state, then the todo list.
+    // Roman Urdu: UI order loading, error, empty state, phir actual todo list hai.
     if (loading && !todos.length) {
       return <p className="p-8 text-center text-sm text-[var(--text-secondary)]">Loading tasks…</p>;
     }
@@ -56,7 +60,8 @@ export default function TodoListPanel({ todoState, onComplete, onDelete }) {
       return <p className="p-8 text-center text-sm text-[var(--text-secondary)]">{emptyMessage(filter, query)}</p>;
     }
 
-    // key React ko har rendered todo uniquely identify karne mein help karti hai.
+    // English: key helps React uniquely identify each rendered todo.
+    // Roman Urdu: key React ko har rendered todo uniquely identify karne mein help karti hai.
     return visibleTodos.map((todo) => (
       <TodoItem
         key={todo.id}

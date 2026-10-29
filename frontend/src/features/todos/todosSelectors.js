@@ -79,6 +79,8 @@ export const selectDeletingIds = (state) => state.todos.deletingIds;
 export const selectTodoStats = createSelector(
   [selectAllTodos],
   (todos) => {
+    // English: Memoized derived data avoids storing duplicate totals in Redux.
+    // Roman Urdu: Memoized derived data duplicate totals ko Redux mein store karne se bachata hai.
     const completed = todos.filter(
       (todo) => todo.is_completed,
     ).length;

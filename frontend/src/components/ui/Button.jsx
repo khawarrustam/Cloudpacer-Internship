@@ -1,6 +1,7 @@
 import React from 'react';
 
-// forwardRef lets dialogs move keyboard focus to the safest action when opened.
+// English: forwardRef lets a dialog move keyboard focus to this button.
+// Roman Urdu: forwardRef dialog ko keyboard focus is button par lane deta hai.
 const Button = React.forwardRef(function Button({
   children,
   variant = 'primary',
@@ -20,7 +21,8 @@ const Button = React.forwardRef(function Button({
     md: 'h-10 px-4 text-sm',
     lg: 'h-12 px-5 text-sm',
   };
-  // Prevent duplicate API actions while a button-owned request is in flight.
+  // English: Disable the button during loading to prevent duplicate API actions.
+  // Roman Urdu: Loading ke waqt button disable hota hai taa-ke duplicate API call na ho.
   const isDisabled = disabled || isLoading;
 
   return (

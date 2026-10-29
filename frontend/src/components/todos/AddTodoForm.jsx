@@ -3,13 +3,16 @@ import Button from '../ui/Button';
 import Input from '../ui/Input';
 
 function validateTitle(title) {
+  // English: Client validation gives quick feedback before an API request is sent.
+  // Roman Urdu: Client validation API request se pehle foran feedback deti hai.
   if (title.length < 3) return 'Use at least 3 characters.';
   if (title.length > 120) return 'Use no more than 120 characters.';
   return null;
 }
 
 export default function AddTodoForm({ creating, onAdd }) {
-  // Input values sirf is form ko chahiye, is liye local component state use hoti hai.
+  // English: Only this form needs these input values, so they use local state.
+  // Roman Urdu: Input values sirf is form ko chahiye, is liye local state use hoti hai.
   const [title, setTitle] = useState('');
   const [priority, setPriority] = useState('medium');
   const [error, setError] = useState(null);
@@ -17,7 +20,8 @@ export default function AddTodoForm({ creating, onAdd }) {
   const handleSubmit = async (event) => {
     event.preventDefault();
 
-    // Backend call se pehle title clean aur validate hota hai.
+    // English: Trim and validate the title before calling the parent function.
+    // Roman Urdu: Parent function call karne se pehle title clean aur validate hota hai.
     const cleanTitle = title.trim();
     const validationError = validateTitle(cleanTitle);
 
@@ -27,7 +31,8 @@ export default function AddTodoForm({ creating, onAdd }) {
     }
 
     try {
-      // Parent dashboard onAdd ke andar Redux createTodo thunk dispatch karta hai.
+      // English: The parent onAdd function dispatches the Redux createTodo thunk.
+      // Roman Urdu: Parent ka onAdd Redux createTodo thunk dispatch karta hai.
       await onAdd({ title: cleanTitle, priority });
       setTitle('');
       setError(null);

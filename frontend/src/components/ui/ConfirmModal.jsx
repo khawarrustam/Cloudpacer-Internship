@@ -2,7 +2,8 @@ import React, { useEffect, useRef } from 'react';
 import { AlertTriangle, X } from 'lucide-react';
 import Button from './Button';
 
-// Controlled accessible dialog: the parent owns visibility and the destructive action.
+// English: This is a controlled dialog; its parent owns visibility and deletion.
+// Roman Urdu: Ye controlled dialog hai; visibility aur delete action parent control karta hai.
 export default function ConfirmModal({
   open,
   title,
@@ -17,12 +18,16 @@ export default function ConfirmModal({
 
   useEffect(() => {
     if (!open) return undefined;
-    // Focus the non-destructive action first and support the standard Escape shortcut.
+
+    // English: Focus the safe action first and allow Escape to close the dialog.
+    // Roman Urdu: Pehle safe action focus karo aur Escape se dialog close hone do.
     cancelRef.current?.focus();
     const handleKeyDown = (event) => {
       if (event.key === 'Escape' && !isLoading) onCancel();
     };
     window.addEventListener('keydown', handleKeyDown);
+    // English: Cleanup removes the listener when the dialog closes or re-renders.
+    // Roman Urdu: Cleanup dialog close ya re-render par listener remove karta hai.
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [open, isLoading, onCancel]);
 

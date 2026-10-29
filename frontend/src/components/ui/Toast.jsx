@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { AlertCircle, CheckCircle, X } from 'lucide-react';
 
-// A browser event keeps API/Redux code independent from this visual notification layer.
+// English: Browser events keep Redux/API logic separate from visual notifications.
+// Roman Urdu: Browser events Redux/API logic ko visual notifications se alag rakhte hain.
 export function ToastProvider({ children }) {
   const [toasts, setToasts] = useState([]);
 
@@ -10,7 +11,9 @@ export function ToastProvider({ children }) {
       const id = crypto.randomUUID?.() || Math.random().toString(36).slice(2);
       const nextToast = { id, ...event.detail };
       setToasts((current) => [...current, nextToast]);
-      // Remove each toast automatically while still allowing manual dismissal.
+
+      // English: Remove each toast automatically after 3.5 seconds.
+      // Roman Urdu: Har toast 3.5 seconds ke baad automatically remove hota hai.
       window.setTimeout(() => setToasts((current) => current.filter((item) => item.id !== id)), 3500);
     };
     window.addEventListener('app-toast', handleToastEvent);
@@ -38,6 +41,8 @@ export function ToastProvider({ children }) {
 }
 
 export const toast = {
+  // English: Any component can dispatch this event without importing provider state.
+  // Roman Urdu: Koi bhi component provider state import kiye baghair ye event bhej sakta hai.
   success: (message) => window.dispatchEvent(new CustomEvent('app-toast', { detail: { message, type: 'success' } })),
   error: (message) => window.dispatchEvent(new CustomEvent('app-toast', { detail: { message, type: 'error' } })),
 };

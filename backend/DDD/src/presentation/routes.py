@@ -58,6 +58,13 @@ def current_user(
             f"{user.email} ka token valid hai.",
         )
         return user
+    except auth.ExpiredIdTokenError:
+        log_step(
+            "Auth",
+            "Session expired. Re-authentication required.",
+            "Session expire ho gaya. Dobara login karna hoga.",
+        )
+        raise HTTPException(401, "Session expired. Please log in again.")
     except Exception as error:
         log_error("Auth", f"Token verification failed: {error}")
         raise HTTPException(401, "Authentication failed. Please log in again.") from error

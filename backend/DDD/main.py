@@ -7,13 +7,33 @@ import os
 from pathlib import Path
 
 import firebase_admin
-from dotenv import load_dotenv
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from firebase_admin import credentials
 
-# Load backend/DDD/.env before importing files that read configuration.
-load_dotenv(Path(__file__).with_name(".env"))
+
+def _load_env_file(env_path: Path) -> None:
+    """Load key-value pairs from .env without requiring third-party packages."""
+    if not env_path.is_file():
+        return
+    for raw_line in env_path.read_text(encoding="utf-8").splitlines():
+        line = raw_line.strip()
+        if not line or line.startswith("#") or "=" not in line:
+            continue
+        key, value = line.split("=", 1)
+        key = key.strip()
+        value = value.strip().strip("'\"")
+        if key and key not in os.environ:
+            os.environ[key] = value
+
+
+# Try python-dotenv first, fall back to built-in parser if not installed.
+try:
+    from dotenv import load_dotenv
+
+    load_dotenv(Path(__file__).with_name(".env"))
+except ImportError:
+    _load_env_file(Path(__file__).with_name(".env"))
 
 from src.application.use_cases import AuthUseCases, TodoUseCases
 from src.infrastructure.repositories import (

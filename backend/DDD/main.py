@@ -1,58 +1,116 @@
-"""FastAPI entry point.
+"""TodoFlow DDD backend entry point.
 
-English: This file creates the app and connects the main modules.
-Roman Urdu: Yeh file app banati hai aur main modules ko connect karti hai.
+Presentation flow: API -> Application -> Domain -> Infrastructure.
 """
 
+import os
+from pathlib import Path
+
+import firebase_admin
+from dotenv import load_dotenv
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from firebase_admin import credentials
 
-from src.bootstrap import (
-    create_todo_repository,
-    initialize_firebase,
-    wire_dependencies,
+# Load backend/DDD/.env before importing files that read configuration.
+load_dotenv(Path(__file__).with_name(".env"))
+
+from src.application.use_cases import AuthUseCases, TodoUseCases
+from src.infrastructure.repositories import (
+    FirebaseAuthRepository,
+    FirestoreTodoRepository,
+    InMemoryTodoRepository,
 )
-from src.presentation.api.auth_router import router as auth_router
-from src.presentation.api.todo_router import router as todo_router
-from src.shared.request_logging import install_request_logging
+from src.logs import install_request_logging, log_step
+from src.presentation.routes import (
+    auth_router,
+    configure_use_cases,
+    todo_router,
+)
 
 
-def health_check():
-    """Small endpoint used to check that the server is running."""
-    return {"status": "ok", "architecture": "DDD / Clean Architecture"}
+def required_setting(name: str) -> str:
+    """Return one required environment setting with a clear error."""
+    value = os.getenv(name)
+    if not value:
+        raise RuntimeError(f"Missing required setting: {name}")
+    return value
+
+
+def setting_is_true(name: str) -> bool:
+    return required_setting(name).lower() == "true"
 
 
 def create_app() -> FastAPI:
-    """Build and return the configured FastAPI application."""
-    application = FastAPI(
-        title="Todo DDD API",
-        description="A beginner-friendly Todo API using DDD and Clean Architecture.",
-    )
-
-    # English: CORS lets the frontend call this API from another port.
-    # Roman Urdu: CORS frontend ko doosre port se API call karne deta hai.
-    application.add_middleware(
+    """Start Firebase, select storage, and connect the four DDD layers."""
+    app = FastAPI(title=required_setting("APP_NAME"))
+    app.add_middleware(
         CORSMiddleware,
-        allow_origins=["http://localhost:5173", "http://127.0.0.1:5173"],
+        allow_origins=[
+            origin.strip()
+            for origin in required_setting("CORS_ORIGINS").split(",")
+            if origin.strip()
+        ],
         allow_credentials=True,
         allow_methods=["*"],
         allow_headers=["*"],
     )
-    install_request_logging(application)
+    install_request_logging(app)
 
-    initialize_firebase()
-    todo_repo = create_todo_repository()
-    wire_dependencies(application, todo_repo)
+    # Firebase Auth is used in both memory and Firestore modes.
+    if not firebase_admin._apps:
+        credential_file = Path(required_setting("FIREBASE_CREDENTIALS_PATH"))
+        if not credential_file.is_absolute():
+            credential_file = Path(__file__).parent / credential_file
+        firebase_admin.initialize_app(
+            credentials.Certificate(credential_file)
+        )
+        log_step(
+            "Setup",
+            "Firebase authentication connected.",
+            "Firebase authentication connect ho gayi.",
+        )
 
-    application.include_router(auth_router)
-    application.include_router(todo_router)
-    application.add_api_route(
-        "/",
-        health_check,
-        methods=["GET"],
-        tags=["Health"],
+    # USE_FIREBASE=true stores todos permanently; default mode uses RAM.
+    if setting_is_true("USE_FIREBASE"):
+        firebase_app = firebase_admin.get_app()
+        todo_repository = FirestoreTodoRepository(
+            firebase_app.project_id,
+            firebase_app.credential.get_credential(),
+        )
+        log_step(
+            "Setup",
+            "Todo storage: Firebase Firestore.",
+            "Todo storage Firebase Firestore hai.",
+        )
+    else:
+        todo_repository = InMemoryTodoRepository()
+        log_step(
+            "Setup",
+            "Todo storage: temporary memory.",
+            "Todo storage temporary memory hai.",
+        )
+
+    configure_use_cases(
+        TodoUseCases(todo_repository),
+        AuthUseCases(FirebaseAuthRepository()),
     )
-    return application
+    app.include_router(auth_router)
+    app.include_router(todo_router)
+
+    @app.get("/", tags=["Health"])
+    def health_check():
+        return {
+            "status": "ok",
+            "architecture": required_setting("APP_ARCHITECTURE"),
+        }
+
+    log_step(
+        "Setup",
+        "API, services, and repositories are ready.",
+        "API, services aur repositories ready hain.",
+    )
+    return app
 
 
 app = create_app()
@@ -61,4 +119,9 @@ app = create_app()
 if __name__ == "__main__":
     import uvicorn
 
-    uvicorn.run("main:app", host="127.0.0.1", port=8000, reload=True)
+    uvicorn.run(
+        "main:app",
+        host=required_setting("BACKEND_HOST"),
+        port=int(required_setting("BACKEND_PORT")),
+        reload=setting_is_true("BACKEND_RELOAD"),
+    )

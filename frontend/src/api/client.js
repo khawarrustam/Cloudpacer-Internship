@@ -9,8 +9,14 @@ export function setUnauthorizedHandler(handler) {
   unauthorizedHandler = handler;
 }
 
+const apiUrl = import.meta.env.VITE_API_URL;
+
+if (!apiUrl) {
+  throw new Error('Missing VITE_API_URL in frontend/.env');
+}
+
 const apiClient = axios.create({
-  baseURL: import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000',
+  baseURL: apiUrl,
   headers: {
     'Content-Type': 'application/json',
   },

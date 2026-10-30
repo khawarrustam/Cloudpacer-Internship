@@ -100,7 +100,7 @@ override for deployments.
 | Business rules | Model helpers | Domain entities/value objects |
 | Workflow | Controllers | Application use cases |
 | Persistence | Controller/database layer | Repository interfaces and adapters |
-| Dependency injection | Direct imports | Composition root in `bootstrap.py` |
+| Dependency injection | Direct imports | Use cases connected in `main.py` |
 | Test isolation | More infrastructure coupling | In-memory repository adapters |
 | Best fit | Small, straightforward services | Complex and evolving business domains |
 

@@ -46,7 +46,7 @@ Open PowerShell in the repository root:
 cd backend\DDD
 python -m venv .venv
 .\.venv\Scripts\Activate.ps1
-python -m pip install -r requirements-dev.txt
+python -m pip install -r requirements.txt
 ```
 
 ### 3. Install the frontend
@@ -111,15 +111,8 @@ Restart `npm run dev` after changing `.env`.
 
 ## Verify the projects
 
-Run backend tests:
-
-```powershell
-cd backend\DDD
-.\.venv\Scripts\Activate.ps1
-python -m pytest -q
-```
-
-Create a production frontend build:
+Open the backend health check at <http://127.0.0.1:8000> and create a
+production frontend build:
 
 ```powershell
 cd frontend

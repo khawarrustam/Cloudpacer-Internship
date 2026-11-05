@@ -1,72 +1,60 @@
-// =============================================================================
-// ESLINT CONFIGURATION — eslint.config.js (Flat Config Format)
-// =============================================================================
-// ESLint kya hai?
-//   ESLint JavaScript aur React code ke liye ek "Static Code Analysis" tool hai.
-//   Yeh aapka code run (execute) kiye baghair scan karta hai aur syntax errors,
-//   bugs, missing dependencies, unused variables, aur best-practice violations
-//   ko pehle hi pakar leta hai.
-//
-// Is file ka maqsad:
-//   Vite + React projects mein modern ESLint 9+ flat config use karta hai.
-//   Yeh file ESLint ko batati hai ke:
-//     1. Kaunse folders ignore karne hain (e.g., 'dist', 'node_modules')
-//     2. Browser & Node.js globals (window, document, process) ko recognize karo
-//     3. React Hooks ke rules (useEffect dependencies, etc.) check karo
-//     4. Vite HMR (Fast Refresh) standards enforce karo
-// =============================================================================
-
+// "import" doosri package se code is file mein lata hai.
+// "js" ESLint ke standard JavaScript rules ka short naam hai.
 import js from '@eslint/js'
+
+// "globals" browser aur Node ke built-in names ki list deta hai.
+// Examples: window, document, console aur process.
 import globals from 'globals'
+
+// Yeh plugin useState, useEffect aur doosre React Hooks ke rules check karta hai.
 import reactHooks from 'eslint-plugin-react-hooks'
-import reactRefresh from 'eslint-plugin-react-refresh'
 
+// "export default" is configuration ko ESLint ke liye available karta hai.
+// Array ke andar har object ESLint configuration ka ek section hai.
 export default [
-  // 1. Files aur folders jinhe linting se ignore karna hai
-  { ignores: ['dist', 'node_modules'] },
-
-  // 2. Main configuration for JS & JSX files
   {
+    // "ignores" batata hai ke kin folders ko ESLint ne check nahi karna.
+    // dist generated build hai aur node_modules installed packages hain.
+    ignores: ['dist', 'node_modules'],
+  },
+  {
+    // "files" batata hai ke yeh rules kin files par apply honge.
+    // ** = har folder, * = har filename, {js,jsx} = JS aur JSX extensions.
     files: ['**/*.{js,jsx}'],
+
+    // "languageOptions" JavaScript ko samajhne ke options rakhta hai.
     languageOptions: {
-      ecmaVersion: 2020,
-      globals: {
-        ...globals.browser,
-        ...globals.node, // Allows process.cwd(), process.env in Vite & config files
-      },
-      parserOptions: {
-        ecmaVersion: 'latest',
-        ecmaFeatures: { jsx: true },
-        sourceType: 'module',
-      },
+      // "latest" ESLint ko modern JavaScript syntax allow karne ko kehta hai.
+      ecmaVersion: 'latest',
+
+      // "module" import aur export syntax ko allow karta hai.
+      sourceType: 'module',
+
+      // "jsx: true" ESLint ko React ka HTML jaisa JSX syntax samjhata hai.
+      parserOptions: { ecmaFeatures: { jsx: true } },
+
+      // "..." spread operator dono global-name lists ko ek object mein milata hai.
+      // browser mein window/document aur Node mein process jaise names milte hain.
+      globals: { ...globals.browser, ...globals.node },
     },
+
+    // "plugins" ESLint mein extra checking abilities add karta hai.
     plugins: {
+      // Left side rule prefix hai; right side imported plugin hai.
       'react-hooks': reactHooks,
-      'react-refresh': reactRefresh,
     },
+
+    // "rules" decide karta hai ke ESLint ko kya check karna hai.
     rules: {
-      // Standard JavaScript recommended rules (syntax checks, unreachable code, etc.)
+      // JavaScript ke recommended rules ko spread karke yahan add karta hai.
       ...js.configs.recommended.rules,
 
-      // React Hooks rules (Hook calling order aur dependency array verify karta hai)
+      // React Hooks ke recommended rules ko bhi add karta hai.
       ...reactHooks.configs.recommended.rules,
 
-      // Unused variables ki warning (e.g. imported but unused variables)
-      'no-unused-vars': [
-        'warn',
-        {
-          vars: 'all',
-          args: 'after-used',
-          ignoreRestSiblings: true,
-          varsIgnorePattern: '^[A-Z_]',
-        },
-      ],
-
-      // Fast refresh rule: components ke sath helper exports ko handle karta hai
-      'react-refresh/only-export-components': [
-        'warn',
-        { allowConstantExport: true },
-      ],
+      // Unused variable milne par build fail nahi hota, sirf warning aati hai.
+      // "argsIgnorePattern: '^_'" ka matlab _ se shuru argument ignore hoga.
+      'no-unused-vars': ['warn', { argsIgnorePattern: '^_' }],
     },
   },
 ]

@@ -1,4 +1,3 @@
-import React from 'react';
 
 // English: The generated ID connects the input, label, and help text for accessibility.
 // Roman Urdu: Generated ID accessibility ke liye input, label aur help text ko jorti hai.

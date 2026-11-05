@@ -1,4 +1,3 @@
-import React from 'react';
 import TodoItem from '../TodoItem';
 import Button from '../ui/Button';
 

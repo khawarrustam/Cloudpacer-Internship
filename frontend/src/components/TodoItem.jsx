@@ -1,4 +1,3 @@
-import React from 'react';
 import { Check, Loader2, Trash2 } from 'lucide-react';
 
 export default function TodoItem({ todo, onComplete, onDelete, isCompleting, isDeleting }) {

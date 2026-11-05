@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { AlertCircle, CheckCircle, X } from 'lucide-react';
 
 // English: Browser events keep Redux/API logic separate from visual notifications.

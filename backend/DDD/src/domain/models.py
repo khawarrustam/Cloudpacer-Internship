@@ -8,26 +8,34 @@ import uuid
 
 
 class DomainError(Exception):
-    """Base error for business-rule failures."""
+    """Parent error for todo business-rule failures.
+
+    Kyun: Routes tamam domain errors ko aik common type se handle kar sakti hain.
+    """
 
 
 class InvalidTaskTitleError(DomainError):
+    """Raised when a todo title is too short or too long."""
     pass
 
 
 class TaskAlreadyCompletedError(DomainError):
+    """Raised to stop an already completed todo being completed again."""
     pass
 
 
 class TodoNotFoundError(DomainError):
+    """Raised when the requested user's todo does not exist."""
     pass
 
 
 class ValidationException(DomainError):
+    """Wrap authentication/input errors that can safely reach the API."""
     pass
 
 
 class Priority(str, Enum):
+    """Allow only the three priority values supported by the application."""
     LOW = "LOW"
     MEDIUM = "MEDIUM"
     HIGH = "HIGH"
@@ -35,11 +43,16 @@ class Priority(str, Enum):
 
 @dataclass(frozen=True)
 class TaskTitle:
-    """A title that always contains 3 to 120 characters."""
+    """A title value that always contains 3 to 120 characters.
+
+    Kyun: Validation domain ke andar rehne se har route aur database par same
+    title rule automatically apply hota hai.
+    """
 
     value: str
 
     def __post_init__(self):
+        """Trim and validate the title immediately after object creation."""
         clean_title = self.value.strip() if self.value else ""
         if len(clean_title) < 3:
             raise InvalidTaskTitleError("Title must have at least 3 characters.")
@@ -50,7 +63,7 @@ class TaskTitle:
 
 @dataclass
 class TodoItem:
-    """Main todo entity containing its own business rule."""
+    """Main todo entity containing data and completion business rules."""
 
     id: str
     title: TaskTitle
@@ -62,6 +75,10 @@ class TodoItem:
 
     @classmethod
     def create(cls, title: str, priority: str, owner_uid: str):
+        """Create a new incomplete todo with a unique ID and UTC time.
+
+        Kyun: Har naya todo aik consistent, valid state mein start hona chahiye.
+        """
         return cls(
             id=str(uuid.uuid4()),
             title=TaskTitle(title),
@@ -72,6 +89,11 @@ class TodoItem:
         )
 
     def complete(self) -> None:
+        """Mark this todo complete and remember when it was completed.
+
+        Kyun: Entity khud duplicate completion ko rokti hai, chahe koi bhi
+        database adapter active ho.
+        """
         if self.is_completed:
             raise TaskAlreadyCompletedError("Todo is already completed.")
         self.is_completed = True
@@ -79,37 +101,50 @@ class TodoItem:
 
 
 class TodoRepository(ABC):
-    """Storage contract implemented by memory and Firestore repositories."""
+    """Common storage contract implemented by every todo database.
+
+    Kyun: Use cases ko Firestore, MongoDB, ya PostgreSQL ka direct knowledge
+    nahi chahiye; unko sirf yeh four operations chahiye.
+    """
 
     @abstractmethod
     def save(self, todo: TodoItem) -> None:
+        """Create a todo or save its latest state."""
         pass
 
     @abstractmethod
     def get_by_id(self, todo_id: str, owner_uid: str) -> TodoItem | None:
+        """Return one owned todo, or None when it is not found."""
         pass
 
     @abstractmethod
     def get_by_owner(self, owner_uid: str) -> list[TodoItem]:
+        """Return all todos belonging to one authenticated user."""
         pass
 
     @abstractmethod
     def delete(self, todo_id: str, owner_uid: str) -> None:
+        """Delete one todo only for its owner."""
         pass
 
 
 @dataclass(frozen=True)
 class UserData:
+    """Small authenticated-user object returned by Firebase infrastructure."""
     uid: str
     email: str
     token: str
 
 
 class AuthRepository(ABC):
+    """Authentication contract used by application-level auth use cases."""
+
     @abstractmethod
     def signup(self, email: str, password: str, name: str) -> UserData:
+        """Create an account and return authenticated user data."""
         pass
 
     @abstractmethod
     def login(self, email: str, password: str) -> UserData:
+        """Verify credentials and return authenticated user data."""
         pass

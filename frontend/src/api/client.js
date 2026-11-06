@@ -1,5 +1,5 @@
 import axios from 'axios';
-import { readToken } from '../features/auth/authStorage';
+import { readToken } from '../features/auth/authSession';
 
 let unauthorizedHandler = null;
 
@@ -23,8 +23,8 @@ const apiClient = axios.create({
 });
 
 apiClient.interceptors.request.use((config) => {
-  // English: Attach the saved token before every protected API request.
-  // Roman Urdu: Har protected API request se pehle saved token lagao.
+  // English: Attach the in-memory token to every protected API request.
+  // Roman Urdu: Har protected request ke sath memory wala token lagao.
   const token = readToken();
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;

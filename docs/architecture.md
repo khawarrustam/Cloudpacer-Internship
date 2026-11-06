@@ -23,7 +23,7 @@
 > 1. [`backend/DDD/`](../backend/DDD/) ➔ **Domain-Driven Design (DDD) + Onion Architecture** (Port `8000`)
 > 2. [`backend/MVC/`](../backend/MVC/) ➔ **Traditional Model-View-Controller (MVC)** (Port `8001`)
 > 
-> Dono services same business requirements, authentication (**Firebase Auth**), aur database (**Firebase Firestore**) use karti hain, taake aap directly compare kar sakein ke software architectural patterns ka code quality, testability, maintainability aur scalability par kya farq parta hai.
+> Dono services same business requirements aur authentication (**Firebase Auth**) use karti hain. MVC Firebase Firestore use karta hai; DDD ko terminal se **Firestore, MongoDB, ya PostgreSQL** par switch kiya ja sakta hai.
 
 ---
 
@@ -36,7 +36,7 @@
 5. [🔍 Layer-by-Layer & File-by-File Breakdown (Current Codebase)](#5--layer-by-layer--file-by-file-breakdown-current-codebase)
    - [Layer 1: Domain (`src/domain/models.py` — The Heart ❤️)](#layer-1-domain-srcdomainmodelspy--the-heart-️)
    - [Layer 2: Application (`src/application/` — The Orchestrator 🎯)](#layer-2-application-srcapplication--the-orchestrator-)
-   - [Layer 3: Infrastructure (`src/infrastructure/repositories.py` — The Adapters 🔧)](#layer-3-infrastructure-srcinfrastructurerepositoriespy--the-adapters-)
+   - [Layer 3: Infrastructure (`src/infrastructure/` — The Adapters 🔧)](#layer-3-infrastructure-srcinfrastructure--the-adapters-)
    - [Layer 4: Presentation (`src/presentation/` — The Gateway 🌐)](#layer-4-presentation-srcpresentation--the-gateway-)
    - [Composition Root (`main.py` & Dependency Wiring)](#composition-root-mainpy--dependency-wiring)
    - [Terminal Logger (`src/logs.py` — Bilingual Traceability 📋)](#terminal-logger-srclogspy--bilingual-traceability-)
@@ -61,9 +61,9 @@ Think of it this way:
 > *"Hamare paas Firestore mein ek `todos` collection hai, chalo controllers mein direct insert, update, aur delete queries likh dete hain."*
 >
 > ✅ **With DDD (Domain-Centric / Behavior-Driven):**  
-> *"Hamare business mein ek **Todo** ke sakht rules hain: title minimum 3 aur maximum 120 characters ka hona chahiye, priority `LOW`/`MEDIUM`/`HIGH` honi chahiye, har todo ka ek `owner_uid` lazmi hona chahiye, aur agar ek baar task complete ho jaye toh wo **dobara complete nahi ho sakta**. Pehle hum code likh kar **in rules ko 100% guarantee aur encapsulate** karenge. Database (Firestore ya RAM) baad mein adapter ke zariye plug hoga."*
+> *"Hamare business mein ek **Todo** ke sakht rules hain: title minimum 3 aur maximum 120 characters ka hona chahiye, priority `LOW`/`MEDIUM`/`HIGH` honi chahiye, har todo ka ek `owner_uid` lazmi hona chahiye, aur agar ek baar task complete ho jaye toh wo **dobara complete nahi ho sakta**. Pehle hum code likh kar **in rules ko 100% guarantee aur encapsulate** karenge. Database (Firestore, MongoDB, ya PostgreSQL) baad mein adapter ke zariye plug hoga."*
 
-**Key Takeaway:** Aapke business rules ek mukammal azad jagah rehte hain (**Domain Layer**). Unhe is baat se koi matlab nahi ke aap Firebase Firestore use kar rahe hain, PostgreSQL, MongoDB, ya local RAM memory.
+**Key Takeaway:** Aapke business rules ek mukammal azad jagah rehte hain (**Domain Layer**). Unhe is baat se koi matlab nahi ke aap Firebase Firestore, PostgreSQL, ya MongoDB use kar rahe hain.
 
 ---
 
@@ -82,7 +82,7 @@ Onion Architecture aapke codebase ko concentric rings (pyaz ke chilkon) mein org
                     │              Domain Layer               │  ← Entities, Value Objects, Rules, Ports
                     │        (the HEART of your app)          │     (pure framework-free business logic)
                     ├─────────────────────────────────────────┤
-                    │          Infrastructure Layer           │  ← Firestore REST API, RAM, Firebase Auth
+                    │          Infrastructure Layer           │  ← Firestore, MongoDB, PostgreSQL, Firebase Auth
                     │      (technical details & adapters)     │
                     └─────────────────────────────────────────┘
 ```
@@ -95,7 +95,7 @@ Onion Architecture aapke codebase ko concentric rings (pyaz ke chilkon) mein org
 2. `Application Layer` sirf `Domain Layer` ke models aur repository interfaces ko janti hai.
 3. `Infrastructure Layer` aur `Presentation Layer` bahir ki outer rings hain jo inner contracts ko implement aur consume karti hain.
 
-Iska faida yeh hai ke agar kal aapko Firebase Firestore badal kar **PostgreSQL ya DynamoDB** lagana pare, toh aapko Domain ya Application Layer ki **ek single line bhi badalni nahi paregi**!
+Iska faida yeh hai ke database switch karne par Domain ya Application Layer ki **ek single line bhi badalni nahi parti**!
 
 ---
 
@@ -129,13 +129,13 @@ Jab client (React app ya Postman) **`POST /todos`** request bhejta hai, toh DDD 
             ┌────────────────────┴────────────────────┐
             ▼                                         ▼
   ┌──────────────────────────────┐    ┌───────────────────────────────────┐
-  │ 3a. DOMAIN — models.py       │    │ 3b. INFRASTRUCTURE — repositories.py│
-  │  TodoItem.create()           │    │  FirestoreTodoRepository (Active) │
-  │  • TaskTitle (min 3, max 120)│    │  • Firestore REST API HTTPS call  │
-  │  • Priority Enum verification│    │  • AuthorizedSession (OAuth2)     │
-  │  • Generates UUID & UTC time │    │  • Document set in user subpath   │
-  │  • Binds owner_uid           │    │  (Ya InMemoryTodoRepository in RAM│
-  │  TodoRepository (ABC contract│    │   agar USE_FIREBASE=false ho)     │
+  │ 3a. DOMAIN — models.py       │    │ 3b. INFRASTRUCTURE — separate files│
+  │  TodoItem.create()           │    │  Selected TodoRepository adapter  │
+  │  • TaskTitle (min 3, max 120)│    │  • FirestoreTodoRepository        │
+  │  • Priority Enum verification│    │  • MongoTodoRepository            │
+  │  • Generates UUID & UTC time │    │  • PostgreSQLTodoRepository       │
+  │  • Binds owner_uid           │    │  DATABASE terminal setting        │
+  │  TodoRepository (ABC contract│    │  selects one adapter              │
   └──────────────────────────────┘    └───────────────────────────────────┘
                                  │
                                  ▼
@@ -158,7 +158,7 @@ Dono projects mein concepts ka practical mapping:
 | **Value Object** | Immutable validated types | `TaskTitle`, `Priority` in [`src/domain/models.py`](../backend/DDD/src/domain/models.py) | String + Pydantic validation checks |
 | **Domain Exceptions** | Business invariants violate hone par aane wale errors | `DomainError`, `InvalidTaskTitleError`, `TaskAlreadyCompletedError` | Custom exceptions in [`src_mvc/models/todo_model.py`](../backend/MVC/src_mvc/models/todo_model.py) |
 | **Repository Port (Interface)** | Data storage ka contract (abstraction) | `TodoRepository(ABC)`, `AuthRepository(ABC)` | **Koi interface nahi.** Controller direct Firestore se baat karta hai |
-| **Repository Adapter** | Concrete storage engine | `FirestoreTodoRepository`, `InMemoryTodoRepository`, `FirebaseAuthRepository` | Direct Firestore SDK queries in `todo_controller.py` + `firebase.py` |
+| **Repository Adapter** | Concrete storage engine | `FirestoreTodoRepository`, `MongoTodoRepository`, `PostgreSQLTodoRepository`, `FirebaseAuthRepository` | Direct Firestore SDK queries in `todo_controller.py` + `firebase.py` |
 | **Use Case (Service)** | Workflow coordinator | `TodoUseCases`, `AuthUseCases` in [`src/application/use_cases.py`](../backend/DDD/src/application/use_cases.py) | Direct controller methods in `todo_controller.py` & `auth_controller.py` |
 | **Application DTO** | Layer-to-layer data container | `CreateTodoInput`, `TodoActionInput`, `TodoOutput`, `AuthOutput` | Not separated; uses Pydantic View models directly |
 | **Presentation DTO** | HTTP API schemas | `CreateTodoRequest`, `TodoResponse`, `SignupRequest`, `LoginRequest` | `CreateTodoRequest`, `TodoResponse` in `todo_views.py` |
@@ -302,17 +302,18 @@ class TodoUseCases:
         )
         return to_output(todo)
 ```
-> **Notice:** `TodoUseCases` ko yeh nahi pata ke `self.repository` Firestore hai ya RAM. Wo sirf abstract `TodoRepository` interface methods call karta hai.
+> **Notice:** `TodoUseCases` ko yeh nahi pata ke `self.repository` Firestore, MongoDB, ya PostgreSQL hai. Wo sirf abstract `TodoRepository` interface methods call karta hai.
 
 ---
 
-### Layer 3: Infrastructure ([`src/infrastructure/repositories.py`](../backend/DDD/src/infrastructure/repositories.py) — The Adapters 🔧)
+### Layer 3: Infrastructure ([`src/infrastructure/`](../backend/DDD/src/infrastructure/) — The Adapters 🔧)
 
 Yeh layer interfaces ki **Concrete Implementations** deti hai:
 
-1. **`InMemoryTodoRepository`**: Python dictionary (`dict[str, TodoItem]`) mein data rakhti hai. Quick local testing aur zero-setup execution ke liye perfect hai.
-2. **`FirestoreTodoRepository`**: Google Cloud Firestore REST API ke sath HTTPS ke zariye baat karti hai via `google.auth.transport.requests.AuthorizedSession`. Isme Windows par crash hone wali `cygrpc` DLL ki zaroorat nahi parti.
-3. **`FirebaseAuthRepository`**: Firebase Admin SDK se users create karti hai aur Google Identity Toolkit REST API se password authenticate karke JWT token return karti hai.
+1. **`FirestoreTodoRepository`**: Google Cloud Firestore REST API ke sath HTTPS ke zariye baat karti hai.
+2. **`MongoTodoRepository`**: MongoDB documents ko PyMongo ke zariye read/write karti hai.
+3. **`PostgreSQLTodoRepository`**: PostgreSQL `todos` table ko Psycopg ke zariye read/write karti hai.
+4. **`FirebaseAuthRepository`**: Firebase Admin SDK se users create karti hai aur Google Identity Toolkit REST API se password authenticate karke JWT token return karti hai.
 
 ```python
 class FirestoreTodoRepository(TodoRepository):
@@ -376,15 +377,9 @@ if not firebase_admin._apps:
     credential_file = Path(required_setting("FIREBASE_CREDENTIALS_PATH"))
     firebase_admin.initialize_app(credentials.Certificate(credential_file))
 
-# 2. Select Storage Adapter based on Environment Variable
-if setting_is_true("USE_FIREBASE"):
-    firebase_app = firebase_admin.get_app()
-    todo_repository = FirestoreTodoRepository(
-        firebase_app.project_id,
-        firebase_app.credential.get_credential(),
-    )
-else:
-    todo_repository = InMemoryTodoRepository()
+# 2. Select one adapter using DATABASE=firestore|mongodb|postgresql
+database = os.getenv("DATABASE", "firestore").strip().lower()
+todo_repository = create_todo_repository(database)
 
 # 3. Instantiate Use Cases and Inject Repositories
 configure_use_cases(
@@ -422,7 +417,7 @@ app.include_router(todo_router)
 |---|---|---|
 | **Domain** | 1 Entity (`TodoItem`), 1 Value Object (`TaskTitle`) | **WHAT:** 50+ Aggregates, Domain Events, Policy Specifications.<br>**WHEN:** Banking, Insurance, ya Airline reservation system jahan complex financial rules hon.<br>**HOW:** Entity state change par `DomainEvent` emit karti hai (e.g. `PaymentSettledDomainEvent`). |
 | **Application** | `TodoUseCases` & `AuthUseCases` | **WHAT:** CQRS (Command Query Responsibility Segregation), background celery workers, email notifications.<br>**WHEN:** Million requests per day jahan reads ko write operations se alag scale karna ho.<br>**HOW:** Commands Write-DB ko update karti hain, Queries Read-Replica se fast JSON return karti hain. |
-| **Infrastructure** | Firestore HTTPS REST + RAM Dictionary | **WHAT:** Polyglot Persistence (PostgreSQL + Redis Cache + Kafka Event Stream + ElasticSearch).<br>**WHEN:** High-traffic e-commerce systems.<br>**HOW:** Write Firestore/Postgres mein hoti hai aur sath hi Redis cache aur Kafka topic mein push hoti hai. |
+| **Infrastructure** | Firestore + MongoDB + PostgreSQL adapters | **WHAT:** Polyglot Persistence (PostgreSQL + Redis Cache + Kafka Event Stream + ElasticSearch).<br>**WHEN:** High-traffic e-commerce systems.<br>**HOW:** Write Firestore/Postgres mein hoti hai aur sath hi Redis cache aur Kafka topic mein push hoti hai. |
 | **Presentation** | FastAPI REST Endpoints | **WHAT:** Multi-protocol Gateways (REST API + GraphQL + gRPC + WebSockets).<br>**WHEN:** Jab web frontend ko REST, mobile app ko GraphQL, aur internal microservices ko high-speed gRPC chahiye ho.<br>**HOW:** Multiple routers same Application Use Cases ko reuse karte hain. |
 
 ---
@@ -470,7 +465,7 @@ async def create_todo(req: CreateTodoRequest):
 |---|---|---|
 | **S - Single Responsibility** | **100% Strictly Followed:**<br>• Presentation = Sirf HTTP requests aur auth verification.<br>• Use Case = Sirf workflow coordination.<br>• Entity = Sirf business invariant rules.<br>• Repository = Sirf database read/write. | **Violated in Controller:**<br>Controller ek hi function ke andar HTTP status codes, database queries, aur orchestration sab kuch mix kar deta hai. |
 | **O - Open / Closed** | **100% Strictly Followed:**<br>Code extension ke liye open hai, modification ke liye closed. Naya storage (e.g. Postgres) add karne ke liye sirf naya repository adapter likhna parta hai. Domain aur Use Cases touch nahi hote. | **Violated:**<br>Database badalne ke liye `todo_controller.py` ke andar har single route handler ko rewrite karna parega. |
-| **L - Liskov Substitution** | **100% Strictly Followed:**<br>`InMemoryTodoRepository` aur `FirestoreTodoRepository` dono bina kisi issue ke `TodoRepository` contract ki jagah perfectly swap ho jate hain. | **No Contracts:**<br>Controller direct concrete Firestore SDK par depend karta hai. Koi formal abstraction nahi hoti. |
+| **L - Liskov Substitution** | **100% Strictly Followed:**<br>Firestore, MongoDB, aur PostgreSQL repositories `TodoRepository` contract ki jagah swap ho sakti hain. | **No Contracts:**<br>Controller direct concrete Firestore SDK par depend karta hai. Koi formal abstraction nahi hoti. |
 | **I - Interface Segregation** | **100% Strictly Followed:**<br>`TodoRepository` sirf wahi 4 methods expose karta hai jo use cases ko chahiye (`save`, `get_by_id`, `get_by_owner`, `delete`). | **Violated:**<br>Controller raw Firestore Client import karta hai jisme hazaron unused functions hote hain. |
 | **D - Dependency Inversion** | **100% Strictly Followed:**<br>High-level use cases low-level Firestore par depend nahi karte; dono abstract interface (`TodoRepository`) par depend karte hain. | **Violated:**<br>High-level route handlers directly low-level `firebase.get_db()` client par depend karte hain. |
 
@@ -573,7 +568,7 @@ Authorization: Bearer <FIREBASE_ID_TOKEN>
 | 👍 Pros (Faide) | 👎 Cons (Nuqsanat) |
 |---|---|
 | **Zero Database Coupling:** Core business logic database se 100% independent hai. | **More Files:** DTOs, interfaces, aur mappers ki wajah se zyada initial structure hota hai. |
-| **Instant Unit Testing:** RAM repo se hazaron unit tests 0.1 second mein run hote hain. | **Learning Curve:** Team ko Aggregates, Ports aur Dependency Inversion samajhna parta hai. |
+| **Database Independence:** Repository contract ki wajah se adapters ko separately test kiya ja sakta hai. | **Learning Curve:** Team ko Aggregates, Ports aur Dependency Inversion samajhna parta hai. |
 | **Long-Term Maintainability:** 5-10 saal tak code clean, modular aur predictable rehta hai. | **Overkill for Tiny Apps:** Simple 2-field CRUD apps ke liye heavy feel hota hai. |
 
 ---
@@ -588,8 +583,8 @@ Authorization: Bearer <FIREBASE_ID_TOKEN>
 | **Business Invariants** | Helper functions in model | Encapsulated inside Entity & Value Objects |
 | **Workflow Coordination** | Controller route function | Dedicated `TodoUseCases` & `AuthUseCases` |
 | **Database Coupling** | Tight (`get_db()` in controller) | Loose (`TodoRepository` abstract interface) |
-| **Storage Modes Supported** | Firestore only | Persistent Firestore OR In-Memory RAM |
-| **Unit Testing Speed** | Slow (requires Firestore mock/emulator) | Blazing Fast (Instant In-Memory Repo) |
+| **Storage Modes Supported** | Firestore only | Firestore, MongoDB, or PostgreSQL |
+| **Database Selection** | Code is tied to Firestore | One `DATABASE` terminal setting |
 | **Database Swap Cost** | 80% controller code rewrite | 0% domain/use case rewrite, sirf naya adapter |
 | **SOLID Compliance** | Partial (S aur D violated) | **100% Strict SOLID Compliance** |
 | **Best Used For** | MVPs, Small Prototypes, Simple CRUD | Enterprise, SaaS, FinTech, Scalable Systems |
@@ -628,11 +623,8 @@ python -m venv .venv
 .\.venv\Scripts\Activate.ps1
 python -m pip install -r requirements.txt
 
-# Run with in-memory storage (Zero DB setup needed)
-python -m uvicorn main:app --reload --port 8000
-
-# Or run with Firebase Firestore
-$env:USE_FIREBASE = "true"
+# Choose firestore, mongodb, or postgresql
+$env:DATABASE = "mongodb"
 python -m uvicorn main:app --reload --port 8000
 
 # Swagger Documentation: http://127.0.0.1:8000/docs

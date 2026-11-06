@@ -13,7 +13,11 @@ from firebase_admin import credentials
 
 
 def _load_env_file(env_path: Path) -> None:
-    """Load key-value pairs from .env without requiring third-party packages."""
+    """Read settings from .env when python-dotenv is unavailable.
+
+    Kyun: App ko required configuration mil jaye, even if the optional
+    python-dotenv package is not installed.
+    """
     if not env_path.is_file():
         return
     for raw_line in env_path.read_text(encoding="utf-8").splitlines():
@@ -27,7 +31,8 @@ def _load_env_file(env_path: Path) -> None:
             os.environ[key] = value
 
 
-# Try python-dotenv first, fall back to built-in parser if not installed.
+# Pehle standard python-dotenv use karo. Agar package missing ho to upar wala
+# simple parser use hoga, is liye app ka startup unnecessarily fail nahi hota.
 try:
     from dotenv import load_dotenv
 
@@ -36,10 +41,11 @@ except ImportError:
     _load_env_file(Path(__file__).with_name(".env"))
 
 from src.application.use_cases import AuthUseCases, TodoUseCases
-from src.infrastructure.repositories import (
+from src.infrastructure import (
     FirebaseAuthRepository,
     FirestoreTodoRepository,
-    InMemoryTodoRepository,
+    MongoTodoRepository,
+    PostgreSQLTodoRepository,
 )
 from src.logs import install_request_logging, log_step
 from src.presentation.routes import (
@@ -50,7 +56,11 @@ from src.presentation.routes import (
 
 
 def required_setting(name: str) -> str:
-    """Return one required environment setting with a clear error."""
+    """Return a required setting or stop with a clear error.
+
+    Kyun: Missing configuration ko baad mein confusing database/API error
+    banne ke bajaye startup par hi beginner-friendly message mil jata hai.
+    """
     value = os.getenv(name)
     if not value:
         raise RuntimeError(f"Missing required setting: {name}")
@@ -58,11 +68,49 @@ def required_setting(name: str) -> str:
 
 
 def setting_is_true(name: str) -> bool:
+    """Convert a text setting such as 'true' into a Python boolean.
+
+    Kyun: Environment variables hamesha text hoti hain, jabke Uvicorn ko
+    reload ke liye True/False value chahiye hoti hai.
+    """
     return required_setting(name).lower() == "true"
 
 
+def create_todo_repository(database: str):
+    """Create the repository for the database selected in PowerShell.
+
+    Kyun: Baqi application ko database details se independent rakhna hai.
+    `DATABASE` change karne se Firestore, MongoDB, ya PostgreSQL select hota hai.
+    """
+    if database == "firestore":
+        firebase_app = firebase_admin.get_app()
+        return FirestoreTodoRepository(
+            firebase_app.project_id,
+            firebase_app.credential.get_credential(),
+        )
+
+    if database == "mongodb":
+        return MongoTodoRepository(
+            required_setting("MONGODB_URI"),
+            required_setting("MONGODB_DATABASE"),
+            required_setting("MONGODB_TODO_COLLECTION"),
+        )
+
+    if database == "postgresql":
+        return PostgreSQLTodoRepository(required_setting("POSTGRESQL_URL"))
+
+    raise RuntimeError(
+        "DATABASE must be firestore, mongodb, or postgresql."
+    )
+
+
 def create_app() -> FastAPI:
-    """Start Firebase, select storage, and connect the four DDD layers."""
+    """Build and configure the complete FastAPI application.
+
+    Kya: CORS, request logs, Firebase Auth, selected database, use cases, aur
+    routes ko connect karta hai.
+    Kyun: Startup wiring aik jagah rahe aur har layer ki responsibility clear ho.
+    """
     app = FastAPI(title=required_setting("APP_NAME"))
     app.add_middleware(
         CORSMiddleware,
@@ -77,7 +125,8 @@ def create_app() -> FastAPI:
     )
     install_request_logging(app)
 
-    # Firebase Auth is used in both memory and Firestore modes.
+    # Firebase sirf signup/login aur token verification ke liye use hota hai.
+    # Todo Firestore, MongoDB, ya PostgreSQL kisi mein bhi save ho sakta hai.
     if not firebase_admin._apps:
         credential_file = Path(required_setting("FIREBASE_CREDENTIALS_PATH"))
         if not credential_file.is_absolute():
@@ -91,25 +140,15 @@ def create_app() -> FastAPI:
             "Firebase authentication connect ho gayi.",
         )
 
-    # USE_FIREBASE=true stores todos permanently; default mode uses RAM.
-    if setting_is_true("USE_FIREBASE"):
-        firebase_app = firebase_admin.get_app()
-        todo_repository = FirestoreTodoRepository(
-            firebase_app.project_id,
-            firebase_app.credential.get_credential(),
-        )
-        log_step(
-            "Setup",
-            "Todo storage: Firebase Firestore.",
-            "Todo storage Firebase Firestore hai.",
-        )
-    else:
-        todo_repository = InMemoryTodoRepository()
-        log_step(
-            "Setup",
-            "Todo storage: temporary memory.",
-            "Todo storage temporary memory hai.",
-        )
+    # PowerShell mein DATABASE change karke DB switch hoti hai; Python code edit
+    # karne ki zaroorat nahi. Value na mile to existing Firestore default hai.
+    database = os.getenv("DATABASE", "firestore").strip().lower()
+    todo_repository = create_todo_repository(database)
+    log_step(
+        "Setup",
+        f"Todo database connected: {database}.",
+        f"Todo database connect ho gaya: {database}.",
+    )
 
     configure_use_cases(
         TodoUseCases(todo_repository),
@@ -120,9 +159,15 @@ def create_app() -> FastAPI:
 
     @app.get("/", tags=["Health"])
     def health_check():
+        """Tell the caller that the API is running and show the active DB.
+
+        Kyun: Browser/Postman se jaldi verify ho jata hai ke correct database
+        select hua hai aur backend successfully start ho chuka hai.
+        """
         return {
             "status": "ok",
             "architecture": required_setting("APP_ARCHITECTURE"),
+            "database": database,
         }
 
     log_step(
@@ -139,6 +184,8 @@ app = create_app()
 if __name__ == "__main__":
     import uvicorn
 
+    # Yeh block sirf `python main.py` par chalta hai. `uvicorn main:app` use
+    # karne par Uvicorn directly upar banaya hua `app` object load karta hai.
     uvicorn.run(
         "main:app",
         host=required_setting("BACKEND_HOST"),

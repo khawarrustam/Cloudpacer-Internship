@@ -11,6 +11,8 @@ from time import perf_counter
 from fastapi import FastAPI, Request
 
 
+# Aik named logger use hota hai taa-ke tamam DDD layers same format mein output
+# dein aur root/Uvicorn logger ke sath duplicate lines print na hon.
 logger = logging.getLogger("todoflow.ddd")
 logger.setLevel(os.environ["LOG_LEVEL"].upper())
 logger.propagate = False
@@ -23,12 +25,18 @@ if not logger.handlers:
     ))
     logger.addHandler(handler)
 
+# Har request ko #001 jaisa number milta hai. ContextVar async/concurrent
+# requests ke logs ko unki correct request identity ke sath rakhta hai.
 _request_number = count(1)
 _current_request = ContextVar("current_request", default=None)
 
 
 def log_step(area: str, english: str, roman_urdu: str) -> None:
-    """Print one readable English and Roman Urdu application step."""
+    """Print one bilingual step with its layer and request number.
+
+    Kyun: Beginner terminal mein request ka Presentation se Infrastructure tak
+    complete flow easily follow kar sake.
+    """
     request = _current_request.get()
     label = f"{request} | {area}" if request else area
     logger.info(
@@ -40,18 +48,29 @@ def log_step(area: str, english: str, roman_urdu: str) -> None:
 
 
 def log_error(area: str, message: str) -> None:
-    """Print a short safe error without passwords or tokens."""
+    """Print a short error without intentionally logging passwords or tokens.
+
+    Kyun: Debugging information mile lekin authentication secrets logs mein na
+    jayen.
+    """
     request = _current_request.get()
     label = f"{request} | {area}" if request else area
     logger.error("%s | %s", label, message)
 
 
 def install_request_logging(app: FastAPI) -> None:
-    """Show request and response boundaries without duplicate Uvicorn lines."""
+    """Install middleware that logs every request, response, and duration.
+
+    Kyun: Har layer ke messages ko clear start/end boundary aur timing milti hai.
+    Uvicorn access log disable hota hai taa-ke same request twice print na ho.
+    """
     logging.getLogger("uvicorn.access").disabled = True
 
     @app.middleware("http")
     async def request_logger(request: Request, call_next):
+        """Wrap one HTTP request and keep its number in the logging context."""
+        # Browser CORS preflight common background request hai; isko skip karne
+        # se terminal main application flow par focused rehta hai.
         if request.method == "OPTIONS":
             return await call_next(request)
 
@@ -87,4 +106,6 @@ def install_request_logging(app: FastAPI) -> None:
             )
             raise
         finally:
+            # Request finish hone par context reset karna zaroori hai, warna next
+            # request ko previous request ka number mil sakta hai.
             _current_request.reset(token)

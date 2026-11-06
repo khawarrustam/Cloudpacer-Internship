@@ -26,6 +26,7 @@ from src.presentation.dto import (
 
 @dataclass(frozen=True)
 class CurrentUser:
+    """User identity extracted from a verified Firebase token."""
     uid: str
     email: str
 
@@ -38,6 +39,11 @@ auth_use_cases: AuthUseCases | None = None
 
 
 def configure_use_cases(todo: TodoUseCases, authentication: AuthUseCases) -> None:
+    """Give the route functions their configured application use cases.
+
+    Kyun: Routes repositories khud create nahi karti; main.py selected database
+    ko use cases mein inject karke yahan pass karta hai.
+    """
     global todo_use_cases, auth_use_cases
     todo_use_cases = todo
     auth_use_cases = authentication
@@ -46,6 +52,11 @@ def configure_use_cases(todo: TodoUseCases, authentication: AuthUseCases) -> Non
 def current_user(
     credentials: HTTPAuthorizationCredentials = Depends(bearer),
 ) -> CurrentUser:
+    """Verify the Bearer token and return the logged-in user's identity.
+
+    Kyun: Har protected todo route ko trusted UID chahiye taa-ke aik user doosre
+    user ke todos read ya change na kar sake.
+    """
     try:
         token = auth.verify_id_token(
             credentials.credentials,
@@ -72,6 +83,7 @@ def current_user(
 
 @auth_router.post("/signup", response_model=AuthResponse, status_code=201)
 def signup(request: SignupRequest):
+    """Accept signup form data and call the signup application use case."""
     log_step("Presentation", "Signup request received.", "Signup request mil gayi.")
     try:
         result = auth_use_cases.signup(SignupInput(
@@ -91,6 +103,7 @@ def signup(request: SignupRequest):
 
 @auth_router.post("/login", response_model=AuthResponse)
 def login(request: LoginRequest):
+    """Accept email/password and return a Firebase authentication token."""
     log_step("Presentation", "Login request received.", "Login request mil gayi.")
     try:
         result = auth_use_cases.login(LoginInput(request.email, request.password))
@@ -106,6 +119,7 @@ def login(request: LoginRequest):
 
 @todo_router.get("", response_model=list[TodoResponse])
 def list_todos(user: CurrentUser = Depends(current_user)):
+    """Return todos belonging only to the verified current user."""
     log_step("Presentation", "Todo list requested.", "Todo list mangi gayi.")
     return todo_use_cases.list(user.uid)
 
@@ -115,6 +129,7 @@ def create_todo(
     request: CreateTodoRequest,
     user: CurrentUser = Depends(current_user),
 ):
+    """Validate the HTTP body and ask the application layer to create a todo."""
     log_step("Presentation", "Create todo request received.", "Create todo request mil gayi.")
     try:
         return todo_use_cases.create(CreateTodoInput(
@@ -128,6 +143,7 @@ def create_todo(
 
 @todo_router.patch("/{todo_id}/complete", response_model=TodoResponse)
 def complete_todo(todo_id: str, user: CurrentUser = Depends(current_user)):
+    """Complete one owned todo and convert domain errors into HTTP errors."""
     log_step("Presentation", "Complete todo request received.", "Complete todo request mil gayi.")
     try:
         return todo_use_cases.complete(TodoActionInput(todo_id, user.uid))
@@ -139,6 +155,7 @@ def complete_todo(todo_id: str, user: CurrentUser = Depends(current_user)):
 
 @todo_router.delete("/{todo_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_todo(todo_id: str, user: CurrentUser = Depends(current_user)):
+    """Delete one owned todo or return HTTP 404 when it does not exist."""
     log_step("Presentation", "Delete todo request received.", "Delete todo request mil gayi.")
     try:
         todo_use_cases.delete(TodoActionInput(todo_id, user.uid))

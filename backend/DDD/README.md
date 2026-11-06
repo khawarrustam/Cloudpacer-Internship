@@ -7,7 +7,7 @@ dozens of files.
 
 ```text
 backend/DDD/
-|-- main.py              Starts Firebase, selects storage, creates the API
+|-- main.py              Starts Firebase Auth, selects a database, creates the API
 |-- requirements.txt     Python packages
 `-- src/
     |-- presentation/
@@ -19,14 +19,17 @@ backend/DDD/
     |-- domain/
     |   `-- models.py      Entities, value objects, rules, contracts
     |-- infrastructure/
-    |   `-- repositories.py Memory, Firebase Auth, and Firestore
+    |   |-- firebase_auth.py  Firebase signup and login
+    |   |-- firestore.py      Firestore todo adapter
+    |   |-- mongodb.py        MongoDB todo adapter
+    |   `-- postgresql.py     PostgreSQL todo adapter
     `-- logs.py             Readable terminal request flow
 ```
 
 The request direction is:
 
 ```text
-Frontend -> Presentation -> Application -> Domain -> Infrastructure -> Firebase/RAM
+Frontend -> Presentation -> Application -> Domain -> Infrastructure -> Database
 ```
 
 ## Install
@@ -41,23 +44,25 @@ python -m pip install -r requirements.txt
 Place `serviceAccountKey.json` inside `backend/DDD`. It is ignored by Git and
 must never be committed.
 
-## Run with temporary memory
+## Choose a database from PowerShell
 
-No environment variables are required:
+Copy `.env.example` to `.env`, fill in the connection settings you use, then
+choose a database before starting the API:
 
 ```powershell
+$env:DATABASE = "firestore"
+python -m uvicorn main:app --reload
+
+$env:DATABASE = "mongodb"
+python -m uvicorn main:app --reload
+
+$env:DATABASE = "postgresql"
 python -m uvicorn main:app --reload
 ```
 
-## Run with Firebase Firestore
-
-```powershell
-$env:USE_FIREBASE = "true"
-python -m uvicorn main:app --reload
-```
-
-Firestore uses its official HTTPS API, so the Windows-blocked `cygrpc` DLL is
-not required.
+Stop the running backend before changing `DATABASE`. Firestore uses its HTTPS
+API, MongoDB uses `MONGODB_URI`, and PostgreSQL uses `POSTGRESQL_URL`. There is
+no local or in-memory todo storage mode.
 
 ## URLs
 
@@ -85,9 +90,10 @@ The logger automatically shows the complete presentation flow:
 REQUEST      GET /todos
 Auth         Token is valid
 Presentation Todo list requested
-Infrastructure Firestore returned 3 todos
+Infrastructure MongoDB returned 3 todos
 Application  Found 3 todos
 RESPONSE     200 OK
 ```
 
-Each important step also includes a Roman Urdu explanation.
+Each important step also includes a Roman Urdu explanation. The database name
+in the log changes automatically with the selected database.

@@ -1,7 +1,7 @@
 import { createAsyncThunk, createSlice } from '@reduxjs/toolkit';
 import { authApi } from '../../api/authApi';
 import { getApiErrorMessage } from '../../api/errors';
-import { clearSession, readStoredUser, saveSession } from './authStorage';
+import { clearSession, saveSession } from './authSession';
 
 // English: A thunk runs async work, then Redux sends pending/fulfilled/rejected.
 // Roman Urdu: Thunk async kaam karta hai, phir Redux request ka result bhejta hai.
@@ -43,9 +43,9 @@ export const signupUser = createAsyncThunk(
 );
 
 const initialState = {
-  // English: Reloading the page keeps a valid saved user.
-  // Roman Urdu: Page reload par valid saved user dobara mil jata hai.
-  user: readStoredUser(),
+  // English: The session stays only in memory; refresh means login again.
+  // Roman Urdu: Session sirf memory mein hai; refresh par dobara login hoga.
+  user: null,
   status: 'idle',
 };
 
@@ -94,8 +94,8 @@ const authSlice = createSlice({
 export const { loggedOut, sessionExpired } = authSlice.actions;
 
 export const logoutUser = () => (dispatch) => {
-  // English: Clear browser storage first, then clear Redux.
-  // Roman Urdu: Pehle browser storage, phir Redux clear karo.
+  // English: Clear the in-memory token first, then clear Redux.
+  // Roman Urdu: Pehle memory token, phir Redux clear karo.
   clearSession();
   dispatch(loggedOut());
 };

@@ -7,7 +7,7 @@ Axios, Tailwind CSS, and Vite. It communicates with the DDD API by default.
 
 - Firebase-backed signup and login through the backend
 - Create, search, filter, sort, complete, and delete todos
-- Persistent browser session storage
+- In-memory login session with no browser local storage
 - Per-action loading states and user-friendly API errors
 - Keyboard shortcuts and accessible dialogs/forms
 - Memoized derived state through Redux selectors
@@ -59,7 +59,7 @@ frontend/
 |   |   |   `-- TodoListPanel.jsx
 |   |   `-- ui/              # Button, input, modal, and toast only
 |   |-- features/
-|   |   |-- auth/            # Session state and persistence
+|   |   |-- auth/            # In-memory session state
 |   |   |-- todos/           # Todo thunks, reducers, and selectors
 |   |   `-- taskView/        # Filter, search, and sort state
 |   |-- hooks/               # Keyboard shortcut behavior
@@ -151,7 +151,8 @@ Generated `dist` output is excluded from Git.
 - **CORS error:** use `localhost:5173` or `127.0.0.1:5173`, both allowed by the
   DDD backend.
 - **Login fails:** verify Firebase Authentication through the backend.
-- **Session expires:** a backend `401` clears local session data automatically.
+- **Page refresh:** the in-memory session is cleared, so log in again.
+- **Session expires:** a backend `401` clears the in-memory session automatically.
 - **Environment change is ignored:** restart `npm run dev`.
 
 ## Related documentation

@@ -2,7 +2,7 @@
 	"info": {
 		"_postman_id": "todo-onion-api-collection",
 		"name": "Todo Onion Architecture API",
-		"description": "Clean Architecture (DDD + Onion) Todo API with FastAPI & Firebase Firestore.\n\n## How to use\n1. Start the server: `USE_FIREBASE=true python main.py`\n2. Base URL: `http://127.0.0.1:8000`\n3. Run Auth → **Signup** first → token is auto-saved\n4. Run Auth → **Login** to get a fresh token anytime\n5. All /todos requests use the saved token automatically\n6. Run requests in order: Create → List → Complete → List again",
+		"description": "Clean Architecture (DDD + Onion) Todo API with FastAPI and switchable databases.\n\n## How to use\n1. Choose `DATABASE=firestore`, `mongodb`, or `postgresql`, then start the server\n2. Base URL: `http://127.0.0.1:8000`\n3. Run Auth → **Signup** first → token is auto-saved\n4. Run Auth → **Login** to get a fresh token anytime\n5. All /todos requests use the saved token automatically\n6. Run requests in order: Create → List → Complete → List again",
 		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
 	},
 	"variable": [

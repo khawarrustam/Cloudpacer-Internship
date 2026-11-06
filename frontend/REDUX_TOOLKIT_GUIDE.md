@@ -5,6 +5,10 @@
 > retain the historical `todo-frontend/` path because they point to the
 > committed pre-Redux snapshot used by this learning guide.
 
+> **Current session note:** The historical examples below mention
+> `localStorage`. The current app intentionally stores its token only in
+> `authSession.js` memory, so a page refresh requires login again.
+
 > Audience: React/Redux beginner
 >
 > Language: Roman Urdu + simple English

@@ -22,9 +22,10 @@ Install these before continuing:
 - Node.js 18 or newer
 - A Firebase project with Email/Password authentication enabled
 - A Firebase service-account JSON file
+- At least one todo database: Firestore, MongoDB, or PostgreSQL
 
-The DDD backend can keep todos either temporarily in memory or permanently in
-Firestore. Firebase is still required for signup and login in both modes.
+The DDD backend stores todos in Firestore, MongoDB, or PostgreSQL. Firebase is
+still used for signup and login, whichever todo database you choose.
 
 ## First-time setup
 
@@ -70,18 +71,27 @@ From the repository root:
 cd backend\DDD
 .\.venv\Scripts\Activate.ps1
 
-$env:USE_FIREBASE = "false"
-
+# Choose firestore, mongodb, or postgresql.
+$env:DATABASE = "firestore"
 python -m uvicorn main:app --reload
 ```
 
-`USE_FIREBASE=false` stores todos in memory, so they disappear when the backend
-stops. To save todos in Firestore, use:
+To switch databases, stop the backend, change only `DATABASE`, and start it
+again. Connection settings can be kept in `backend/DDD/.env`:
 
 ```powershell
-$env:USE_FIREBASE = "true"
+# MongoDB
+$env:DATABASE = "mongodb"
+python -m uvicorn main:app --reload
+
+# PostgreSQL
+$env:DATABASE = "postgresql"
 python -m uvicorn main:app --reload
 ```
+
+Copy `backend/DDD/.env.example` to `backend/DDD/.env` and add your MongoDB URI
+or PostgreSQL URL. The PostgreSQL table and MongoDB collection/index are created
+automatically.
 
 Backend URLs:
 

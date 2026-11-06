@@ -13,7 +13,11 @@ from src.logs import log_step
 
 
 def to_output(todo: TodoItem) -> TodoOutput:
-    """Convert a domain entity into plain application output."""
+    """Convert a domain TodoItem into API-friendly application data.
+
+    Kyun: Domain objects ko directly presentation layer mein expose nahi karna;
+    datetime aur Enum values ko simple strings mein convert karna hota hai.
+    """
     return TodoOutput(
         id=todo.id,
         title=todo.title.value,
@@ -28,12 +32,17 @@ def to_output(todo: TodoItem) -> TodoOutput:
 
 
 class TodoUseCases:
-    """Create, list, complete, and delete todo use cases."""
+    """Coordinate create, list, complete, and delete todo workflows."""
 
     def __init__(self, repository: TodoRepository):
+        """Receive the selected database through dependency injection.
+
+        Kyun: Use case ka code database switch hone par change na ho.
+        """
         self.repository = repository
 
     def create(self, data: CreateTodoInput) -> TodoOutput:
+        """Validate a new todo through the domain, then save and return it."""
         todo = TodoItem.create(data.title, data.priority, data.owner_uid)
         self.repository.save(todo)
         log_step(
@@ -44,6 +53,7 @@ class TodoUseCases:
         return to_output(todo)
 
     def list(self, owner_uid: str) -> list[TodoOutput]:
+        """Return only the todos owned by the logged-in Firebase user."""
         todos = self.repository.get_by_owner(owner_uid)
         log_step(
             "Application",
@@ -53,6 +63,10 @@ class TodoUseCases:
         return [to_output(todo) for todo in todos]
 
     def complete(self, data: TodoActionInput) -> TodoOutput:
+        """Find the user's todo, apply its completion rule, and save it.
+
+        Kyun: Ownership check aur domain rule database update se pehle hon.
+        """
         todo = self.repository.get_by_id(data.todo_id, data.owner_uid)
         if not todo:
             raise TodoNotFoundError("Todo was not found for this user.")
@@ -66,6 +80,7 @@ class TodoUseCases:
         return to_output(todo)
 
     def delete(self, data: TodoActionInput) -> None:
+        """Verify ownership/existence before deleting a todo."""
         if not self.repository.get_by_id(data.todo_id, data.owner_uid):
             raise TodoNotFoundError("Todo was not found for this user.")
         self.repository.delete(data.todo_id, data.owner_uid)
@@ -73,12 +88,14 @@ class TodoUseCases:
 
 
 class AuthUseCases:
-    """Signup and login use cases."""
+    """Coordinate signup and login without knowing Firebase details."""
 
     def __init__(self, repository):
+        """Receive an authentication repository from the startup wiring."""
         self.repository = repository
 
     def signup(self, data: SignupInput) -> AuthOutput:
+        """Create a user, log them in, and return safe auth output."""
         user = self.repository.signup(
             data.email,
             data.password,
@@ -88,6 +105,7 @@ class AuthUseCases:
         return AuthOutput(user.uid, user.email, user.token)
 
     def login(self, data: LoginInput) -> AuthOutput:
+        """Verify credentials and return the Firebase ID token to the client."""
         user = self.repository.login(data.email, data.password)
         log_step("Application", "Login completed.", "Login mukammal ho gaya.")
         return AuthOutput(user.uid, user.email, user.token)

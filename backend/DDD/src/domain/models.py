@@ -53,7 +53,7 @@ class TaskTitle:
 
     def __post_init__(self):
         """Trim and validate the title immediately after object creation."""
-        clean_title = self.value.strip() if self.value else ""
+        clean_title = (self.value or "").strip()
         if len(clean_title) < 3:
             raise InvalidTaskTitleError("Title must have at least 3 characters.")
         if len(clean_title) > 120:
@@ -74,7 +74,7 @@ class TodoItem:
     completed_at: datetime | None = None
 
     @classmethod
-    def create(cls, title: str, priority: str, owner_uid: str):
+    def create(cls, title: str, priority: str, owner_uid: str) -> "TodoItem":
         """Create a new incomplete todo with a unique ID and UTC time.
 
         Kyun: Har naya todo aik consistent, valid state mein start hona chahiye.

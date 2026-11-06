@@ -12,6 +12,10 @@ from fastapi.middleware.cors import CORSMiddleware
 from firebase_admin import credentials
 
 
+PROJECT_DIRECTORY = Path(__file__).parent
+ENV_FILE = PROJECT_DIRECTORY / ".env"
+
+
 def _load_env_file(env_path: Path) -> None:
     """Read settings from .env when python-dotenv is unavailable.
 
@@ -36,11 +40,12 @@ def _load_env_file(env_path: Path) -> None:
 try:
     from dotenv import load_dotenv
 
-    load_dotenv(Path(__file__).with_name(".env"))
+    load_dotenv(ENV_FILE)
 except ImportError:
-    _load_env_file(Path(__file__).with_name(".env"))
+    _load_env_file(ENV_FILE)
 
 from src.application.use_cases import AuthUseCases, TodoUseCases
+from src.domain.models import TodoRepository
 from src.infrastructure import (
     FirebaseAuthRepository,
     FirestoreTodoRepository,
@@ -76,7 +81,40 @@ def setting_is_true(name: str) -> bool:
     return required_setting(name).lower() == "true"
 
 
-def create_todo_repository(database: str):
+def connect_firebase() -> None:
+    """Connect Firebase once for signup, login, and token verification.
+
+    Kyun: Firebase authentication har database mode mein use hoti hai, is liye
+    uska setup database selection se pehle hota hai.
+    """
+    if firebase_admin._apps:
+        return
+
+    credential_file = Path(required_setting("FIREBASE_CREDENTIALS_PATH"))
+    if not credential_file.is_absolute():
+        credential_file = PROJECT_DIRECTORY / credential_file
+
+    firebase_admin.initialize_app(credentials.Certificate(credential_file))
+    log_step(
+        "Setup",
+        "Firebase authentication connected.",
+        "Firebase authentication connect ho gayi.",
+    )
+
+
+def get_selected_database() -> str:
+    """Read and normalize the database selected in the terminal or .env.
+
+    `firebase` ko `firestore` alias diya gaya hai taa-ke beginner command mein
+    Firebase likhe to bhi uska Firestore database select ho jaye.
+    """
+    database = os.getenv("DATABASE", "firestore").strip().lower()
+    if database == "firebase":
+        return "firestore"
+    return database
+
+
+def create_todo_repository(database: str) -> TodoRepository:
     """Create the repository for the database selected in PowerShell.
 
     Kyun: Baqi application ko database details se independent rakhna hai.
@@ -100,7 +138,7 @@ def create_todo_repository(database: str):
         return PostgreSQLTodoRepository(required_setting("POSTGRESQL_URL"))
 
     raise RuntimeError(
-        "DATABASE must be firestore, mongodb, or postgresql."
+        "DATABASE must be firestore (or firebase), mongodb, or postgresql."
     )
 
 
@@ -111,14 +149,16 @@ def create_app() -> FastAPI:
     routes ko connect karta hai.
     Kyun: Startup wiring aik jagah rahe aur har layer ki responsibility clear ho.
     """
+    allowed_origins = [
+        origin.strip()
+        for origin in required_setting("CORS_ORIGINS").split(",")
+        if origin.strip()
+    ]
+
     app = FastAPI(title=required_setting("APP_NAME"))
     app.add_middleware(
         CORSMiddleware,
-        allow_origins=[
-            origin.strip()
-            for origin in required_setting("CORS_ORIGINS").split(",")
-            if origin.strip()
-        ],
+        allow_origins=allowed_origins,
         allow_credentials=True,
         allow_methods=["*"],
         allow_headers=["*"],
@@ -127,22 +167,11 @@ def create_app() -> FastAPI:
 
     # Firebase sirf signup/login aur token verification ke liye use hota hai.
     # Todo Firestore, MongoDB, ya PostgreSQL kisi mein bhi save ho sakta hai.
-    if not firebase_admin._apps:
-        credential_file = Path(required_setting("FIREBASE_CREDENTIALS_PATH"))
-        if not credential_file.is_absolute():
-            credential_file = Path(__file__).parent / credential_file
-        firebase_admin.initialize_app(
-            credentials.Certificate(credential_file)
-        )
-        log_step(
-            "Setup",
-            "Firebase authentication connected.",
-            "Firebase authentication connect ho gayi.",
-        )
+    connect_firebase()
 
     # PowerShell mein DATABASE change karke DB switch hoti hai; Python code edit
     # karne ki zaroorat nahi. Value na mile to existing Firestore default hai.
-    database = os.getenv("DATABASE", "firestore").strip().lower()
+    database = get_selected_database()
     todo_repository = create_todo_repository(database)
     log_step(
         "Setup",

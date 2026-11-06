@@ -11,6 +11,7 @@ from src.application.dto import (
     LoginInput,
     SignupInput,
     TodoActionInput,
+    TodoOutput,
 )
 from src.application.use_cases import AuthUseCases, TodoUseCases
 from src.domain.models import DomainError, TodoNotFoundError, ValidationException
@@ -62,7 +63,10 @@ def current_user(
             credentials.credentials,
             clock_skew_seconds=60,
         )
-        user = CurrentUser(token["uid"], token.get("email", ""))
+        user = CurrentUser(
+            uid=token["uid"],
+            email=token.get("email", ""),
+        )
         log_step(
             "Auth",
             f"Token is valid for {user.email}.",
@@ -82,15 +86,16 @@ def current_user(
 
 
 @auth_router.post("/signup", response_model=AuthResponse, status_code=201)
-def signup(request: SignupRequest):
+def signup(request: SignupRequest) -> AuthResponse:
     """Accept signup form data and call the signup application use case."""
     log_step("Presentation", "Signup request received.", "Signup request mil gayi.")
     try:
-        result = auth_use_cases.signup(SignupInput(
-            request.email,
-            request.password,
-            request.display_name,
-        ))
+        signup_data = SignupInput(
+            email=request.email,
+            password=request.password,
+            display_name=request.display_name,
+        )
+        result = auth_use_cases.signup(signup_data)
         return AuthResponse(
             uid=result.uid,
             email=result.email,
@@ -102,11 +107,15 @@ def signup(request: SignupRequest):
 
 
 @auth_router.post("/login", response_model=AuthResponse)
-def login(request: LoginRequest):
+def login(request: LoginRequest) -> AuthResponse:
     """Accept email/password and return a Firebase authentication token."""
     log_step("Presentation", "Login request received.", "Login request mil gayi.")
     try:
-        result = auth_use_cases.login(LoginInput(request.email, request.password))
+        login_data = LoginInput(
+            email=request.email,
+            password=request.password,
+        )
+        result = auth_use_cases.login(login_data)
         return AuthResponse(
             uid=result.uid,
             email=result.email,
@@ -118,7 +127,9 @@ def login(request: LoginRequest):
 
 
 @todo_router.get("", response_model=list[TodoResponse])
-def list_todos(user: CurrentUser = Depends(current_user)):
+def list_todos(
+    user: CurrentUser = Depends(current_user),
+) -> list[TodoOutput]:
     """Return todos belonging only to the verified current user."""
     log_step("Presentation", "Todo list requested.", "Todo list mangi gayi.")
     return todo_use_cases.list(user.uid)
@@ -128,25 +139,41 @@ def list_todos(user: CurrentUser = Depends(current_user)):
 def create_todo(
     request: CreateTodoRequest,
     user: CurrentUser = Depends(current_user),
-):
+) -> TodoOutput:
     """Validate the HTTP body and ask the application layer to create a todo."""
-    log_step("Presentation", "Create todo request received.", "Create todo request mil gayi.")
+    log_step(
+        "Presentation",
+        "Create todo request received.",
+        "Create todo request mil gayi.",
+    )
     try:
-        return todo_use_cases.create(CreateTodoInput(
-            request.title,
-            request.priority,
-            user.uid,
-        ))
+        todo_data = CreateTodoInput(
+            title=request.title,
+            priority=request.priority,
+            owner_uid=user.uid,
+        )
+        return todo_use_cases.create(todo_data)
     except DomainError as error:
         raise HTTPException(400, str(error)) from error
 
 
 @todo_router.patch("/{todo_id}/complete", response_model=TodoResponse)
-def complete_todo(todo_id: str, user: CurrentUser = Depends(current_user)):
+def complete_todo(
+    todo_id: str,
+    user: CurrentUser = Depends(current_user),
+) -> TodoOutput:
     """Complete one owned todo and convert domain errors into HTTP errors."""
-    log_step("Presentation", "Complete todo request received.", "Complete todo request mil gayi.")
+    log_step(
+        "Presentation",
+        "Complete todo request received.",
+        "Complete todo request mil gayi.",
+    )
     try:
-        return todo_use_cases.complete(TodoActionInput(todo_id, user.uid))
+        todo_data = TodoActionInput(
+            todo_id=todo_id,
+            owner_uid=user.uid,
+        )
+        return todo_use_cases.complete(todo_data)
     except TodoNotFoundError as error:
         raise HTTPException(404, str(error)) from error
     except DomainError as error:
@@ -154,11 +181,22 @@ def complete_todo(todo_id: str, user: CurrentUser = Depends(current_user)):
 
 
 @todo_router.delete("/{todo_id}", status_code=status.HTTP_204_NO_CONTENT)
-def delete_todo(todo_id: str, user: CurrentUser = Depends(current_user)):
+def delete_todo(
+    todo_id: str,
+    user: CurrentUser = Depends(current_user),
+) -> None:
     """Delete one owned todo or return HTTP 404 when it does not exist."""
-    log_step("Presentation", "Delete todo request received.", "Delete todo request mil gayi.")
+    log_step(
+        "Presentation",
+        "Delete todo request received.",
+        "Delete todo request mil gayi.",
+    )
     try:
-        todo_use_cases.delete(TodoActionInput(todo_id, user.uid))
+        todo_data = TodoActionInput(
+            todo_id=todo_id,
+            owner_uid=user.uid,
+        )
+        todo_use_cases.delete(todo_data)
     except TodoNotFoundError as error:
         raise HTTPException(404, str(error)) from error
     return None

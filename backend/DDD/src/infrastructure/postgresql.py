@@ -1,6 +1,7 @@
 """PostgreSQL todo infrastructure."""
 
 import psycopg
+from psycopg.rows import dict_row
 
 from src.domain.models import Priority, TaskTitle, TodoItem, TodoRepository
 from src.logs import log_step
@@ -31,16 +32,20 @@ class PostgreSQLTodoRepository(TodoRepository):
             connection.execute(query)
 
     @staticmethod
-    def _to_entity(row) -> TodoItem:
-        """Convert one PostgreSQL result row into a TodoItem."""
+    def _to_entity(row: dict) -> TodoItem:
+        """Convert one named PostgreSQL result row into a TodoItem.
+
+        Kyun: Column names (`row["title"]`) beginner ke liye numeric positions
+        (`row[1]`) se zyada clear aur safe hain.
+        """
         return TodoItem(
-            id=row[0],
-            title=TaskTitle(row[1]),
-            priority=Priority(row[2]),
-            is_completed=row[3],
-            created_at=row[4],
-            completed_at=row[5],
-            owner_uid=row[6],
+            id=row["id"],
+            title=TaskTitle(row["title"]),
+            priority=Priority(row["priority"]),
+            is_completed=row["is_completed"],
+            created_at=row["created_at"],
+            completed_at=row["completed_at"],
+            owner_uid=row["owner_uid"],
         )
 
     def save(self, todo: TodoItem) -> None:
@@ -82,17 +87,26 @@ class PostgreSQLTodoRepository(TodoRepository):
             FROM todos
             WHERE id = %s AND owner_uid = %s
         """
-        with psycopg.connect(self.connection_url) as connection:
+        with psycopg.connect(
+            self.connection_url,
+            row_factory=dict_row,
+        ) as connection:
             row = connection.execute(query, (todo_id, owner_uid)).fetchone()
 
-        message = "found the todo" if row else "did not find the todo"
-        roman_urdu = "todo mil gaya" if row else "todo nahi mila"
+        if row is None:
+            log_step(
+                "Infrastructure",
+                "PostgreSQL did not find the todo.",
+                "PostgreSQL ko todo nahi mila.",
+            )
+            return None
+
         log_step(
             "Infrastructure",
-            f"PostgreSQL {message}.",
-            f"PostgreSQL ko {roman_urdu}.",
+            "PostgreSQL found the todo.",
+            "PostgreSQL ko todo mil gaya.",
         )
-        return self._to_entity(row) if row else None
+        return self._to_entity(row)
 
     def get_by_owner(self, owner_uid: str) -> list[TodoItem]:
         """Return one user's todos, newest first."""
@@ -103,7 +117,10 @@ class PostgreSQLTodoRepository(TodoRepository):
             WHERE owner_uid = %s
             ORDER BY created_at DESC
         """
-        with psycopg.connect(self.connection_url) as connection:
+        with psycopg.connect(
+            self.connection_url,
+            row_factory=dict_row,
+        ) as connection:
             rows = connection.execute(query, (owner_uid,)).fetchall()
 
         log_step(

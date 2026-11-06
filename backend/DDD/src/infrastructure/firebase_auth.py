@@ -14,9 +14,13 @@ class FirebaseAuthRepository(AuthRepository):
 
     # Values startup par .env se read hoti hain. Inko aik jagah rakhne se
     # signup/login methods mein URLs aur timeout repeat nahi hote.
-    api_key = os.environ["FIREBASE_WEB_API_KEY"]
-    login_url = f"{os.environ['FIREBASE_AUTH_URL']}?key={api_key}"
-    request_timeout = int(os.environ["FIREBASE_REQUEST_TIMEOUT"])
+    def __init__(self) -> None:
+        """Prepare the Firebase login URL and request timeout."""
+        api_key = os.environ["FIREBASE_WEB_API_KEY"]
+        auth_url = os.environ["FIREBASE_AUTH_URL"]
+
+        self.login_url = f"{auth_url}?key={api_key}"
+        self.request_timeout = int(os.environ["FIREBASE_REQUEST_TIMEOUT"])
 
     def signup(self, email: str, password: str, name: str) -> UserData:
         """Create a Firebase user and immediately log that user in.
@@ -56,13 +60,17 @@ class FirebaseAuthRepository(AuthRepository):
                 )
                 raise ValidationException(message)
 
-            data = response.json()
+            response_data = response.json()
             log_step(
                 "Infrastructure",
                 "Firebase authentication succeeded.",
                 "Firebase authentication kamyab ho gayi.",
             )
-            return UserData(data["localId"], data["email"], data["idToken"])
+            return UserData(
+                uid=response_data["localId"],
+                email=response_data["email"],
+                token=response_data["idToken"],
+            )
         except ValidationException:
             raise
         except Exception as error:

@@ -25,32 +25,34 @@ class MongoTodoRepository(TodoRepository):
     @staticmethod
     def _to_document(todo: TodoItem) -> dict:
         """Convert a TodoItem into one MongoDB document."""
+        completed_at = None
+        if todo.completed_at:
+            completed_at = todo.completed_at.isoformat()
+
         return {
             "_id": todo.id,
             "title": todo.title.value,
             "priority": todo.priority.value,
             "is_completed": todo.is_completed,
             "created_at": todo.created_at.isoformat(),
-            "completed_at": (
-                todo.completed_at.isoformat() if todo.completed_at else None
-            ),
+            "completed_at": completed_at,
             "owner_uid": todo.owner_uid,
         }
 
     @staticmethod
     def _to_entity(document: dict) -> TodoItem:
         """Convert a MongoDB document back into a TodoItem."""
+        completed_at = None
+        if document.get("completed_at"):
+            completed_at = datetime.fromisoformat(document["completed_at"])
+
         return TodoItem(
             id=str(document["_id"]),
             title=TaskTitle(document["title"]),
             priority=Priority(document["priority"]),
             is_completed=document["is_completed"],
             created_at=datetime.fromisoformat(document["created_at"]),
-            completed_at=(
-                datetime.fromisoformat(document["completed_at"])
-                if document.get("completed_at")
-                else None
-            ),
+            completed_at=completed_at,
             owner_uid=document["owner_uid"],
         )
 
@@ -73,14 +75,20 @@ class MongoTodoRepository(TodoRepository):
             "_id": todo_id,
             "owner_uid": owner_uid,
         })
-        message = "found the todo" if document else "did not find the todo"
-        roman_urdu = "todo mil gaya" if document else "todo nahi mila"
+        if document is None:
+            log_step(
+                "Infrastructure",
+                "MongoDB did not find the todo.",
+                "MongoDB ko todo nahi mila.",
+            )
+            return None
+
         log_step(
             "Infrastructure",
-            f"MongoDB {message}.",
-            f"MongoDB ko {roman_urdu}.",
+            "MongoDB found the todo.",
+            "MongoDB ko todo mil gaya.",
         )
-        return self._to_entity(document) if document else None
+        return self._to_entity(document)
 
     def get_by_owner(self, owner_uid: str) -> list[TodoItem]:
         """Return all MongoDB todos for one user."""

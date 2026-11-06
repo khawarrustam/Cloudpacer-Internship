@@ -59,15 +59,17 @@ class FirestoreTodoRepository(TodoRepository):
 
     def _to_document(self, todo: TodoItem) -> dict:
         """Convert a TodoItem into the JSON Firestore expects."""
+        completed_at = None
+        if todo.completed_at:
+            completed_at = todo.completed_at.isoformat()
+
         values = {
             "id": todo.id,
             "title": todo.title.value,
             "priority": todo.priority.value,
             "is_completed": todo.is_completed,
             "created_at": todo.created_at.isoformat(),
-            "completed_at": (
-                todo.completed_at.isoformat() if todo.completed_at else None
-            ),
+            "completed_at": completed_at,
             "owner_uid": todo.owner_uid,
         }
         fields = {key: self._encode(value) for key, value in values.items()}
@@ -79,17 +81,17 @@ class FirestoreTodoRepository(TodoRepository):
             key: self._decode(value)
             for key, value in document.get("fields", {}).items()
         }
+        completed_at = None
+        if values.get("completed_at"):
+            completed_at = datetime.fromisoformat(values["completed_at"])
+
         return TodoItem(
             id=values["id"],
             title=TaskTitle(values["title"]),
             priority=Priority(values["priority"]),
             is_completed=values["is_completed"],
             created_at=datetime.fromisoformat(values["created_at"]),
-            completed_at=(
-                datetime.fromisoformat(values["completed_at"])
-                if values.get("completed_at")
-                else None
-            ),
+            completed_at=completed_at,
             owner_uid=values["owner_uid"],
         )
 

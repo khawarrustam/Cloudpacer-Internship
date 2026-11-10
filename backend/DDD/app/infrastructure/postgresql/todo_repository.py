@@ -16,10 +16,12 @@ class PostgreSQLTodoRepository(TodoRepository):
 
     def __init__(self, connection_url: str) -> None:
         self.connection_url = connection_url
+        # Repository ready hone se pehle required todos table ensure hoti hai.
         self._create_table()
 
     def save(self, todo: TodoItem) -> None:
         """Insert a todo or update it when its ID already exists."""
+        # One upsert method new todo aur completed state update dono support karta hai.
         query = """
             INSERT INTO todos (
                 id, title, priority, is_completed,
@@ -32,6 +34,7 @@ class PostgreSQLTodoRepository(TodoRepository):
                 is_completed = EXCLUDED.is_completed,
                 completed_at = EXCLUDED.completed_at
         """
+        # Python datetime/boolean values Psycopg native PostgreSQL types mein bind karta hai.
         values = (
             todo.id,
             todo.title.value,
@@ -51,6 +54,7 @@ class PostgreSQLTodoRepository(TodoRepository):
 
     def get_by_id(self, todo_id: str, owner_uid: str) -> TodoItem | None:
         """Find one todo only when its ID and owner both match."""
+        # Owner condition security ko SQL query level tak enforce karti hai.
         query = """
             SELECT id, title, priority, is_completed,
                    created_at, completed_at, owner_uid
@@ -78,6 +82,7 @@ class PostgreSQLTodoRepository(TodoRepository):
 
     def get_by_owner(self, owner_uid: str) -> list[TodoItem]:
         """Return one user's todos, newest first."""
+        # Explicit ORDER BY PostgreSQL list ko deterministic newest-first banata hai.
         query = """
             SELECT id, title, priority, is_completed,
                    created_at, completed_at, owner_uid
@@ -99,6 +104,7 @@ class PostgreSQLTodoRepository(TodoRepository):
 
     def delete(self, todo_id: str, owner_uid: str) -> None:
         """Delete one owned todo using safe SQL parameters."""
+        # Parameter tuple SQL injection avoid karta hai; owner prevents cross-user delete.
         query = "DELETE FROM todos WHERE id = %s AND owner_uid = %s"
         with psycopg.connect(self.connection_url) as connection:
             connection.execute(query, (todo_id, owner_uid))
@@ -127,6 +133,7 @@ class PostgreSQLTodoRepository(TodoRepository):
     @staticmethod
     def _to_entity(row: dict) -> TodoItem:
         """Convert one named PostgreSQL result row into TodoItem."""
+        # Domain types restore karne se database data bhi same invariants follow karta hai.
         return TodoItem(
             id=row["id"],
             title=TaskTitle(row["title"]),

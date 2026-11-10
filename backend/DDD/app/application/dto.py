@@ -3,6 +3,10 @@
 from dataclasses import dataclass
 
 
+# Input DTOs presentation se use case tak simple data le jati hain. Output DTOs
+# use case ka result presentation ko deti hain; in mein FastAPI/Pydantic nahi hai.
+
+
 @dataclass(frozen=True)
 class CreateTodoInput:
     """Data needed by the application layer to create one todo."""

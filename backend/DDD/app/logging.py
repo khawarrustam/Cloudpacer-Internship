@@ -70,6 +70,8 @@ def install_request_logging(app: FastAPI) -> None:
     @app.middleware("http")
     async def request_logger(request: Request, call_next):
         """Wrap one HTTP request inside its logging context."""
+        # Browser preflight background request hai; isko skip karne se main API
+        # learning logs clean aur readable rehte hain.
         if request.method == "OPTIONS":
             return await call_next(request)
 
@@ -77,6 +79,7 @@ def install_request_logging(app: FastAPI) -> None:
             f"#{next(_request_number):03d} "
             f"{request.method} {request.url.path}"
         )
+        # ContextVar parallel requests ko apna separate request label deta hai.
         token = _current_request.set(label)
         started = perf_counter()
         logger.info("REQUEST  | %s", label)
@@ -105,4 +108,5 @@ def install_request_logging(app: FastAPI) -> None:
             )
             raise
         finally:
+            # Context reset zaroori hai warna next request old label inherit kar sakti hai.
             _current_request.reset(token)

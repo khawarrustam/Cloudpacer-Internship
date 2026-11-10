@@ -122,10 +122,11 @@ Passwords are stored as salted hashes, never plain text.
 - Swagger: <http://127.0.0.1:8000/docs>
 - ReDoc: <http://127.0.0.1:8000/redoc>
 
-## Run focused tests
+## Verify the backend
 
 ```powershell
-.\.venv\Scripts\python.exe -m unittest discover -s tests -v
+.\.venv\Scripts\python.exe -m compileall -q app main.py
+.\.venv\Scripts\python.exe -m pip check
 ```
 
 ## Logs and comments

@@ -20,6 +20,7 @@ class PostgreSQLAuthRepository(AuthRepository):
     def __init__(self, connection_url: str, security: AuthSecurity) -> None:
         self.connection_url = connection_url
         self.security = security
+        # Beginner setup simple rakhne ke liye missing table startup par create hoti hai.
         self._create_table()
 
     def signup(self, email: str, password: str, name: str) -> UserData:
@@ -30,6 +31,7 @@ class PostgreSQLAuthRepository(AuthRepository):
             INSERT INTO users (id, email, display_name, password_hash)
             VALUES (%s, %s, %s, %s)
         """
+        # Values query string mein concatenate nahi hoti; driver placeholders bind karta hai.
         values = (
             uid,
             clean_email,
@@ -37,6 +39,7 @@ class PostgreSQLAuthRepository(AuthRepository):
             self.security.hash_password(password),
         )
         try:
+            # Context manager success par commit, error par rollback/cleanup handle karta hai.
             with psycopg.connect(self.connection_url) as connection:
                 connection.execute(query, values)
         except psycopg.errors.UniqueViolation as error:
@@ -63,6 +66,7 @@ class PostgreSQLAuthRepository(AuthRepository):
             FROM users
             WHERE email = %s
         """
+        # dict_row readable column names deta hai instead of fragile numeric indexes.
         with psycopg.connect(
             self.connection_url,
             row_factory=dict_row,
@@ -90,6 +94,7 @@ class PostgreSQLAuthRepository(AuthRepository):
     def authenticate(self, token: str) -> UserData:
         """Accept the token only if its PostgreSQL user still exists."""
         uid, email = self.security.read_token(token)
+        # Valid signature ke baad current users table mein live account bhi required hai.
         query = "SELECT id FROM users WHERE id = %s AND email = %s"
         with psycopg.connect(self.connection_url) as connection:
             user = connection.execute(query, (uid, email)).fetchone()
@@ -99,6 +104,7 @@ class PostgreSQLAuthRepository(AuthRepository):
 
     def _create_table(self) -> None:
         """Create the users table without changing an existing table."""
+        # IF NOT EXISTS existing table/data ko delete ya reset nahi karta.
         query = """
             CREATE TABLE IF NOT EXISTS users (
                 id TEXT PRIMARY KEY,

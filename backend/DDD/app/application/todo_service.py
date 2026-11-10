@@ -7,6 +7,7 @@ from app.logging import log_step
 
 def to_output(todo: TodoItem) -> TodoOutput:
     """Convert a domain TodoItem into API-friendly application data."""
+    # Domain datetime/enum rich types hain; output DTO JSON-friendly strings rakhta hai.
     completed_at = None
     if todo.completed_at:
         completed_at = todo.completed_at.isoformat()
@@ -34,6 +35,7 @@ class TodoService:
 
     def create(self, data: CreateTodoInput) -> TodoOutput:
         """Validate a new todo through the domain, save it, and return it."""
+        # Domain entity rule apply karti hai; repository sirf resulting state save karti hai.
         todo = TodoItem.create(data.title, data.priority, data.owner_uid)
         self.repository.save(todo)
         log_step(
@@ -55,6 +57,7 @@ class TodoService:
 
     def complete(self, data: TodoActionInput) -> TodoOutput:
         """Find an owned todo, apply completion, and save it."""
+        # Pehle ID + owner se entity read hoti hai, phir entity apna rule apply karti hai.
         todo = self._get_todo_or_fail(data)
         todo.complete()
         self.repository.save(todo)
@@ -73,6 +76,7 @@ class TodoService:
 
     def _get_todo_or_fail(self, data: TodoActionInput) -> TodoItem:
         """Keep the shared complete/delete ownership check in one place."""
+        # Same helper missing aur doosre user ke todo dono ko safe 404 behavior deta hai.
         todo = self.repository.get_by_id(data.todo_id, data.owner_uid)
         if todo is None:
             raise TodoNotFoundError("Todo was not found for this user.")

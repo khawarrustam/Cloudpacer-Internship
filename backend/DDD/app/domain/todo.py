@@ -42,6 +42,8 @@ class TaskTitle:
     value: str
 
     def __post_init__(self) -> None:
+        # Title ko entity mein enter hote hi clean aur valid banate hain. Baad
+        # mein har layer safely assume kar sakti hai ke title valid hai.
         clean_title = (self.value or "").strip()
         if len(clean_title) < 3:
             raise InvalidTaskTitleError("Title must have at least 3 characters.")
@@ -65,6 +67,7 @@ class TodoItem:
     @classmethod
     def create(cls, title: str, priority: str, owner_uid: str) -> "TodoItem":
         """Create a new valid, incomplete todo with a unique ID and UTC time."""
+        # ID/time client se nahi lete; server consistent trusted values banata hai.
         return cls(
             id=str(uuid.uuid4()),
             title=TaskTitle(title),
@@ -76,6 +79,7 @@ class TodoItem:
 
     def complete(self) -> None:
         """Apply the one-time completion business rule."""
+        # Completion ka rule route ya database mein nahi, entity ke andar hai.
         if self.is_completed:
             raise TaskAlreadyCompletedError("Todo is already completed.")
         self.is_completed = True
@@ -89,6 +93,8 @@ class TodoRepository(ABC):
     How: Infrastructure adapters implement this contract for each database.
     """
 
+    # Service isi contract par depend karti hai, isliye selected database badalne
+    # par application workflow ko change karne ki zarurat nahi hoti.
     @abstractmethod
     def save(self, todo: TodoItem) -> None:
         """Create a todo or save its latest state."""

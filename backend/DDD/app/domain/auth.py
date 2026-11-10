@@ -24,6 +24,8 @@ class AuthRepository(ABC):
     How: Each selected database provides its own concrete implementation.
     """
 
+    # Domain sirf required operations batata hai. Actual Firestore/Mongo/SQL
+    # code infrastructure layer mein in methods ko implement karta hai.
     @abstractmethod
     def signup(self, email: str, password: str, name: str) -> UserData:
         """Create one account in the selected database."""

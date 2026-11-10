@@ -19,6 +19,7 @@ def list_todos(
 ) -> list[TodoOutput]:
     """Return todos belonging only to the verified current user."""
     log_step("Presentation", "Todo list requested.", "Todo list mangi gayi.")
+    # Verified UID ki wajah se service sirf current database user ke todos read karti hai.
     return todo_service.list(user.uid)
 
 
@@ -39,6 +40,7 @@ def create_todo(
         "Create todo request mil gayi.",
     )
     try:
+        # owner_uid client JSON se nahi, authenticated CurrentUser se aati hai.
         return todo_service.create(CreateTodoInput(
             title=request.title,
             priority=request.priority,
@@ -61,6 +63,7 @@ def complete_todo(
         "Complete todo request mil gayi.",
     )
     try:
+        # ID URL se aur owner verified token se combine hota hai.
         return todo_service.complete(TodoActionInput(
             todo_id=todo_id,
             owner_uid=user.uid,
@@ -84,6 +87,7 @@ def delete_todo(
         "Delete todo request mil gayi.",
     )
     try:
+        # Service delete se pehle ownership/existence check karti hai.
         todo_service.delete(TodoActionInput(
             todo_id=todo_id,
             owner_uid=user.uid,

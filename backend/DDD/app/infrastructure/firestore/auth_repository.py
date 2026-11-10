@@ -29,6 +29,7 @@ class FirestoreAuthRepository(AuthRepository):
 
     def signup(self, email: str, password: str, name: str) -> UserData:
         """Create a Firestore-only account and return its token."""
+        # Email normalize karne se uppercase/spaces duplicate account bypass nahi karte.
         clean_email = self.security.normalize_email(email)
         try:
             if self._find_user(clean_email) is not None:
@@ -36,6 +37,7 @@ class FirestoreAuthRepository(AuthRepository):
                     "This email is already registered in Firestore."
                 )
             uid = str(uuid.uuid4())
+            # Plain password kabhi document mein nahi jata; sirf salt:hash save hota hai.
             user = {
                 "uid": uid,
                 "email": clean_email,
@@ -96,6 +98,7 @@ class FirestoreAuthRepository(AuthRepository):
         except Exception as error:
             log_error("Infrastructure", f"Firestore token check failed: {error}")
             raise ValidationException("Firestore session check failed.") from error
+        # Signed token ke baad live DB check deleted/replaced user ko reject karta hai.
         if user is None or user["uid"] != uid:
             raise ValidationException("Firestore user no longer exists.")
         return UserData(uid=uid, email=email, token=token)
@@ -110,6 +113,7 @@ class FirestoreAuthRepository(AuthRepository):
 
     def _user_url(self, email: str) -> str:
         """Build a private, stable document URL for a normalized email."""
+        # Deterministic hash direct lookup deta hai; raw email document path mein nahi jati.
         email_key = hashlib.sha256(email.encode("utf-8")).hexdigest()
         return f"{self.users_url}/{email_key}"
 

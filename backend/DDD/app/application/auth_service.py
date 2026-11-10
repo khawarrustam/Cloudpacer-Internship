@@ -17,6 +17,8 @@ class AuthService:
 
     def signup(self, data: SignupInput) -> AuthOutput:
         """Create a selected-database user and return safe auth output."""
+        # Service database ka naam nahi jaanti; injected repository correct
+        # adapter mein hashing, storage aur token creation complete karti hai.
         user = self.repository.signup(
             data.email,
             data.password,
@@ -33,6 +35,7 @@ class AuthService:
 
     def authenticate(self, token: str) -> AuthOutput:
         """Verify a token against the currently selected database."""
+        # Repository token ke sath database user existence bhi confirm karti hai.
         user = self.repository.authenticate(token)
         return self._to_output(user.uid, user.email, user.token)
 

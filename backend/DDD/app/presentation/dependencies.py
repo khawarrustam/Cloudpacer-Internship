@@ -20,6 +20,7 @@ class CurrentUser:
     email: str
 
 
+# Protected route ke Authorization: Bearer <token> header ko parse karta hai.
 bearer = HTTPBearer()
 
 
@@ -29,6 +30,7 @@ def get_auth_service(request: Request) -> AuthService:
     When: Auth routes or current_user declare AuthServiceDep.
     How: Read the instance wired once on FastAPI app.state.
     """
+    # Composition root ne startup par yahi configured service store ki thi.
     return request.app.state.auth_service
 
 
@@ -52,6 +54,7 @@ def current_user(
     How: Delegate token/user validation to the selected AuthRepository.
     """
     try:
+        # Owner UID request body se trust nahi hoti; verified token se milti hai.
         result = auth_service.authenticate(credentials.credentials)
         user = CurrentUser(uid=result.uid, email=result.email)
         log_step(
@@ -61,6 +64,7 @@ def current_user(
         )
         return user
     except ValidationException as error:
+        # Expected auth problem ko safe user-facing 401 mein translate karte hain.
         log_step(
             "Auth",
             "Database session was rejected.",
@@ -68,6 +72,7 @@ def current_user(
         )
         raise HTTPException(401, str(error)) from error
     except Exception as error:
+        # Unexpected detail terminal log mein jati hai; client ko generic message milta hai.
         log_error("Auth", f"Token verification failed: {error}")
         raise HTTPException(
             401,

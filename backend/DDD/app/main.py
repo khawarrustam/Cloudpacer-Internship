@@ -18,6 +18,8 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     When: Uvicorn imports the app or a test needs an isolated application.
     How: Configure middleware, repositories, services, routers, and health.
     """
+    # Normal run cached .env settings use karta hai; optional settings tests ya
+    # alternate app instance ko explicit configuration dene deti hain.
     settings = settings or get_settings()
     app = FastAPI(title=settings.app_name)
     app.add_middleware(
@@ -32,6 +34,9 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     # Composition root concrete database choose karta hai. Domain, application,
     # aur presentation ko selected driver ka direct knowledge nahi hota.
     todo_repository, auth_repository = create_repositories(settings)
+
+    # Routes database objects directly create nahi karti. Ready services app.state
+    # par rakhne se dependencies har request mein correct instances deti hain.
     app.state.todo_service = TodoService(todo_repository)
     app.state.auth_service = AuthService(auth_repository)
     app.state.settings = settings
@@ -42,6 +47,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         f"Todo aur auth database connect ho gaya: {settings.selected_database}.",
     )
 
+    # Feature routers mount karne ke baad public URLs /auth/* aur /todos/* banti hain.
     app.include_router(auth_router)
     app.include_router(todo_router)
 

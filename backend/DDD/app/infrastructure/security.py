@@ -25,6 +25,8 @@ class AuthSecurity:
         database: str,
         token_expire_minutes: int,
     ) -> None:
+        # Same object active database name token mein bind karta hai; isi liye
+        # MongoDB token PostgreSQL/Firestore process mein accept nahi hota.
         self.secret = secret.encode("utf-8")
         self.database = database
         self.token_expire_seconds = token_expire_minutes * 60
@@ -36,6 +38,7 @@ class AuthSecurity:
 
     def hash_password(self, password: str) -> str:
         """Create a random-salt password hash; never store plain passwords."""
+        # Har signup ka random salt same passwords ke hashes bhi different banata hai.
         salt = secrets.token_hex(16)
         password_hash = self._derive_password_hash(password, salt)
         return f"{salt}:{password_hash}"
@@ -47,10 +50,12 @@ class AuthSecurity:
         except ValueError:
             return False
         actual_hash = self._derive_password_hash(password, salt)
+        # compare_digest normal == ke timing differences ko avoid karta hai.
         return hmac.compare_digest(actual_hash, expected_hash)
 
     def create_token(self, uid: str, email: str) -> str:
         """Create a signed token containing user and selected database."""
+        # Payload readable Base64 hota hai; HMAC signature modification detect karti hai.
         payload = {
             "uid": uid,
             "email": email,
@@ -64,11 +69,13 @@ class AuthSecurity:
         ).encode("utf-8")
         encoded_payload = self._encode(payload_bytes)
         signature = self._sign(encoded_payload)
+        # Final format: base64url(payload).base64url(signature)
         return f"{encoded_payload}.{self._encode(signature)}"
 
     def read_token(self, token: str) -> tuple[str, str]:
         """Verify signature, database, expiry, UID, and email."""
         payload = self._read_payload(token)
+        # Signature valid hona enough nahi; token current database ka bhi hona chahiye.
         if payload.get("database") != self.database:
             raise ValidationException(
                 f"Please log in or sign up in the {self.database} database."
@@ -96,6 +103,7 @@ class AuthSecurity:
         try:
             encoded_payload, encoded_signature = token.split(".", 1)
             received_signature = self._decode(encoded_signature)
+            # Payload ka aik character bhi change ho toh expected signature match nahi karegi.
             if not hmac.compare_digest(
                 received_signature,
                 self._sign(encoded_payload),

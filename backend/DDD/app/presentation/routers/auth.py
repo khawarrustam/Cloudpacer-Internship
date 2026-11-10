@@ -24,11 +24,13 @@ def signup(
     """
     log_step("Presentation", "Signup request received.", "Signup request mil gayi.")
     try:
+        # HTTP schema ko framework-independent application input DTO mein map karte hain.
         result = auth_service.signup(SignupInput(
             email=request.email,
             password=request.password,
             display_name=request.display_name,
         ))
+        # Application output ko public HTTP response contract mein map karte hain.
         return AuthResponse(
             uid=result.uid,
             email=result.email,
@@ -47,6 +49,7 @@ def login(
     """Authenticate from the selected database and return its token."""
     log_step("Presentation", "Login request received.", "Login request mil gayi.")
     try:
+        # Route credentials verify nahi karti; use case ko delegate karti hai.
         result = auth_service.login(LoginInput(
             email=request.email,
             password=request.password,

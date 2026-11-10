@@ -39,7 +39,7 @@
 18. [Database structures and record shapes](#18-database-structures-and-record-shapes)
 19. [Database switching](#19-database-switching)
 20. [Logging system](#20-logging-system)
-21. [Tests and verification](#21-tests-and-verification)
+21. [Verification](#21-verification)
 22. [Live presentation/demo plan](#22-live-presentationdemo-plan)
 23. [Design decisions: why this approach?](#23-design-decisions-why-this-approach)
 24. [Current limitations and production improvements](#24-current-limitations-and-production-improvements)
@@ -138,7 +138,7 @@ Is formula se answer short bhi rehta hai aur professional bhi lagta hai.
 - Typed `.env` configuration.
 - Dependency injection through FastAPI.
 - Bilingual request-flow logs.
-- Automated domain/security tests.
+- Repeatable compilation, import, dependency and integration checks.
 
 ---
 
@@ -224,47 +224,36 @@ backend/DDD/
 |   |-- logging.py
 |   |
 |   |-- domain/
-|   |   |-- __init__.py
 |   |   |-- auth.py
 |   |   `-- todo.py
 |   |
 |   |-- application/
-|   |   |-- __init__.py
 |   |   |-- dto.py
 |   |   |-- auth_service.py
 |   |   `-- todo_service.py
 |   |
 |   |-- presentation/
-|   |   |-- __init__.py
 |   |   |-- schemas.py
 |   |   |-- dependencies.py
 |   |   `-- routers/
-|   |       |-- __init__.py
 |   |       |-- auth.py
 |   |       `-- todos.py
 |   |
 |   `-- infrastructure/
-|       |-- __init__.py
 |       |-- security.py
 |       |-- repository_factory.py
 |       |
 |       |-- firestore/
-|       |   |-- __init__.py
 |       |   |-- auth_repository.py
 |       |   `-- todo_repository.py
 |       |
 |       |-- mongodb/
-|       |   |-- __init__.py
 |       |   |-- auth_repository.py
 |       |   `-- todo_repository.py
 |       |
 |       `-- postgresql/
-|           |-- __init__.py
 |           |-- auth_repository.py
 |           `-- todo_repository.py
-|
-`-- tests/
-    `-- test_domain_and_security.py
 ```
 
 ### Folder naming ka reason
@@ -278,11 +267,14 @@ backend/DDD/
 - `auth_repository.py` aur `todo_repository.py` separate: dono different
   repository contracts implement karte hain.
 
-### `__init__.py` files kya karti hain?
+### Sirf root `app/__init__.py` kyun rakhi hai?
 
-`__init__.py` Python ko batati hai ke folder ek regular Python package hai.
-In files mein business logic nahi rakhi gayi. Yeh intentional hai: package
-marker simple rehta hai aur import ke time hidden side effects nahi deta.
+Root `app/__init__.py` `app` ko explicit regular Python package banati hai.
+Nested folders ke one-line markers mein exports, initialization ya business
+logic nahi thi, isliye unhein remove kiya gaya. Python 3 nested folders ko
+implicit namespace packages ke taur par import kar sakta hai. Agar future mein
+package-level public exports ya initialization chahiye ho, relevant folder mein
+`__init__.py` dobara add ki ja sakti hai.
 
 ### Every file at a glance
 
@@ -302,32 +294,23 @@ Yeh table ensure karti hai ke project ki koi important file unexplained na rahe:
 | `app/main.py` | Composition root | FastAPI, repositories, services, routers wire karta hai |
 | `app/config.py` | Typed settings | `.env`/terminal config centralize karta hai |
 | `app/logging.py` | Bilingual trace logger | Request flow and timing visible karta hai |
-| `app/domain/__init__.py` | Domain package marker | Domain modules ko package banata hai |
 | `app/domain/auth.py` | Auth contract/data/error | DB-independent auth language |
 | `app/domain/todo.py` | Todo entity/rules/contract | Core business logic |
-| `app/application/__init__.py` | Application package marker | Use-case modules organize karta hai |
 | `app/application/dto.py` | Input/output DTOs | Layers ke darmiyan plain data transfer |
 | `app/application/auth_service.py` | Auth workflows | Repository operations coordinate karta hai |
 | `app/application/todo_service.py` | Todo workflows | Domain behavior + persistence coordinate karta hai |
-| `app/presentation/__init__.py` | Presentation package marker | HTTP modules organize karta hai |
 | `app/presentation/schemas.py` | Pydantic HTTP models | Request/response validation contract |
 | `app/presentation/dependencies.py` | Service/current-user dependencies | FastAPI DI and authentication boundary |
-| `app/presentation/routers/__init__.py` | Router package marker | Endpoint modules group karta hai |
 | `app/presentation/routers/auth.py` | Signup/login endpoints | HTTP auth input/output mapping |
 | `app/presentation/routers/todos.py` | Todo endpoints | Protected HTTP todo workflows |
-| `app/infrastructure/__init__.py` | Infrastructure package marker | Technical adapters group karta hai |
 | `app/infrastructure/security.py` | Hashing/token implementation | Shared DB-independent technical security |
 | `app/infrastructure/repository_factory.py` | Adapter selection/wiring | Matching auth + todo repositories guarantee karta hai |
-| `app/infrastructure/firestore/__init__.py` | Firestore package marker | Firestore adapters group karta hai |
 | `app/infrastructure/firestore/auth_repository.py` | Firestore auth adapter | Firestore users/password/token flow |
 | `app/infrastructure/firestore/todo_repository.py` | Firestore todo adapter | Firestore todo CRUD/mapping |
-| `app/infrastructure/mongodb/__init__.py` | MongoDB package marker | Mongo adapters group karta hai |
 | `app/infrastructure/mongodb/auth_repository.py` | Mongo auth adapter | `users` collection auth flow |
 | `app/infrastructure/mongodb/todo_repository.py` | Mongo todo adapter | `todos` collection CRUD/mapping |
-| `app/infrastructure/postgresql/__init__.py` | PostgreSQL package marker | PostgreSQL adapters group karta hai |
 | `app/infrastructure/postgresql/auth_repository.py` | PostgreSQL auth adapter | `users` table auth flow |
 | `app/infrastructure/postgresql/todo_repository.py` | PostgreSQL todo adapter | `todos` table CRUD/mapping |
-| `tests/test_domain_and_security.py` | Focused automated tests | Rules and auth security regression protection |
 
 ---
 
@@ -2161,50 +2144,29 @@ application completion log se pehle aa sakta hai.
 
 ---
 
-## 21. Tests and verification
+## 21. Verification
 
-### 21.1 `tests/test_domain_and_security.py`
+Current simplified repository dedicated test files commit nahi karti. Code
+quality ko compilation, import smoke, dependency aur real integration checks se
+verify kiya jata hai. Production project mein repeatable automated unit/API
+tests add karna recommended hai.
 
-Path: [`tests/test_domain_and_security.py`](../backend/DDD/tests/test_domain_and_security.py)
-
-Standard-library `unittest` use hota hai; extra testing package required nahi.
-
-#### Domain tests
-
-Class: `TodoDomainTests(unittest.TestCase)`
-
-| Test method | Exact proof |
-|---|---|
-| `test_create_trims_title_and_normalizes_priority` | `"  Learn DDD  "` becomes `"Learn DDD"`, `high` becomes `HIGH`, new todo incomplete |
-| `test_short_title_is_rejected` | One-character title raises `InvalidTaskTitleError` |
-| `test_completed_todo_cannot_complete_again` | Second `complete()` raises `TaskAlreadyCompletedError` |
-
-#### Security tests
-
-Class: `AuthSecurityTests(unittest.TestCase)`
-
-`setUp()` same test secret ke sath separate PostgreSQL and MongoDB
-`AuthSecurity` objects banata hai; expiry five minutes rakhta hai.
-
-| Test method | Exact proof |
-|---|---|
-| `test_password_is_hashed_and_can_be_verified` | Saved value plain password contain nahi karti; correct password true and wrong false |
-| `test_token_is_valid_only_for_its_database` | PostgreSQL token PostgreSQL mein valid but Mongo security object rejects |
-| `test_modified_token_is_rejected` | Token ka last character change karne par signature validation fails |
-
-Run:
+### 21.1 Compilation check
 
 ```powershell
-.\.venv\Scripts\python.exe -m unittest discover -s tests -v
-```
-
-### 21.2 Compilation check
-
-```powershell
-.\.venv\Scripts\python.exe -m compileall -q app main.py tests
+.\.venv\Scripts\python.exe -m compileall -q app main.py
 ```
 
 Syntax/import-compilation issues catch karta hai.
+
+### 21.2 Namespace import smoke check
+
+```powershell
+.\.venv\Scripts\python.exe -c "from app.domain.todo import TodoItem; from app.presentation.routers.todos import router; print('Imports OK')"
+```
+
+Yeh confirm karta hai ke root regular package aur nested namespace folders ke
+imports deleted empty `__init__.py` files ke baghair work karte hain.
 
 ### 21.3 Dependency check
 
@@ -2214,7 +2176,7 @@ Syntax/import-compilation issues catch karta hai.
 
 Installed package conflicts/broken requirements detect karta hai.
 
-### 21.4 Real integration tests already performed
+### 21.4 Real integration checks already performed
 
 Har database par verify hua:
 
@@ -2231,10 +2193,10 @@ Har database par verify hua:
 - cross-database token rejection;
 - direct database record presence.
 
-### 21.5 Test pyramid explanation
+### 21.5 Recommended production test pyramid
 
 ```text
-Fast unit tests: domain/security rules
+Unit tests: domain/security rules
 Integration tests: real repositories/databases
 API tests: routes + dependencies + services + repositories
 Frontend build: client compile integration
@@ -2325,10 +2287,11 @@ http://127.0.0.1:8000/docs
 - Firestore mode: Firebase Console document paths.
 - Same email ke different UIDs show karna strong demo hai.
 
-#### Part 7 — Tests and conclusion (2–3 min)
+#### Part 7 — Verification and conclusion (2–3 min)
 
 ```powershell
-.\.venv\Scripts\python.exe -m unittest discover -s tests -v
+.\.venv\Scripts\python.exe -m compileall -q app main.py
+.\.venv\Scripts\python.exe -m pip check
 ```
 
 Conclusion:
@@ -2701,8 +2664,9 @@ Create aur complete state save same repository method se hoti hai.
 
 ### Q31. `__init__.py` kyun?
 
-Directories ko regular Python package banati hai. Current files intentionally
-minimal hain to avoid import side effects.
+Root `app/__init__.py` `app` ko explicit regular package banati hai. Nested
+folders Python 3 namespace-package imports use karte hain because unhein package
+initialization ya exports ki need nahi. Is se empty decorative files kam hui hain.
 
 ### Q32. Root `main.py` aur `app/main.py` dono kyun?
 
@@ -2780,10 +2744,11 @@ $env:DATABASE = "postgresql"  # or mongodb / firestore
 python -m uvicorn main:app --reload
 ```
 
-### Test command
+### Verification commands
 
 ```powershell
-.\.venv\Scripts\python.exe -m unittest discover -s tests -v
+.\.venv\Scripts\python.exe -m compileall -q app main.py
+.\.venv\Scripts\python.exe -m pip check
 ```
 
 ### Final closing statement
@@ -2921,17 +2886,18 @@ Ready answer:
 
 ### 27.9 `__init__.py` files
 
-Har package folder ka `__init__.py` intentionally almost empty hai.
+Sirf `app/__init__.py` retained hai.
 
-- Python ko regular package signal karta hai.
-- `app.*` imports reliable banata hai.
-- Business logic hide nahi karta.
-- Import time par database connection ya side effect start nahi karta.
+- Root `app` ko explicit regular package signal karta hai.
+- Nested folders Python 3 implicit namespace-package behavior use karte hain.
+- Removed files mein exports, initialization ya business logic nahi thi.
+- Future package-level behavior aaye toh relevant `__init__.py` add ho sakti hai.
 
 Ready answer:
 
-> “`__init__.py` package marker hai. Is project mein minimal rakhi gayi hai taa-ke
-> imports predictable hon aur hidden startup side effects na hon.”
+> “Root `app/__init__.py` explicit package marker hai. Empty nested markers ki
+> technical need nahi thi, isliye codebase simple rakhne ke liye remove kiye;
+> Python 3 nested imports namespace packages ke through support karta hai.”
 
 ---
 

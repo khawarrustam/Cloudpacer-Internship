@@ -32,6 +32,7 @@ class FirestoreTodoRepository(TodoRepository):
 
     def save(self, todo: TodoItem) -> None:
         """Create or update one Firestore todo document."""
+        # PATCH same URL par create ya latest entity state update dono handle karta hai.
         response = self.session.patch(
             self._document_url(todo.owner_uid, todo.id),
             json=self._to_document(todo),
@@ -45,6 +46,7 @@ class FirestoreTodoRepository(TodoRepository):
 
     def get_by_id(self, todo_id: str, owner_uid: str) -> TodoItem | None:
         """Find one owned Firestore todo or return None."""
+        # Owner UID document path ka part hai, so doosre user ka ID same path nahi banata.
         response = self.session.get(self._document_url(owner_uid, todo_id))
         if response.status_code == 404:
             log_step(
@@ -65,6 +67,7 @@ class FirestoreTodoRepository(TodoRepository):
         """Read all Firestore todos for one user, including every page."""
         documents = []
         page_token = None
+        # nextPageToken loop large collections ka sirf first page read hone se rokta hai.
         while True:
             params = {"pageSize": self.page_size}
             if page_token:
@@ -112,6 +115,7 @@ class FirestoreTodoRepository(TodoRepository):
     @staticmethod
     def _to_document(todo: TodoItem) -> dict:
         """Convert TodoItem into Firestore REST fields."""
+        # Firestore REST normal JSON ke bajaye typed value wrappers expect karti hai.
         values = {
             "id": todo.id,
             "title": todo.title.value,
@@ -149,6 +153,7 @@ class FirestoreTodoRepository(TodoRepository):
 
 def _encode(value) -> dict:
     """Convert one Python value into Firestore REST format."""
+    # Type order important hai because Python bool int ka subclass bhi hota hai.
     if value is None:
         return {"nullValue": None}
     if isinstance(value, bool):

@@ -24,8 +24,9 @@ must not be moved between layers unless the placement rules below support it.
    imports work. TodoFlow is a small application run directly with Uvicorn, so
    the official FastAPI-style `app/` package keeps the beginner command simple.
 6. [Python packages documentation](https://docs.python.org/3/tutorial/modules.html#packages)
-   explains that `__init__.py` marks regular packages. Only real package
-   boundaries receive this file; empty decorative folders are not added.
+   explains that `__init__.py` marks a regular package. TodoFlow keeps it only
+   at the root `app` boundary; nested folders use Python 3 namespace-package
+   behavior because they contain no package initialization or public exports.
 
 ## 2. Placement rules
 
@@ -92,11 +93,11 @@ backend/DDD/
 |       `-- routers/
 |           |-- auth.py
 |           `-- todos.py
-|-- requirements.txt
-`-- tests/test_domain_and_security.py # Focused rule regression tests
+`-- requirements.txt
 ```
 
-`__init__.py` package markers are present but omitted from the tree for clarity.
+Only `app/__init__.py` is retained as the explicit root package marker. Empty
+nested package markers are intentionally omitted.
 
 ## 5. Professional implementation prompt
 

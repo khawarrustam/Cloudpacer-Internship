@@ -17,10 +17,12 @@ class MongoTodoRepository(TodoRepository):
 
     def __init__(self, collection: Collection) -> None:
         self.collection = collection
+        # User todo-list filter ko faster banane ke liye owner field indexed hai.
         self.collection.create_index("owner_uid")
 
     def save(self, todo: TodoItem) -> None:
         """Create a todo or replace its saved MongoDB document."""
+        # Upsert missing ID par insert aur existing ID par latest full state replace karta hai.
         self.collection.replace_one(
             {"_id": todo.id},
             self._to_document(todo),
@@ -34,6 +36,7 @@ class MongoTodoRepository(TodoRepository):
 
     def get_by_id(self, todo_id: str, owner_uid: str) -> TodoItem | None:
         """Find a todo only when ID and owner both match."""
+        # ID akela enough nahi: owner filter authorization ko DB query tak carry karta hai.
         document = self.collection.find_one({
             "_id": todo_id,
             "owner_uid": owner_uid,
@@ -89,6 +92,7 @@ class MongoTodoRepository(TodoRepository):
     @staticmethod
     def _to_entity(document: dict) -> TodoItem:
         """Convert one MongoDB document back into TodoItem."""
+        # Restore ke waqt domain value objects stored values ko dobara validate karte hain.
         completed_at = None
         if document.get("completed_at"):
             completed_at = datetime.fromisoformat(document["completed_at"])

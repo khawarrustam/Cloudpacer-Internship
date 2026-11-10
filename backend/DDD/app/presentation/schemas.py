@@ -5,6 +5,8 @@ from typing import Literal
 from pydantic import BaseModel, EmailStr, Field
 
 
+# Yeh models sirf HTTP JSON contract hain. Application layer apne plain DTOs
+# use karti hai taa-ke use cases FastAPI/Pydantic se independent rahen.
 class SignupRequest(BaseModel):
     """Validate the JSON body received by POST /auth/signup."""
 
@@ -33,6 +35,7 @@ class CreateTodoRequest(BaseModel):
     """Validate title length and priority at the HTTP boundary."""
 
     title: str = Field(min_length=3, max_length=120)
+    # Client lowercase ya uppercase bhej sakta hai; domain canonical uppercase banata hai.
     priority: Literal[
         "LOW", "MEDIUM", "HIGH", "low", "medium", "high"
     ] = "MEDIUM"

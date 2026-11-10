@@ -33,12 +33,17 @@ def create_repositories(
     How: Create shared security, choose one driver, and return both contracts.
     """
     database = settings.selected_database
+
+    # One shared policy object ensure karta hai ke selected auth adapter same
+    # hashing, expiry aur database-bound token rules use kare.
     security = AuthSecurity(
         secret=settings.auth_token_secret,
         database=database,
         token_expire_minutes=settings.auth_token_expire_minutes,
     )
 
+    # Har branch matching todo + auth pair return karti hai; mixed databases
+    # accidentally wire nahi ho sakte.
     if database == "firestore":
         return _create_firestore_repositories(settings, security)
     if database == "mongodb":
@@ -51,6 +56,7 @@ def _create_firestore_repositories(
     security: AuthSecurity,
 ) -> tuple[TodoRepository, AuthRepository]:
     """Connect Firestore once, then give both repositories one REST session."""
+    # Firebase app process mein sirf once initialize hoti hai.
     if not firebase_admin._apps:
         firebase_admin.initialize_app(
             credentials.Certificate(settings.firebase_credential_file)
@@ -68,6 +74,7 @@ def _create_firestore_repositories(
         f"{settings.firestore_api_url.rstrip('/')}/projects/{project}/"
         f"databases/{database}/documents"
     )
+    # Same authorized HTTP session auth aur todo REST requests reuse karti hain.
     session = AuthorizedSession(firebase_app.credential.get_credential())
     auth_users_url = (
         f"{documents_url}/"
@@ -94,6 +101,7 @@ def _create_mongodb_repositories(
 ) -> tuple[TodoRepository, AuthRepository]:
     """Connect MongoDB once and pass focused collections to repositories."""
     client = MongoClient(settings.mongodb_uri, serverSelectionTimeoutMS=5000)
+    # Startup ping invalid URI/service ko first user request se pehle detect karta hai.
     client.admin.command("ping")
     database = client[settings.mongodb_database]
     todo_repository = MongoTodoRepository(
@@ -111,6 +119,7 @@ def _create_postgresql_repositories(
     security: AuthSecurity,
 ) -> tuple[TodoRepository, AuthRepository]:
     """Create both PostgreSQL repositories with the same connection URL."""
+    # Empty URL par obscure driver error dene ke bajaye clear setup error dete hain.
     if not settings.postgresql_url:
         raise RuntimeError("Missing required setting: POSTGRESQL_URL")
     return (

@@ -23,6 +23,7 @@ class MongoAuthRepository(AuthRepository):
         security: AuthSecurity,
     ) -> None:
         self.collection = collection
+        # Unique index selected Mongo database mein duplicate normalized email rokta hai.
         self.collection.create_index("email", unique=True)
         self.security = security
 
@@ -30,6 +31,7 @@ class MongoAuthRepository(AuthRepository):
         """Create a MongoDB-only account and return its token."""
         clean_email = self.security.normalize_email(email)
         uid = str(uuid.uuid4())
+        # Application UUID ko Mongo _id banane se identity three DBs mein same format rakhti hai.
         user = {
             "_id": uid,
             "email": clean_email,
@@ -76,6 +78,7 @@ class MongoAuthRepository(AuthRepository):
     def authenticate(self, token: str) -> UserData:
         """Accept the token only if its MongoDB user still exists."""
         uid, email = self.security.read_token(token)
+        # UID aur email dono match karna stale/deleted account reuse ko avoid karta hai.
         user = self.collection.find_one({"_id": uid, "email": email})
         if user is None:
             raise ValidationException("MongoDB user no longer exists.")

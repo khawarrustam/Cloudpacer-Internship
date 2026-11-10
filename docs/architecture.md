@@ -23,7 +23,7 @@
 > 1. [`backend/DDD/`](../backend/DDD/) ➔ **Domain-Driven Design (DDD) + Onion Architecture** (Port `8000`)
 > 2. [`backend/MVC/`](../backend/MVC/) ➔ **Traditional Model-View-Controller (MVC)** (Port `8001`)
 > 
-> Dono services same business requirements aur authentication (**Firebase Auth**) use karti hain. MVC Firebase Firestore use karta hai; DDD ko terminal se **Firestore, MongoDB, ya PostgreSQL** par switch kiya ja sakta hai.
+> Dono services same business requirements follow karti hain. MVC Firebase Auth/Firestore use karta hai; DDD mein authentication aur todos dono ko terminal se **Firestore, MongoDB, ya PostgreSQL** par switch kiya ja sakta hai.
 
 ---
 
@@ -34,12 +34,12 @@
 3. [⚡ How Everything Connects (The Full Flow Diagram)](#3--how-everything-connects-the-full-flow-diagram)
 4. [🔗 DDD / Onion Concept Mapping Table](#4--ddd--onion-concept-mapping-table)
 5. [🔍 Layer-by-Layer & File-by-File Breakdown (Current Codebase)](#5--layer-by-layer--file-by-file-breakdown-current-codebase)
-   - [Layer 1: Domain (`src/domain/models.py` — The Heart ❤️)](#layer-1-domain-srcdomainmodelspy--the-heart-️)
-   - [Layer 2: Application (`src/application/` — The Orchestrator 🎯)](#layer-2-application-srcapplication--the-orchestrator-)
-   - [Layer 3: Infrastructure (`src/infrastructure/` — The Adapters 🔧)](#layer-3-infrastructure-srcinfrastructure--the-adapters-)
-   - [Layer 4: Presentation (`src/presentation/` — The Gateway 🌐)](#layer-4-presentation-srcpresentation--the-gateway-)
+   - [Layer 1: Domain (`app/domain/` — The Heart ❤️)](#layer-1-domain-appdomain--the-heart-️)
+   - [Layer 2: Application (`app/application/` — The Orchestrator 🎯)](#layer-2-application-appapplication--the-orchestrator-)
+   - [Layer 3: Infrastructure (`app/infrastructure/` — The Adapters 🔧)](#layer-3-infrastructure-appinfrastructure--the-adapters-)
+   - [Layer 4: Presentation (`app/presentation/` — The Gateway 🌐)](#layer-4-presentation-apppresentation--the-gateway-)
    - [Composition Root (`main.py` & Dependency Wiring)](#composition-root-mainpy--dependency-wiring)
-   - [Terminal Logger (`src/logs.py` — Bilingual Traceability 📋)](#terminal-logger-srclogspy--bilingual-traceability-)
+   - [Terminal Logger (`app/logging.py` — Bilingual Traceability 📋)](#terminal-logger-apploggingpy--bilingual-traceability-)
    - [🏢 Enterprise Scale: Yeh layers mazeed kya kya kar sakti hain? (What, When, How)](#-enterprise-scale-yeh-layers-mazeed-kya-kya-kar-sakti-hain-what-when-how)
 6. [🎮 Traditional MVC Architecture Deep Dive (`backend/MVC/`)](#6--traditional-mvc-architecture-deep-dive-backendmvc)
 7. [⚖️ SOLID Principles: DDD vs MVC Ka Muqabla](#7-️-solid-principles-ddd-vs-mvc-ka-muqabla)
@@ -82,7 +82,7 @@ Onion Architecture aapke codebase ko concentric rings (pyaz ke chilkon) mein org
                     │              Domain Layer               │  ← Entities, Value Objects, Rules, Ports
                     │        (the HEART of your app)          │     (pure framework-free business logic)
                     ├─────────────────────────────────────────┤
-                    │          Infrastructure Layer           │  ← Firestore, MongoDB, PostgreSQL, Firebase Auth
+                    │          Infrastructure Layer           │  ← Firestore, MongoDB, PostgreSQL auth + todos
                     │      (technical details & adapters)     │
                     └─────────────────────────────────────────┘
 ```
@@ -110,15 +110,15 @@ Jab client (React app ya Postman) **`POST /todos`** request bhejta hai, toh DDD 
   ┌─────────────────────────────────────────────────────────────┐
   │ 1. PRESENTATION LAYER — routes.py & dto.py                  │
   │    • HTTPBearer token extract karta hai                    │
-  │    • Firebase auth.verify_id_token() se CurrentUser banata hai│
+  │    • Selected AuthRepository se token verify karta hai     │
   │    • Pydantic CreateTodoRequest se payload validate karta hai│
   │    • Application CreateTodoInput DTO banata hai             │
-  │    • todo_use_cases.create(data) call karta hai             │
+  │    • todo_service.create(data) call karta hai               │
   └──────────────────────────────┬──────────────────────────────┘
                                  │
                                  ▼
   ┌─────────────────────────────────────────────────────────────┐
-  │ 2. APPLICATION LAYER — use_cases.py                         │
+  │ 2. APPLICATION LAYER — todo_service.py                      │
   │    • Workflow orchestrate karta hai                         │
   │    • Domain Entity factory TodoItem.create(...) call karta hai│
   │    • repository.save(todo) call karta hai                   │
@@ -154,22 +154,22 @@ Dono projects mein concepts ka practical mapping:
 
 | Architectural Concept | Asal Maqsad | DDD Implementation ([`backend/DDD/`](../backend/DDD/)) | MVC Implementation ([`backend/MVC/`](../backend/MVC/)) |
 |---|---|---|---|
-| **Entity (Aggregate Root)** | Unique ID aur business rules wali rich object | `TodoItem` in [`src/domain/models.py`](../backend/DDD/src/domain/models.py) | Plain Python dictionary in [`src_mvc/models/todo_model.py`](../backend/MVC/src_mvc/models/todo_model.py) |
-| **Value Object** | Immutable validated types | `TaskTitle`, `Priority` in [`src/domain/models.py`](../backend/DDD/src/domain/models.py) | String + Pydantic validation checks |
+| **Entity (Aggregate Root)** | Unique ID aur business rules wali rich object | `TodoItem` in [`app/domain/todo.py`](../backend/DDD/app/domain/todo.py) | Plain Python dictionary in [`src_mvc/models/todo_model.py`](../backend/MVC/src_mvc/models/todo_model.py) |
+| **Value Object** | Immutable validated types | `TaskTitle`, `Priority` in [`app/domain/todo.py`](../backend/DDD/app/domain/todo.py) | String + Pydantic validation checks |
 | **Domain Exceptions** | Business invariants violate hone par aane wale errors | `DomainError`, `InvalidTaskTitleError`, `TaskAlreadyCompletedError` | Custom exceptions in [`src_mvc/models/todo_model.py`](../backend/MVC/src_mvc/models/todo_model.py) |
 | **Repository Port (Interface)** | Data storage ka contract (abstraction) | `TodoRepository(ABC)`, `AuthRepository(ABC)` | **Koi interface nahi.** Controller direct Firestore se baat karta hai |
-| **Repository Adapter** | Concrete storage engine | `FirestoreTodoRepository`, `MongoTodoRepository`, `PostgreSQLTodoRepository`, `FirebaseAuthRepository` | Direct Firestore SDK queries in `todo_controller.py` + `firebase.py` |
-| **Use Case (Service)** | Workflow coordinator | `TodoUseCases`, `AuthUseCases` in [`src/application/use_cases.py`](../backend/DDD/src/application/use_cases.py) | Direct controller methods in `todo_controller.py` & `auth_controller.py` |
+| **Repository Adapter** | Concrete storage engine | Har DB ka `TodoRepository` + `AuthRepository` adapter | Direct Firestore SDK queries in `todo_controller.py` + `firebase.py` |
+| **Use Case (Service)** | Workflow coordinator | `TodoService`, `AuthService` in [`app/application/`](../backend/DDD/app/application/) | Direct controller methods in `todo_controller.py` & `auth_controller.py` |
 | **Application DTO** | Layer-to-layer data container | `CreateTodoInput`, `TodoActionInput`, `TodoOutput`, `AuthOutput` | Not separated; uses Pydantic View models directly |
 | **Presentation DTO** | HTTP API schemas | `CreateTodoRequest`, `TodoResponse`, `SignupRequest`, `LoginRequest` | `CreateTodoRequest`, `TodoResponse` in `todo_views.py` |
-| **Composition Root** | Wiring aur Dependency Injection ki jagah | `main.py` (`create_app()` + `configure_use_cases()`) | `main_mvc.py` (simple router mount) |
-| **Observability** | Request trace aur step-by-step logging | `src/logs.py` (Bilingual English + Roman Urdu logs) | Standard print statements in controller |
+| **Composition Root** | Wiring aur Dependency Injection ki jagah | `app/main.py` (`create_app()` + `app.state`) | `main_mvc.py` (simple router mount) |
+| **Observability** | Request trace aur step-by-step logging | `app/logging.py` (Bilingual English + Roman Urdu logs) | Standard print statements in controller |
 
 ---
 
 ## 5. 🔍 Layer-by-Layer & File-by-File Breakdown (Current Codebase)
 
-### Layer 1: Domain ([`src/domain/models.py`](../backend/DDD/src/domain/models.py) — The Heart ❤️)
+### Layer 1: Domain ([`app/domain/`](../backend/DDD/app/domain/) — The Heart ❤️)
 Yeh application ka sab se sacred hissa hai. Isme zero framework dependencies hain (FastAPI, Firebase, ya requests ka koi zikar nahi).
 
 #### 1. Value Object: `TaskTitle`
@@ -248,11 +248,11 @@ class TodoRepository(ABC):
 
 ---
 
-### Layer 2: Application ([`src/application/`](../backend/DDD/src/application/) — The Orchestrator 🎯)
+### Layer 2: Application ([`app/application/`](../backend/DDD/app/application/) — The Orchestrator 🎯)
 
 Application layer business rules define nahi karti, balki **workflows** ko coordinate karti hai.
 
-#### 1. DTOs ([`src/application/dto.py`](../backend/DDD/src/application/dto.py))
+#### 1. DTOs ([`app/application/dto.py`](../backend/DDD/app/application/dto.py))
 ```python
 @dataclass(frozen=True)
 class CreateTodoInput:
@@ -271,9 +271,9 @@ class TodoOutput:
     owner_uid: str
 ```
 
-#### 2. Use Cases ([`src/application/use_cases.py`](../backend/DDD/src/application/use_cases.py))
+#### 2. Use Cases ([`app/application/`](../backend/DDD/app/application/))
 ```python
-class TodoUseCases:
+class TodoService:
     """Create, list, complete, and delete todo use cases."""
 
     def __init__(self, repository: TodoRepository):
@@ -302,18 +302,18 @@ class TodoUseCases:
         )
         return to_output(todo)
 ```
-> **Notice:** `TodoUseCases` ko yeh nahi pata ke `self.repository` Firestore, MongoDB, ya PostgreSQL hai. Wo sirf abstract `TodoRepository` interface methods call karta hai.
+> **Notice:** `TodoService` ko yeh nahi pata ke `self.repository` Firestore, MongoDB, ya PostgreSQL hai. Wo sirf abstract `TodoRepository` interface methods call karta hai.
 
 ---
 
-### Layer 3: Infrastructure ([`src/infrastructure/`](../backend/DDD/src/infrastructure/) — The Adapters 🔧)
+### Layer 3: Infrastructure ([`app/infrastructure/`](../backend/DDD/app/infrastructure/) — The Adapters 🔧)
 
 Yeh layer interfaces ki **Concrete Implementations** deti hai:
 
 1. **`FirestoreTodoRepository`**: Google Cloud Firestore REST API ke sath HTTPS ke zariye baat karti hai.
 2. **`MongoTodoRepository`**: MongoDB documents ko PyMongo ke zariye read/write karti hai.
 3. **`PostgreSQLTodoRepository`**: PostgreSQL `todos` table ko Psycopg ke zariye read/write karti hai.
-4. **`FirebaseAuthRepository`**: Firebase Admin SDK se users create karti hai aur Google Identity Toolkit REST API se password authenticate karke JWT token return karti hai.
+4. Har database ka **AuthRepository** usi database mein user save karta hai. `AuthSecurity` password hash aur database-specific signed token banata hai.
 
 ```python
 class FirestoreTodoRepository(TodoRepository):
@@ -343,20 +343,21 @@ class FirestoreTodoRepository(TodoRepository):
 
 ---
 
-### Layer 4: Presentation ([`src/presentation/`](../backend/DDD/src/presentation/) — The Gateway 🌐)
+### Layer 4: Presentation ([`app/presentation/`](../backend/DDD/app/presentation/) — The Gateway 🌐)
 
 FastAPI endpoints jo incoming HTTP requests ko handle karte hain aur tokens verify karte hain.
 
 ```python
-# src/presentation/routes.py
+# app/presentation/routers/todos.py
 @todo_router.post("", response_model=TodoResponse, status_code=201)
 def create_todo(
     request: CreateTodoRequest,
-    user: CurrentUser = Depends(current_user),
+    user: CurrentUserDep,
+    todo_service: TodoServiceDep,
 ):
     log_step("Presentation", "Create todo request received.", "Create todo request mil gayi.")
     try:
-        return todo_use_cases.create(CreateTodoInput(
+        return todo_service.create(CreateTodoInput(
             request.title,
             request.priority,
             user.uid,
@@ -372,31 +373,24 @@ def create_todo(
 `main.py` wo markazi jagah hai jahan tamam layers aapas mein connect hoti hain:
 
 ```python
-# 1. Start Firebase Admin with credentials
-if not firebase_admin._apps:
-    credential_file = Path(required_setting("FIREBASE_CREDENTIALS_PATH"))
-    firebase_admin.initialize_app(credentials.Certificate(credential_file))
+# 1. Select one database for both auth and todos
+database = get_selected_database()
+todo_repository, auth_repository = create_repositories(database)
 
-# 2. Select one adapter using DATABASE=firestore|mongodb|postgresql
-database = os.getenv("DATABASE", "firestore").strip().lower()
-todo_repository = create_todo_repository(database)
+# 2. Instantiate Use Cases and inject matching repositories
+app.state.todo_service = TodoService(todo_repository)
+app.state.auth_service = AuthService(auth_repository)
 
-# 3. Instantiate Use Cases and Inject Repositories
-configure_use_cases(
-    TodoUseCases(todo_repository),
-    AuthUseCases(FirebaseAuthRepository()),
-)
-
-# 4. Mount API Routers
+# 3. Mount API Routers
 app.include_router(auth_router)
 app.include_router(todo_router)
 ```
 
 ---
 
-### Terminal Logger ([`src/logs.py`](../backend/DDD/src/logs.py) — Bilingual Traceability 📋)
+### Terminal Logger ([`app/logging.py`](../backend/DDD/app/logging.py) — Bilingual Traceability 📋)
 
-`src/logs.py` har request aur har architectural layer ki execution ko terminal mein English aur Roman Urdu dono mein print karta hai:
+`app/logging.py` har request aur har architectural layer ki execution ko terminal mein English aur Roman Urdu dono mein print karta hai:
 
 ```text
 20:25:31 | INFO  | [REQ-001] | Presentation | Create todo request received.
@@ -416,7 +410,7 @@ app.include_router(todo_router)
 | Layer | Hamare Project Mein | Enterprise Scale Par (What, When, How) |
 |---|---|---|
 | **Domain** | 1 Entity (`TodoItem`), 1 Value Object (`TaskTitle`) | **WHAT:** 50+ Aggregates, Domain Events, Policy Specifications.<br>**WHEN:** Banking, Insurance, ya Airline reservation system jahan complex financial rules hon.<br>**HOW:** Entity state change par `DomainEvent` emit karti hai (e.g. `PaymentSettledDomainEvent`). |
-| **Application** | `TodoUseCases` & `AuthUseCases` | **WHAT:** CQRS (Command Query Responsibility Segregation), background celery workers, email notifications.<br>**WHEN:** Million requests per day jahan reads ko write operations se alag scale karna ho.<br>**HOW:** Commands Write-DB ko update karti hain, Queries Read-Replica se fast JSON return karti hain. |
+| **Application** | `TodoService` & `AuthService` | **WHAT:** CQRS (Command Query Responsibility Segregation), background celery workers, email notifications.<br>**WHEN:** Million requests per day jahan reads ko write operations se alag scale karna ho.<br>**HOW:** Commands Write-DB ko update karti hain, Queries Read-Replica se fast JSON return karti hain. |
 | **Infrastructure** | Firestore + MongoDB + PostgreSQL adapters | **WHAT:** Polyglot Persistence (PostgreSQL + Redis Cache + Kafka Event Stream + ElasticSearch).<br>**WHEN:** High-traffic e-commerce systems.<br>**HOW:** Write Firestore/Postgres mein hoti hai aur sath hi Redis cache aur Kafka topic mein push hoti hai. |
 | **Presentation** | FastAPI REST Endpoints | **WHAT:** Multi-protocol Gateways (REST API + GraphQL + gRPC + WebSockets).<br>**WHEN:** Jab web frontend ko REST, mobile app ko GraphQL, aur internal microservices ko high-speed gRPC chahiye ho.<br>**HOW:** Multiple routers same Application Use Cases ko reuse karte hain. |
 
@@ -523,7 +517,7 @@ Authorization: Bearer <FIREBASE_ID_TOKEN>
 - **MVC (Port 8001):**  
   `todo_controller.py:create_todo()` ➔ `todo_model.py:create_todo_dict()` ➔ `_collection().document().set(todo)` ➔ `TodoResponse`.
 - **DDD (Port 8000):**  
-  `routes.py:create_todo()` ➔ `current_user` token check ➔ `CreateTodoInput` DTO ➔ `TodoUseCases.create()` ➔ `TodoItem.create()` (validates `TaskTitle`) ➔ `TodoRepository.save()` ➔ `FirestoreTodoRepository.save()` (HTTPS REST) ➔ `TodoOutput` ➔ `TodoResponse`.
+  `routers/todos.py:create_todo()` ➔ `current_user` token check ➔ `CreateTodoInput` DTO ➔ `TodoService.create()` ➔ `TodoItem.create()` (validates `TaskTitle`) ➔ `TodoRepository.save()` ➔ `FirestoreTodoRepository.save()` (HTTPS REST) ➔ `TodoOutput` ➔ `TodoResponse`.
 
 #### Expected Response (201 Created):
 ```json
@@ -581,7 +575,7 @@ Authorization: Bearer <FIREBASE_ID_TOKEN>
 | **Total Files** | ~6 files | ~8 clean, focused modules |
 | **Dependency Direction** | Controller ➔ Model ➔ Database | Outer Layers ➔ Inner Domain (Inverted) |
 | **Business Invariants** | Helper functions in model | Encapsulated inside Entity & Value Objects |
-| **Workflow Coordination** | Controller route function | Dedicated `TodoUseCases` & `AuthUseCases` |
+| **Workflow Coordination** | Controller route function | Dedicated `TodoService` & `AuthService` |
 | **Database Coupling** | Tight (`get_db()` in controller) | Loose (`TodoRepository` abstract interface) |
 | **Storage Modes Supported** | Firestore only | Firestore, MongoDB, or PostgreSQL |
 | **Database Selection** | Code is tied to Firestore | One `DATABASE` terminal setting |

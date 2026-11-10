@@ -1,20 +1,21 @@
-"""Small terminal logger used by every backend layer."""
+"""Small bilingual terminal logger shared by every backend layer."""
 
 from contextvars import ContextVar
 from http import HTTPStatus
 from itertools import count
 import logging
-import os
 import sys
 from time import perf_counter
 
 from fastapi import FastAPI, Request
 
+from app.config import get_settings
 
-# Aik named logger use hota hai taa-ke tamam DDD layers same format mein output
-# dein aur root/Uvicorn logger ke sath duplicate lines print na hon.
+
+# Aik named logger tamam layers ko same format deta hai aur duplicate Uvicorn
+# access lines ko avoid karta hai.
 logger = logging.getLogger("todoflow.ddd")
-logger.setLevel(os.environ["LOG_LEVEL"].upper())
+logger.setLevel(get_settings().log_level.upper())
 logger.propagate = False
 
 if not logger.handlers:
@@ -25,17 +26,17 @@ if not logger.handlers:
     ))
     logger.addHandler(handler)
 
-# Har request ko #001 jaisa number milta hai. ContextVar async/concurrent
-# requests ke logs ko unki correct request identity ke sath rakhta hai.
+# ContextVar concurrent requests ke logs ko unki correct request identity ke
+# sath rakhta hai.
 _request_number = count(1)
 _current_request = ContextVar("current_request", default=None)
 
 
 def log_step(area: str, english: str, roman_urdu: str) -> None:
-    """Print one bilingual step with its layer and request number.
+    """What: Print one bilingual application step.
 
-    Kyun: Beginner terminal mein request ka Presentation se Infrastructure tak
-    complete flow easily follow kar sake.
+    When: A layer completes an important request action.
+    How: Attach the current request number without logging sensitive values.
     """
     request = _current_request.get()
     label = f"{request} | {area}" if request else area
@@ -48,10 +49,10 @@ def log_step(area: str, english: str, roman_urdu: str) -> None:
 
 
 def log_error(area: str, message: str) -> None:
-    """Print a short error without intentionally logging passwords or tokens.
+    """What: Print a safe technical error.
 
-    Kyun: Debugging information mile lekin authentication secrets logs mein na
-    jayen.
+    When: Infrastructure or authentication cannot complete an operation.
+    How: Log the supplied message; callers never pass passwords or tokens.
     """
     request = _current_request.get()
     label = f"{request} | {area}" if request else area
@@ -59,18 +60,16 @@ def log_error(area: str, message: str) -> None:
 
 
 def install_request_logging(app: FastAPI) -> None:
-    """Install middleware that logs every request, response, and duration.
+    """What: Install request/response timing middleware.
 
-    Kyun: Har layer ke messages ko clear start/end boundary aur timing milti hai.
-    Uvicorn access log disable hota hai taa-ke same request twice print na ho.
+    When: The composition root creates the FastAPI application.
+    How: Give every non-OPTIONS request an ID and reset its context afterward.
     """
     logging.getLogger("uvicorn.access").disabled = True
 
     @app.middleware("http")
     async def request_logger(request: Request, call_next):
-        """Wrap one HTTP request and keep its number in the logging context."""
-        # Browser CORS preflight common background request hai; isko skip karne
-        # se terminal main application flow par focused rehta hai.
+        """Wrap one HTTP request inside its logging context."""
         if request.method == "OPTIONS":
             return await call_next(request)
 
@@ -106,6 +105,4 @@ def install_request_logging(app: FastAPI) -> None:
             )
             raise
         finally:
-            # Request finish hone par context reset karna zaroori hai, warna next
-            # request ko previous request ka number mil sakta hai.
             _current_request.reset(token)

@@ -5,7 +5,7 @@ Axios, Tailwind CSS, and Vite. It communicates with the DDD API by default.
 
 ## Capabilities
 
-- Firebase-backed signup and login through the backend
+- Selected-database signup and login through the backend
 - Create, search, filter, sort, complete, and delete todos
 - In-memory login session with no browser local storage
 - Per-action loading states and user-friendly API errors
@@ -150,7 +150,7 @@ Generated `dist` output is excluded from Git.
 - **Network error:** confirm the DDD API is running at the configured URL.
 - **CORS error:** use `localhost:5173` or `127.0.0.1:5173`, both allowed by the
   DDD backend.
-- **Login fails:** verify Firebase Authentication through the backend.
+- **Login fails:** sign up in the database currently selected by the backend.
 - **Page refresh:** the in-memory session is cleared, so log in again.
 - **Session expires:** a backend `401` clears the in-memory session automatically.
 - **Environment change is ignored:** restart `npm run dev`.

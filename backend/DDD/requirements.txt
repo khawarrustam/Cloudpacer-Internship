@@ -1,8 +1,33 @@
+# =============================================================================
+# BACKEND (DDD) DEPENDENCIES — requirements.txt
+# =============================================================================
+# Yeh file project ki tamam zaroori Python libraries list karti hai.
+# Install karne ke liye: pip install -r requirements.txt
+# =============================================================================
+
+# Fast aur modern asynchronous web framework (REST APIs banane ke liye)
 fastapi>=0.110.0
+
+# Lightning-fast ASGI web server jo FastAPI app ko run karta hai
 uvicorn>=0.28.0
+
+# Request/response data validation aur email format check karne ke liye
 pydantic[email]>=2.6.0
+
+# .env settings ko typed aur startup par validated rakhne ke liye
+pydantic-settings>=2.2.0
+
+# Firestore service-account credentials load karne ke liye Firebase Admin SDK
 firebase-admin>=6.5.0
+
+# Firestore REST API ko authenticated HTTPS calls bhejne ke liye
 requests>=2.31.0
+
+# .env file se configurations aur API keys load karne ke liye
 python-dotenv>=1.0.0
+
+# MongoDB database driver (MongoDB adapter ke zariye data save karne ke liye)
 pymongo>=4.6.0
+
+# PostgreSQL database driver (relational database storage adapter ke liye)
 psycopg[binary]>=3.1.0

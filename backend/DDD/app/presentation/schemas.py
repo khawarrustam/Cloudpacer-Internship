@@ -1,4 +1,4 @@
-"""HTTP request and response DTOs used only by FastAPI routes."""
+"""HTTP request and response schemas used only by FastAPI routes."""
 
 from typing import Literal
 
@@ -7,6 +7,7 @@ from pydantic import BaseModel, EmailStr, Field
 
 class SignupRequest(BaseModel):
     """Validate the JSON body received by POST /auth/signup."""
+
     email: EmailStr
     password: str = Field(min_length=6)
     display_name: str = "User"
@@ -14,12 +15,14 @@ class SignupRequest(BaseModel):
 
 class LoginRequest(BaseModel):
     """Validate the JSON body received by POST /auth/login."""
+
     email: EmailStr
     password: str = Field(min_length=6)
 
 
 class AuthResponse(BaseModel):
     """Define the public JSON returned after signup or login."""
+
     uid: str
     email: str
     token: str
@@ -27,7 +30,8 @@ class AuthResponse(BaseModel):
 
 
 class CreateTodoRequest(BaseModel):
-    """Validate title length and supported priority values at the API edge."""
+    """Validate title length and priority at the HTTP boundary."""
+
     title: str = Field(min_length=3, max_length=120)
     priority: Literal[
         "LOW", "MEDIUM", "HIGH", "low", "medium", "high"
@@ -35,7 +39,8 @@ class CreateTodoRequest(BaseModel):
 
 
 class TodoResponse(BaseModel):
-    """Define the consistent todo JSON returned by all todo endpoints."""
+    """Define the consistent todo JSON returned by todo endpoints."""
+
     id: str
     title: str
     priority: str

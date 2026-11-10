@@ -1,4 +1,4 @@
-"""Domain layer: todo rules and repository contracts."""
+"""Todo business rules, entity, value objects, and repository contract."""
 
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
@@ -8,34 +8,24 @@ import uuid
 
 
 class DomainError(Exception):
-    """Parent error for todo business-rule failures.
-
-    Kyun: Routes tamam domain errors ko aik common type se handle kar sakti hain.
-    """
+    """Parent error for todo business-rule failures."""
 
 
 class InvalidTaskTitleError(DomainError):
     """Raised when a todo title is too short or too long."""
-    pass
 
 
 class TaskAlreadyCompletedError(DomainError):
-    """Raised to stop an already completed todo being completed again."""
-    pass
+    """Raised when an already completed todo is completed again."""
 
 
 class TodoNotFoundError(DomainError):
     """Raised when the requested user's todo does not exist."""
-    pass
-
-
-class ValidationException(DomainError):
-    """Wrap authentication/input errors that can safely reach the API."""
-    pass
 
 
 class Priority(str, Enum):
-    """Allow only the three priority values supported by the application."""
+    """Supported todo priority values."""
+
     LOW = "LOW"
     MEDIUM = "MEDIUM"
     HIGH = "HIGH"
@@ -43,16 +33,15 @@ class Priority(str, Enum):
 
 @dataclass(frozen=True)
 class TaskTitle:
-    """A title value that always contains 3 to 120 characters.
+    """What: Represent an always-valid todo title.
 
-    Kyun: Validation domain ke andar rehne se har route aur database par same
-    title rule automatically apply hota hai.
+    When: A TodoItem is created or restored from a database.
+    How: Trim text and enforce the shared 3-to-120-character rule.
     """
 
     value: str
 
-    def __post_init__(self):
-        """Trim and validate the title immediately after object creation."""
+    def __post_init__(self) -> None:
         clean_title = (self.value or "").strip()
         if len(clean_title) < 3:
             raise InvalidTaskTitleError("Title must have at least 3 characters.")
@@ -75,10 +64,7 @@ class TodoItem:
 
     @classmethod
     def create(cls, title: str, priority: str, owner_uid: str) -> "TodoItem":
-        """Create a new incomplete todo with a unique ID and UTC time.
-
-        Kyun: Har naya todo aik consistent, valid state mein start hona chahiye.
-        """
+        """Create a new valid, incomplete todo with a unique ID and UTC time."""
         return cls(
             id=str(uuid.uuid4()),
             title=TaskTitle(title),
@@ -89,11 +75,7 @@ class TodoItem:
         )
 
     def complete(self) -> None:
-        """Mark this todo complete and remember when it was completed.
-
-        Kyun: Entity khud duplicate completion ko rokti hai, chahe koi bhi
-        database adapter active ho.
-        """
+        """Apply the one-time completion business rule."""
         if self.is_completed:
             raise TaskAlreadyCompletedError("Todo is already completed.")
         self.is_completed = True
@@ -101,50 +83,28 @@ class TodoItem:
 
 
 class TodoRepository(ABC):
-    """Common storage contract implemented by every todo database.
+    """What: Define persistence operations required by todo use cases.
 
-    Kyun: Use cases ko Firestore, MongoDB, ya PostgreSQL ka direct knowledge
-    nahi chahiye; unko sirf yeh four operations chahiye.
+    When: TodoService saves or reads domain entities.
+    How: Infrastructure adapters implement this contract for each database.
     """
 
     @abstractmethod
     def save(self, todo: TodoItem) -> None:
         """Create a todo or save its latest state."""
-        pass
+        raise NotImplementedError
 
     @abstractmethod
     def get_by_id(self, todo_id: str, owner_uid: str) -> TodoItem | None:
-        """Return one owned todo, or None when it is not found."""
-        pass
+        """Return one owned todo, or None when not found."""
+        raise NotImplementedError
 
     @abstractmethod
     def get_by_owner(self, owner_uid: str) -> list[TodoItem]:
         """Return all todos belonging to one authenticated user."""
-        pass
+        raise NotImplementedError
 
     @abstractmethod
     def delete(self, todo_id: str, owner_uid: str) -> None:
         """Delete one todo only for its owner."""
-        pass
-
-
-@dataclass(frozen=True)
-class UserData:
-    """Small authenticated-user object returned by Firebase infrastructure."""
-    uid: str
-    email: str
-    token: str
-
-
-class AuthRepository(ABC):
-    """Authentication contract used by application-level auth use cases."""
-
-    @abstractmethod
-    def signup(self, email: str, password: str, name: str) -> UserData:
-        """Create an account and return authenticated user data."""
-        pass
-
-    @abstractmethod
-    def login(self, email: str, password: str) -> UserData:
-        """Verify credentials and return authenticated user data."""
-        pass
+        raise NotImplementedError

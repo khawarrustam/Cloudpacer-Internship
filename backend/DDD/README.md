@@ -1,36 +1,66 @@
 # TodoFlow DDD Backend
 
-A small FastAPI backend that keeps the important DDD layers without creating
-dozens of files.
+A beginner-readable FastAPI backend with professional DDD boundaries. The same
+selected database stores both accounts and todos.
+
+The evidence, placement rules, and restructuring prompt are recorded in
+[`ARCHITECTURE.md`](ARCHITECTURE.md).
+
+For a complete file-by-file explanation, request flows, demo plan, limitations,
+and viva preparation, read
+[`BACKEND_PRESENTATION_GUIDE.md`](../../docs/BACKEND_PRESENTATION_GUIDE.md).
 
 ## Structure
 
 ```text
 backend/DDD/
-|-- main.py              Starts Firebase Auth, selects a database, creates the API
-|-- requirements.txt     Python packages
-`-- src/
-    |-- presentation/
-    |   |-- dto.py         HTTP request and response schemas
-    |   `-- routes.py      FastAPI routes and token verification
-    |-- application/
-    |   |-- dto.py         Use-case input and output objects
-    |   `-- use_cases.py   Todo and authentication workflows
-    |-- domain/
-    |   `-- models.py      Entities, value objects, rules, contracts
-    |-- infrastructure/
-    |   |-- firebase_auth.py  Firebase signup and login
-    |   |-- firestore.py      Firestore todo adapter
-    |   |-- mongodb.py        MongoDB todo adapter
-    |   `-- postgresql.py     PostgreSQL todo adapter
-    `-- logs.py             Readable terminal request flow
+|-- main.py                    Beginner-compatible Uvicorn entrypoint
+|-- app/
+|   |-- main.py                Composition root and FastAPI app
+|   |-- config.py              Typed environment settings
+|   |-- logging.py             Bilingual request flow logs
+|   |-- domain/                Business rules and repository contracts
+|   |-- application/           Use-case services and DTOs
+|   |-- infrastructure/        Database/security implementations
+|   `-- presentation/          HTTP routes, dependencies, and schemas
+|-- ARCHITECTURE.md            Research and layer placement contract
+|-- requirements.txt
+`-- .env.example
 ```
 
-The request direction is:
+Detailed adapter modules remain small and explicit:
 
 ```text
-Frontend -> Presentation -> Application -> Domain -> Infrastructure -> Database
+app/infrastructure/
+|-- security.py
+|-- repository_factory.py
+|-- firestore/
+|   |-- auth_repository.py
+|   `-- todo_repository.py
+|-- mongodb/
+|   |-- auth_repository.py
+|   `-- todo_repository.py
+`-- postgresql/
+    |-- auth_repository.py
+    `-- todo_repository.py
 ```
+
+HTTP endpoints follow the same naming rule under
+`app/presentation/routers/auth.py` and `app/presentation/routers/todos.py`.
+
+## Dependency direction
+
+```text
+presentation -> application -> domain
+infrastructure -------------> domain
+app/main.py -> all outer layers for dependency wiring
+```
+
+- Domain contains no FastAPI, Pydantic, or database-driver imports.
+- Application coordinates workflows without HTTP or database queries.
+- Infrastructure implements repository contracts for external databases.
+- Presentation handles HTTP validation, dependencies, and status codes.
+- `app/main.py` is the only composition root that chooses concrete adapters.
 
 ## Install
 
@@ -41,13 +71,12 @@ python -m venv .venv
 python -m pip install -r requirements.txt
 ```
 
-Place `serviceAccountKey.json` inside `backend/DDD`. It is ignored by Git and
-must never be committed.
+Copy `.env.example` to `.env` and set the connection values for the databases
+you use. Keep `AUTH_TOKEN_SECRET` private and change its example value.
 
-## Choose a database from PowerShell
+## Select a database
 
-Copy `.env.example` to `.env`, fill in the connection settings you use, then
-choose a database before starting the API:
+Stop the backend before switching, then run one option:
 
 ```powershell
 $env:DATABASE = "firestore"
@@ -60,9 +89,32 @@ $env:DATABASE = "postgresql"
 python -m uvicorn main:app --reload
 ```
 
-Stop the running backend before changing `DATABASE`. Firestore uses its HTTPS
-API, MongoDB uses `MONGODB_URI`, and PostgreSQL uses `POSTGRESQL_URL`. There is
-no local or in-memory todo storage mode.
+The command remains simple because root `main.py` delegates to the professional
+`app.main` composition root.
+
+## Database-specific accounts
+
+Firestore, MongoDB, and PostgreSQL accounts are independent. The same email may
+sign up in all three databases and receives a different UID in each database.
+A token issued for one database is rejected after switching to another.
+
+- Firestore accounts: `auth_users` collection
+- MongoDB accounts: `users` collection
+- PostgreSQL accounts: `users` table
+
+Passwords are stored as salted hashes, never plain text.
+
+## Endpoints
+
+| Method | Endpoint | Purpose |
+|---|---|---|
+| `GET` | `/` | Health check and active database |
+| `POST` | `/auth/signup` | Create account in active database |
+| `POST` | `/auth/login` | Login from active database |
+| `GET` | `/todos` | List current user's todos |
+| `POST` | `/todos` | Create todo |
+| `PATCH` | `/todos/{id}/complete` | Complete todo |
+| `DELETE` | `/todos/{id}` | Delete todo |
 
 ## URLs
 
@@ -70,30 +122,14 @@ no local or in-memory todo storage mode.
 - Swagger: <http://127.0.0.1:8000/docs>
 - ReDoc: <http://127.0.0.1:8000/redoc>
 
-## Endpoints
+## Run focused tests
 
-| Method | Endpoint | Purpose |
-|---|---|---|
-| `GET` | `/` | Health check |
-| `POST` | `/auth/signup` | Create Firebase account |
-| `POST` | `/auth/login` | Login and receive token |
-| `GET` | `/todos` | List current user's todos |
-| `POST` | `/todos` | Create todo |
-| `PATCH` | `/todos/{id}/complete` | Complete todo |
-| `DELETE` | `/todos/{id}` | Delete todo |
-
-## Terminal flow
-
-The logger automatically shows the complete presentation flow:
-
-```text
-REQUEST      GET /todos
-Auth         Token is valid
-Presentation Todo list requested
-Infrastructure MongoDB returned 3 todos
-Application  Found 3 todos
-RESPONSE     200 OK
+```powershell
+.\.venv\Scripts\python.exe -m unittest discover -s tests -v
 ```
 
-Each important step also includes a Roman Urdu explanation. The database name
-in the log changes automatically with the selected database.
+## Logs and comments
+
+Request logs still show Presentation, Auth, Application, and Infrastructure in
+English plus Roman Urdu. Public boundary functions use concise What/When/How
+docstrings so the reason and layer responsibility stay aligned with the code.

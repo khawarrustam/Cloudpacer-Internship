@@ -20,24 +20,22 @@ Install these before continuing:
 
 - Python 3.10 or newer
 - Node.js 18 or newer
-- A Firebase project with Email/Password authentication enabled
-- A Firebase service-account JSON file
 - At least one todo database: Firestore, MongoDB, or PostgreSQL
+- A Firebase project and service-account JSON file only when using Firestore
 
-The DDD backend stores todos in Firestore, MongoDB, or PostgreSQL. Firebase is
-still used for signup and login, whichever todo database you choose.
+The DDD backend stores both users and todos in the selected database. Firestore,
+MongoDB, and PostgreSQL accounts are separate from each other.
 
 ## First-time setup
 
-### 1. Prepare Firebase
+### 1. Prepare your database
 
-1. Enable **Email/Password** in Firebase Authentication.
-2. Download a service-account JSON file.
-3. Save it as `backend/DDD/serviceAccountKey.json`.
+For Firestore, download a Firebase service-account JSON file and save it as
+`backend/DDD/serviceAccountKey.json`. Firebase Authentication does not need to
+be enabled because Firestore itself stores the selected database's accounts.
 
 `serviceAccountKey.json` is excluded by `.gitignore`; never commit it.
-The backend already defaults to this filename and includes the configured Web
-API key, so no Firebase environment variables are required.
+For MongoDB or PostgreSQL, use the connection values in `backend/DDD/.env`.
 
 ### 2. Install the DDD backend
 
@@ -146,8 +144,8 @@ that `VITE_API_URL` is correct.
 
 ### Signup or login fails
 
-Confirm that Email/Password authentication is enabled and that
-`backend/DDD/serviceAccountKey.json` belongs to the configured Firebase project.
+Confirm which `DATABASE` is active. An account created in Firestore must sign up
+again in MongoDB or PostgreSQL because each database has separate users.
 
 ## More documentation
 

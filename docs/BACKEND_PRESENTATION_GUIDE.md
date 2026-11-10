@@ -7,6 +7,11 @@
 >
 > **Presentation language:** Simple English + Roman Urdu.
 >
+> **How complete is this guide?** Is document mein file responsibilities,
+> class/function signatures, inputs, outputs, call flow, database structures,
+> API examples, error mapping aur ready-made viva answers included hain. Normal
+> presentation preparation ke liye backend code files kholna zaroori nahi.
+>
 > **Important:** Real passwords, `.env` secrets, PostgreSQL password aur Firebase
 > service-account key presentation ya GitHub par kabhi show na karein.
 
@@ -40,6 +45,67 @@
 24. [Current limitations and production improvements](#24-current-limitations-and-production-improvements)
 25. [Viva/interview questions with answers](#25-vivainterview-questions-with-answers)
 26. [Final quick-revision sheet](#26-final-quick-revision-sheet)
+27. [Complete file answer cards](#27-complete-file-answer-cards)
+28. [Complete function and method reference](#28-complete-function-and-method-reference)
+29. [Exact API request/response answer bank](#29-exact-api-requestresponse-answer-bank)
+30. [Three-database comparison answer bank](#30-three-database-comparison-answer-bank)
+31. [Advanced viva questions with ready answers](#31-advanced-viva-questions-with-ready-answers)
+
+---
+
+## Is guide ko code kholay baghair kaise use karein?
+
+### Agar presentation 5 minutes mein hai
+
+Yeh order read karein:
+
+1. Section 1 ka one-minute summary.
+2. Section 3 ki four-layer table.
+3. Section 6 ka startup flow.
+4. Section 16.1 ka create-todo flow.
+5. Section 26 ki quick-revision sheet.
+6. Section 31 ke advanced viva answers.
+
+### Agar teacher kisi file ka naam poochay
+
+Section 27 mein us file ka **What / Input / Output / Why / Ready answer** card
+dekhein. Answer ka recommended order yeh hai:
+
+```text
+What -> When -> How -> Why this layer -> Failure or security behavior
+```
+
+Example:
+
+> “`todo_service.py` application layer mein todo use cases coordinate karti
+> hai. Route se DTO leti hai, domain entity par rule apply karti hai, repository
+> contract ko call karti hai aur API-friendly output return karti hai. Is file
+> mein SQL ya Mongo query nahi hoti, isliye workflow database-independent hai.”
+
+### Agar teacher kisi function ka naam poochay
+
+Section 28 mein exact signature, input, return value, calls aur possible error
+dekhein. Function ka code memorize karne ki zarurat nahi; uska contract aur
+flow explain karein.
+
+### Agar API demo ya JSON poochi jaye
+
+Section 29 se exact header, request, response aur error body use karein.
+
+### Agar databases ka difference poocha jaye
+
+Section 30 ki comparison tables use karein. Wahan same operation Firestore,
+MongoDB aur PostgreSQL mein side-by-side explain hai.
+
+### Golden answer formula
+
+Har technical jawab ko is formula mein dein:
+
+```text
+Purpose + layer + input + important steps + output + reason/security
+```
+
+Is formula se answer short bhi rehta hai aur professional bhi lagta hai.
 
 ---
 
@@ -2105,15 +2171,26 @@ Standard-library `unittest` use hota hai; extra testing package required nahi.
 
 #### Domain tests
 
-1. Title trim + priority uppercase.
-2. Short title rejection.
-3. Completed todo cannot complete again.
+Class: `TodoDomainTests(unittest.TestCase)`
+
+| Test method | Exact proof |
+|---|---|
+| `test_create_trims_title_and_normalizes_priority` | `"  Learn DDD  "` becomes `"Learn DDD"`, `high` becomes `HIGH`, new todo incomplete |
+| `test_short_title_is_rejected` | One-character title raises `InvalidTaskTitleError` |
+| `test_completed_todo_cannot_complete_again` | Second `complete()` raises `TaskAlreadyCompletedError` |
 
 #### Security tests
 
-1. Password plain text store nahi hota and correct password verifies.
-2. Token sirf correct database mein valid.
-3. Modified/tampered token rejected.
+Class: `AuthSecurityTests(unittest.TestCase)`
+
+`setUp()` same test secret ke sath separate PostgreSQL and MongoDB
+`AuthSecurity` objects banata hai; expiry five minutes rakhta hai.
+
+| Test method | Exact proof |
+|---|---|
+| `test_password_is_hashed_and_can_be_verified` | Saved value plain password contain nahi karti; correct password true and wrong false |
+| `test_token_is_valid_only_for_its_database` | PostgreSQL token PostgreSQL mein valid but Mongo security object rejects |
+| `test_modified_token_is_rejected` | Token ka last character change karne par signature validation fails |
 
 Run:
 
@@ -2716,6 +2793,953 @@ python -m uvicorn main:app --reload
 > handle karti hai, aur infrastructure three databases ki concrete adapters
 > provide karti hai. Repository abstraction aur dependency injection ki wajah
 > se database switch hota hai, architecture ka core change nahi hota.”
+
+---
+
+## 27. Complete file answer cards
+
+Yeh section file kholay baghair har file ka direct answer deta hai. “Input” ka
+matlab file ko kya milta hai; “output/side effect” ka matlab woh kya return ya
+change karti hai.
+
+### 27.1 Root and shared files
+
+| File | What is inside? | Input | Output / side effect | Why separate? |
+|---|---|---|---|---|
+| `main.py` | `app`, `create_app`, direct-run Uvicorn block | Uvicorn import ya `python main.py` | FastAPI server start/export | Beginner ko simple command milti hai; real wiring `app/main.py` mein rehti hai |
+| `app/main.py` | `create_app()` and exported `app` | Optional `Settings` | Complete wired FastAPI application | Yeh composition root hai; concrete dependencies sirf ek jagah connect hoti hain |
+| `app/config.py` | `Settings`, three computed properties, `get_settings()` | `.env` + terminal environment | Validated typed configuration | Scattered environment access aur string-conversion errors avoid hoti hain |
+| `app/logging.py` | Named logger, request context, middleware, log helpers | Request plus layer messages | Bilingual correlated terminal logs | Business flow visible hota hai without log code duplicate kiye |
+| `.env` | Real local values | Developer secrets/URLs | Runtime configuration | Machine-specific aur secret; Git ignored |
+| `.env.example` | Safe sample variables | None | Setup contract/documentation | New developer ko required variable names milte hain without secrets |
+| `requirements.txt` | Python dependencies | `pip install -r` | Reproducible environment | Required libraries ek documented list mein rehti hain |
+| `README.md` | Run and usage instructions | Reader | Quick onboarding | Daily setup detail architecture guide se separate rehti hai |
+| `ARCHITECTURE.md` | Layer placement rules | Developer decisions | Structure standard | Batata hai kya kis layer mein hona chahiye aur kya nahi |
+
+Ready answer:
+
+> “Root `main.py` sirf entrypoint hai. `app/main.py` composition root hai.
+> `config.py` external configuration ko typed object banati hai aur `logging.py`
+> complete request ko request ID ke sath trace karti hai.”
+
+### 27.2 Domain files
+
+| File | Important objects | Exact responsibility | Is file mein kya nahi hai? |
+|---|---|---|---|
+| `app/domain/auth.py` | `ValidationException`, `UserData`, `AuthRepository` | Authentication ki database-independent language aur contract | Password hashing, token algorithm, HTTP codes, database queries |
+| `app/domain/todo.py` | Domain errors, `Priority`, `TaskTitle`, `TodoItem`, `TodoRepository` | Todo rules, entity behavior and persistence contract | FastAPI, Pydantic, SQL, MongoDB, Firestore |
+
+Ready answer:
+
+> “Domain business ka center hai. `TaskTitle` valid title guarantee karta hai,
+> `TodoItem.complete()` one-time completion rule enforce karta hai, aur
+> repository ABCs batati hain application ko storage se kaunse operations
+> chahiye. Domain ko actual database ka pata nahi.”
+
+### 27.3 Application files
+
+| File | Important objects | Receives | Returns | Why application layer? |
+|---|---|---|---|---|
+| `app/application/dto.py` | Six frozen dataclasses | Plain validated values | Framework-independent input/output objects | HTTP schemas aur domain entities ko directly couple nahi karta |
+| `app/application/auth_service.py` | `AuthService` | Signup/login DTO or token | `AuthOutput` | Auth workflow coordinate karta hai; implementation repository ke peeche hai |
+| `app/application/todo_service.py` | `to_output`, `TodoService` | Create/action DTO or owner UID | `TodoOutput`, list, or `None` | Domain behavior aur persistence ko correct order mein chalata hai |
+
+Ready answer:
+
+> “Application layer rules invent nahi karti. Woh route se input leti hai,
+> domain behavior call karti hai, repository abstraction se persistence karwati
+> hai aur output DTO return karti hai.”
+
+### 27.4 Presentation files
+
+| File | Important objects | Main job | Why presentation layer? |
+|---|---|---|---|
+| `app/presentation/schemas.py` | Five Pydantic models | HTTP JSON validate/serialize | Client contract framework-specific hota hai |
+| `app/presentation/dependencies.py` | `CurrentUser`, service providers, Bearer auth | Configured services aur verified user inject karna | Routes short rehti hain; auth repeat nahi hota |
+| `app/presentation/routers/auth.py` | Signup and login routes | HTTP body -> DTO -> service -> response | HTTP status/error mapping yahan belong karti hai |
+| `app/presentation/routers/todos.py` | Four protected todo routes | Path/body/user -> todo use case | Endpoint-specific status codes and response models yahan hain |
+
+Ready answer:
+
+> “Presentation external HTTP boundary hai. Pydantic request validate karta
+> hai, dependencies Bearer token aur services provide karti hain, routers DTO
+> banati hain aur domain/application errors ko HTTP status mein translate karti
+> hain.”
+
+### 27.5 Shared infrastructure files
+
+| File | Important objects | Main job | Why infrastructure? |
+|---|---|---|---|
+| `app/infrastructure/security.py` | `AuthSecurity` | Password hash/compare and signed database-bound token | Cryptography technical implementation hai, business workflow nahi |
+| `app/infrastructure/repository_factory.py` | `create_repositories` + three helpers | Selected database ke matching auth and todo adapters banana | Concrete driver selection outermost wiring concern hai |
+
+Ready answer:
+
+> “Security class same hashing/token policy three databases ko deti hai.
+> Factory `DATABASE` read karke matching pair return karti hai, isliye auth aur
+> todos kabhi accidentally different databases use nahi karte.”
+
+### 27.6 Firestore adapter files
+
+| File | Stores | Important implementation detail | Returns domain/application-friendly data kaise? |
+|---|---|---|---|
+| `firestore/auth_repository.py` | `FirestoreAuthRepository`; `auth_users/{sha256(email)}` | Authorized REST session, email-derived document ID, hashed password | REST fields dictionary ko `UserData` mein map karta hai |
+| `firestore/todo_repository.py` | `users/{uid}/todos/{todo_id}` | Per-user subcollection, pagination, REST typed values | Firestore document ko `TodoItem` mein restore karta hai |
+
+Ready answer:
+
+> “Firestore adapter Admin credentials se authorized REST session banata hai.
+> Auth document normalized email ke SHA-256 key par hai; todos user UID ke neeche
+> subcollection mein hain. Mapping helpers Firestore `stringValue`,
+> `booleanValue`, `nullValue` ko Python/domain values mein convert karte hain.”
+
+### 27.7 MongoDB adapter files
+
+| File | Stores | Index | Important operation |
+|---|---|---|---|
+| `mongodb/auth_repository.py` | `users` documents | Unique `email` | `insert_one`, `find_one`; duplicate key safe validation error |
+| `mongodb/todo_repository.py` | `todos` documents | `owner_uid` | `replace_one(..., upsert=True)` and owner-filtered read/delete |
+
+Ready answer:
+
+> “Mongo auth collection email uniqueness enforce karti hai. Todo collection
+> owner index use karti hai. `_id` UUID string hai aur every sensitive todo query
+> mein `_id` ke sath `owner_uid` bhi filter hota hai.”
+
+### 27.8 PostgreSQL adapter files
+
+| File | Table | Important SQL | Safety/readability |
+|---|---|---|---|
+| `postgresql/auth_repository.py` | `users` | `CREATE TABLE`, parameterized `INSERT/SELECT` | Unique email, context-managed transaction, `dict_row` |
+| `postgresql/todo_repository.py` | `todos` | `INSERT ... ON CONFLICT`, owner-filtered `SELECT/DELETE` | `%s` parameters, typed timestamps/booleans, named rows |
+
+Ready answer:
+
+> “PostgreSQL adapters startup par missing tables safely create karti hain.
+> Values SQL string mein concatenate nahi hoti; `%s` parameters use hote hain.
+> Todo save upsert hai aur reads/deletes owner UID se protected hain.”
+
+### 27.9 `__init__.py` files
+
+Har package folder ka `__init__.py` intentionally almost empty hai.
+
+- Python ko regular package signal karta hai.
+- `app.*` imports reliable banata hai.
+- Business logic hide nahi karta.
+- Import time par database connection ya side effect start nahi karta.
+
+Ready answer:
+
+> “`__init__.py` package marker hai. Is project mein minimal rakhi gayi hai taa-ke
+> imports predictable hon aur hidden startup side effects na hon.”
+
+---
+
+## 28. Complete function and method reference
+
+### 28.1 Startup, configuration and logging
+
+| Signature/name | Input | Exact work | Return / effect |
+|---|---|---|---|
+| `create_app(settings=None)` | Optional `Settings` | FastAPI, CORS, logs, repository pair, services, routers and health wire | `FastAPI` object |
+| `health_check()` | No explicit input | Active architecture/database report | `{"status":"ok", ...}` |
+| `Settings.selected_database` | `database` field | Trim, lowercase, `firebase -> firestore`, allowed set check | Normalized DB name or `ValueError` |
+| `Settings.allowed_origins` | Comma-separated string | Split, trim, empty values remove | `list[str]` |
+| `Settings.firebase_credential_file` | Relative/absolute setting | Relative path backend root se resolve | Absolute `Path` |
+| `get_settings()` | Environment + `.env` | One validated cached settings object build | `Settings` |
+| `log_step(area, english, roman_urdu)` | Layer and two messages | Current request label attach, INFO print | Terminal log |
+| `log_error(area, message)` | Safe technical text | Current request label attach, ERROR print | Terminal log |
+| `install_request_logging(app)` | FastAPI app | Middleware register, request ID/timing/status/exception trace | App middleware side effect |
+| nested `request_logger(request, call_next)` | One HTTP request + next handler | Context set, duration measure, response/exception log, context reset | Response or re-raised exception |
+
+Important startup fact: module ke end par `app = create_app()` hai. Isliye
+`uvicorn main:app` import karte hi settings validate aur selected database
+connect hota hai. Bad URL/password ho toh server request receive karne se pehle
+startup fail hota hai.
+
+### 28.2 Domain auth reference
+
+| Object/method | Input | Return | Meaning |
+|---|---|---|---|
+| `ValidationException(message)` | Safe user-facing reason | Exception | Auth/input failure jo route map kar sakti hai |
+| `UserData(uid,email,token)` | Three strings | Frozen domain data | Repository ka database-independent auth result |
+| `AuthRepository.signup(email,password,name)` | Raw signup values | `UserData` | Selected DB account create contract |
+| `AuthRepository.login(email,password)` | Credentials | `UserData` | Credential verification contract |
+| `AuthRepository.authenticate(token)` | Bearer token | `UserData` | Token + current DB user existence contract |
+
+ABC methods implementation nahi detin. Agar concrete repository required method
+implement na kare toh class valid adapter nahi ban sakti.
+
+### 28.3 Domain todo reference
+
+| Object/method | Input | Work | Return/error |
+|---|---|---|---|
+| `TaskTitle(value)` | Any title string | Trim; length 3–120 enforce | Frozen value or `InvalidTaskTitleError` |
+| `TodoItem.create(title,priority,owner_uid)` | Plain values | UUID, valid title/priority, UTC creation, incomplete state | New `TodoItem` |
+| `TodoItem.complete()` | Existing entity | Already-complete guard; state true; UTC completion time | `None` or `TaskAlreadyCompletedError` |
+| `TodoRepository.save(todo)` | Entity | Create/update contract | `None` |
+| `get_by_id(todo_id,owner_uid)` | ID + verified owner | Owned entity lookup contract | `TodoItem` or `None` |
+| `get_by_owner(owner_uid)` | Verified owner | User list contract | `list[TodoItem]` |
+| `delete(todo_id,owner_uid)` | ID + verified owner | Owned delete contract | `None` |
+
+`Priority(priority.upper())` ki wajah se service/domain creation lowercase
+priority ko uppercase enum mein normalize kar sakti hai. Database se restore
+karte waqt stored value already `LOW`, `MEDIUM`, ya `HIGH` honi chahiye.
+
+### 28.4 Application DTO reference
+
+| DTO | Exact fields | Created by | Consumed by |
+|---|---|---|---|
+| `SignupInput` | `email,password,display_name` | Signup route | `AuthService.signup` |
+| `LoginInput` | `email,password` | Login route | `AuthService.login` |
+| `CreateTodoInput` | `title,priority,owner_uid` | Create route | `TodoService.create` |
+| `TodoActionInput` | `todo_id,owner_uid` | Complete/delete route | Corresponding service method |
+| `AuthOutput` | `uid,email,token` | `AuthService` | Auth route |
+| `TodoOutput` | Seven todo fields as API-safe primitives | `to_output` | Todo route/response model |
+
+All DTOs `frozen=True` hain. Creation ke baad accidental field mutation nahi
+hoti; workflow input/output predictable rehta hai.
+
+### 28.5 Application service reference
+
+| Method | Calls in order | Return | Main failure source |
+|---|---|---|---|
+| `AuthService.signup(data)` | repository `signup` -> log -> map | `AuthOutput` | Adapter `ValidationException` |
+| `AuthService.login(data)` | repository `login` -> log -> map | `AuthOutput` | Wrong credentials/DB failure |
+| `AuthService.authenticate(token)` | repository `authenticate` -> map | `AuthOutput` | Invalid/expired/wrong-DB/deleted user |
+| `AuthService._to_output(...)` | Construct DTO | `AuthOutput` | None for valid strings |
+| `to_output(todo)` | Enum/value/datetime primitive mapping | `TodoOutput` | Invalid entity data should already be impossible |
+| `TodoService.create(data)` | `TodoItem.create` -> `save` -> log -> map | `TodoOutput` | Domain validation or DB error |
+| `TodoService.list(owner_uid)` | `get_by_owner` -> log count -> map all | `list[TodoOutput]` | DB error |
+| `TodoService.complete(data)` | owned lookup -> entity `complete` -> save -> log | `TodoOutput` | Not found or already complete |
+| `TodoService.delete(data)` | owned lookup -> repository delete -> log | `None` | Not found or DB error |
+| `_get_todo_or_fail(data)` | `get_by_id(id,owner)` | `TodoItem` | Raises `TodoNotFoundError` |
+
+### 28.6 Presentation dependency reference
+
+| Name | Source | Return/use |
+|---|---|---|
+| `bearer = HTTPBearer()` | `Authorization: Bearer ...` header | Credentials extraction; missing/malformed auth request reject |
+| `get_auth_service(request)` | `request.app.state.auth_service` | Configured `AuthService` |
+| `get_todo_service(request)` | `request.app.state.todo_service` | Configured `TodoService` |
+| `current_user(credentials,auth_service)` | Bearer token + auth service | `CurrentUser(uid,email)` or HTTP 401 |
+| `AuthServiceDep` etc. | `Annotated[..., Depends(...)]` | Reusable short route type/dependency |
+
+`CurrentUser.uid` request body se nahi aati. Verified token aur selected
+database user lookup se aati hai; isi value ko route todo `owner_uid` banati hai.
+
+### 28.7 Router function reference
+
+| Function | HTTP contract | DTO/service call | Success | Mapped error |
+|---|---|---|---|---|
+| `signup` | `POST /auth/signup` | `SignupInput -> AuthService.signup` | 201 `AuthResponse` | `ValidationException -> 400` |
+| `login` | `POST /auth/login` | `LoginInput -> AuthService.login` | 200 `AuthResponse` | `ValidationException -> 401` |
+| `list_todos` | `GET /todos` | `user.uid -> TodoService.list` | 200 array | Auth dependency 401 |
+| `create_todo` | `POST /todos` | `CreateTodoInput -> TodoService.create` | 201 todo | `DomainError -> 400` |
+| `complete_todo` | `PATCH /todos/{id}/complete` | `TodoActionInput -> complete` | 200 todo | Not found 404; other domain 400 |
+| `delete_todo` | `DELETE /todos/{id}` | `TodoActionInput -> delete` | 204 empty | Not found 404 |
+
+### 28.8 Security method reference
+
+| Method | Important steps | Return/failure |
+|---|---|---|
+| `AuthSecurity(secret,database,minutes)` | Secret bytes; active DB; minutes to seconds | Configured shared security object |
+| `normalize_email(email)` | `strip().lower()` | Canonical email |
+| `hash_password(password)` | 16-byte random salt as 32 hex chars; PBKDF2-HMAC-SHA256 120,000 rounds | `salt:hash` |
+| `password_matches(password,saved_hash)` | Split salt/hash, derive again, `compare_digest` | Boolean; malformed value -> `False` |
+| `create_token(uid,email)` | JSON payload -> compact/sorted bytes -> URL-safe Base64 -> HMAC signature | `payload.signature` token |
+| `read_token(token)` | Signature, JSON, active database, expiry and string fields validate | `(uid,email)` or `ValidationException` |
+| `_derive_password_hash` | PBKDF2 calculation | Hex hash |
+| `_read_payload` | Split/decode/compare/parse | Payload dict or safe invalid-session error |
+| `_sign` | HMAC-SHA256 over encoded payload | Signature bytes |
+| `_encode/_decode` | URL-safe Base64, padding restore | String/bytes conversion |
+
+Token payload exactly four fields rakhta hai: `uid`, `email`, `database`, and
+`expires_at`. Password, password hash aur display name token mein nahi hote.
+
+### 28.9 Repository factory reference
+
+| Function | Connection work | Returns |
+|---|---|---|
+| `create_repositories(settings)` | Shared `AuthSecurity` create; selected DB branch | `(TodoRepository, AuthRepository)` in this exact order |
+| `_create_firestore_repositories` | Firebase app once initialize; project/document URL; one authorized session | Firestore todo + auth adapters |
+| `_create_mongodb_repositories` | `MongoClient`, 5-second selection timeout, `ping`, database/collections | Mongo todo + auth adapters |
+| `_create_postgresql_repositories` | URL required check; both repository constructors | PostgreSQL todo + auth adapters |
+
+Factory todo repository pehle aur auth repository second return karti hai.
+`app/main.py` bhi isi order mein unpack karta hai. Dono same `Settings` aur same
+active database se bante hain.
+
+### 28.10 Database adapter method reference
+
+All adapters same contracts implement karte hain, lekin technical operation
+different hai:
+
+| Contract method | Firestore | MongoDB | PostgreSQL |
+|---|---|---|---|
+| Auth `signup` | Hashed-email document PATCH | `insert_one` | Parameterized `INSERT` |
+| Auth `login` | Document GET by hashed email | `find_one(email)` | `SELECT ... WHERE email=%s` |
+| Auth `authenticate` | Token then document/UID check | Token then `_id+email` query | Token then `id+email` query |
+| Todo `save` | Document PATCH/upsert | `replace_one(upsert=True)` | `INSERT ... ON CONFLICT DO UPDATE` |
+| Todo `get_by_id` | Owner path + todo document | `_id+owner_uid` filter | `id+owner_uid` WHERE |
+| Todo `get_by_owner` | Paginated user subcollection | `find(owner_uid)` | WHERE owner, newest first |
+| Todo `delete` | Document DELETE | `delete_one(id+owner)` | DELETE WHERE id+owner |
+
+Private mapping helpers ka purpose:
+
+- Firestore `_to_document/_to_entity`: REST typed fields and entity conversion.
+- Firestore `_collection_url/_document_url`: safe encoded document paths.
+- Firestore auth `_user_url`: normalized email ka SHA-256 document key.
+- Mongo `_to_document/_to_entity`: document and domain mapping.
+- PostgreSQL `_to_entity`: named row and domain mapping.
+- PostgreSQL `_create_table`: missing schema create, existing data preserve.
+
+---
+
+## 29. Exact API request/response answer bank
+
+### 29.1 Common request rules
+
+Base URL in local development:
+
+```text
+http://127.0.0.1:8000
+```
+
+JSON requests use:
+
+```http
+Content-Type: application/json
+```
+
+Protected todo requests additionally use:
+
+```http
+Authorization: Bearer YOUR_LOGIN_TOKEN
+```
+
+`owner_uid` client request body mein nahi bhejta. Backend verified Bearer token
+se current user nikal kar owner set karta hai.
+
+### 29.2 Health check
+
+Request:
+
+```http
+GET /
+```
+
+Response `200 OK`:
+
+```json
+{
+  "status": "ok",
+  "architecture": "DDD",
+  "database": "mongodb"
+}
+```
+
+Database value active process ke hisaab se `firestore`, `mongodb`, ya
+`postgresql` hogi.
+
+### 29.3 Signup
+
+Request:
+
+```http
+POST /auth/signup
+Content-Type: application/json
+```
+
+```json
+{
+  "email": "student@example.com",
+  "password": "StrongPass123",
+  "display_name": "Rana"
+}
+```
+
+Response `201 Created`:
+
+```json
+{
+  "uid": "a-database-specific-uuid",
+  "email": "student@example.com",
+  "token": "encoded-payload.encoded-signature",
+  "message": "User created successfully"
+}
+```
+
+Rules:
+
+- Email Pydantic `EmailStr` format pass kare.
+- Password minimum 6 characters.
+- Missing display name ka default `User`.
+- Spaces-only display name repository mein `User` ban jata hai.
+- Email trim/lowercase hone ke baad selected DB mein unique hai.
+
+Duplicate response example `400 Bad Request`:
+
+```json
+{
+  "detail": "This email is already registered in MongoDB."
+}
+```
+
+Database name adapter ke mutabiq change hota hai.
+
+### 29.4 Login
+
+Request:
+
+```http
+POST /auth/login
+Content-Type: application/json
+```
+
+```json
+{
+  "email": "student@example.com",
+  "password": "StrongPass123"
+}
+```
+
+Response `200 OK`:
+
+```json
+{
+  "uid": "same-selected-database-user-uuid",
+  "email": "student@example.com",
+  "token": "new-signed-token",
+  "message": "Login successful"
+}
+```
+
+Wrong password response `401 Unauthorized`:
+
+```json
+{
+  "detail": "Invalid PostgreSQL email or password."
+}
+```
+
+Login har call par new expiry wala token create karta hai. Token database table
+ya collection mein save nahi hota.
+
+### 29.5 List todos
+
+Request:
+
+```http
+GET /todos
+Authorization: Bearer YOUR_LOGIN_TOKEN
+```
+
+Empty response `200 OK`:
+
+```json
+[]
+```
+
+Response with data:
+
+```json
+[
+  {
+    "id": "todo-uuid",
+    "title": "Prepare backend presentation",
+    "priority": "HIGH",
+    "is_completed": false,
+    "created_at": "2026-11-11T04:00:00+00:00",
+    "completed_at": null,
+    "owner_uid": "verified-user-uuid"
+  }
+]
+```
+
+PostgreSQL newest-first explicitly sort karta hai. Current MongoDB aur Firestore
+adapters explicit common sort guarantee nahi karti; API contract ko ordering
+par depend nahi karna chahiye.
+
+### 29.6 Create todo
+
+Request:
+
+```http
+POST /todos
+Authorization: Bearer YOUR_LOGIN_TOKEN
+Content-Type: application/json
+```
+
+```json
+{
+  "title": "  Prepare backend presentation  ",
+  "priority": "high"
+}
+```
+
+Response `201 Created`:
+
+```json
+{
+  "id": "new-todo-uuid",
+  "title": "Prepare backend presentation",
+  "priority": "HIGH",
+  "is_completed": false,
+  "created_at": "2026-11-11T04:00:00+00:00",
+  "completed_at": null,
+  "owner_uid": "verified-user-uuid"
+}
+```
+
+Notice:
+
+- Domain title ke outer spaces remove karta hai.
+- Lowercase priority uppercase enum ban jati hai.
+- UUID and timestamps server generate karta hai.
+- New todo always incomplete hota hai.
+- Owner verified token se aata hai.
+
+### 29.7 Complete todo
+
+Request:
+
+```http
+PATCH /todos/TODO_ID/complete
+Authorization: Bearer YOUR_LOGIN_TOKEN
+```
+
+Response `200 OK`:
+
+```json
+{
+  "id": "TODO_ID",
+  "title": "Prepare backend presentation",
+  "priority": "HIGH",
+  "is_completed": true,
+  "created_at": "2026-11-11T04:00:00+00:00",
+  "completed_at": "2026-11-11T04:15:00+00:00",
+  "owner_uid": "verified-user-uuid"
+}
+```
+
+Same todo dobara complete karne par `400`:
+
+```json
+{
+  "detail": "Todo is already completed."
+}
+```
+
+Missing ya doosre user ka todo `404`:
+
+```json
+{
+  "detail": "Todo was not found for this user."
+}
+```
+
+Same 404 information disclosure rokta hai: caller ko yeh nahi bataya jata ke
+ID kisi aur user ke paas exist karti hai ya bilkul exist nahi karti.
+
+### 29.8 Delete todo
+
+Request:
+
+```http
+DELETE /todos/TODO_ID
+Authorization: Bearer YOUR_LOGIN_TOKEN
+```
+
+Success:
+
+```text
+204 No Content
+empty response body
+```
+
+Service pehle owned todo read karti hai. Isliye missing/not-owned task par
+silent success ke bajaye meaningful `404` milta hai.
+
+### 29.9 Authentication failures
+
+Missing/malformed Bearer header:
+
+```text
+401 Unauthorized
+WWW-Authenticate: Bearer
+```
+
+```json
+{
+  "detail": "Not authenticated"
+}
+```
+
+Expired token:
+
+```json
+{
+  "detail": "Session expired. Please log in again."
+}
+```
+
+Wrong-database token, for example Mongo token while PostgreSQL active:
+
+```json
+{
+  "detail": "Please log in or sign up in the postgresql database."
+}
+```
+
+Valid signature but deleted database user:
+
+```json
+{
+  "detail": "PostgreSQL user no longer exists."
+}
+```
+
+### 29.10 Pydantic `422` validation error
+
+Invalid email, short password, short/long title, ya unsupported priority route
+function tak pohanchne se pehle reject hoti hai. Typical shape:
+
+```json
+{
+  "detail": [
+    {
+      "type": "string_too_short",
+      "loc": ["body", "password"],
+      "msg": "String should have at least 6 characters",
+      "input": "123"
+    }
+  ]
+}
+```
+
+Exact `type`/message installed Pydantic version ke sath slightly change ho
+sakti hai, lekin status `422` aur `detail` list FastAPI validation pattern hai.
+
+---
+
+## 30. Three-database comparison answer bank
+
+### 30.1 One-screen comparison
+
+| Question | Firestore | MongoDB | PostgreSQL |
+|---|---|---|---|
+| Database style | Cloud document DB | Document DB | Relational SQL DB |
+| User storage | `auth_users` collection | `users` collection | `users` table |
+| Todo storage | Per-user subcollection | Shared `todos` collection | Shared `todos` table |
+| User primary identity | `uid` field; document ID = email hash | `_id` = user UUID | `id` primary key |
+| Todo primary identity | Todo document ID + `id` field | `_id` = todo UUID | `id` primary key |
+| Email uniqueness | Deterministic hashed document path + pre-check | Unique email index | UNIQUE email constraint |
+| Owner isolation | UID embedded in document path | `owner_uid` filter | `owner_uid` WHERE condition |
+| Todo upsert | REST PATCH | `replace_one(...,upsert=True)` | `ON CONFLICT (id) DO UPDATE` |
+| User list performance | Per-user path, paginated | Owner index | Filter; current code has no explicit owner index |
+| Data types | REST typed wrappers | JSON-like document values | SQL typed columns |
+| Viewing tool | Firebase Console | MongoDB Compass | pgAdmin 4 |
+
+### 30.2 User record comparison
+
+Logical values same hain:
+
+```text
+uid + normalized email + display name + password hash
+```
+
+Physical difference:
+
+```text
+Firestore: document fields use stringValue wrappers
+MongoDB:    _id stores UID; other values normal document fields
+PostgreSQL: id/email/display_name/password_hash columns
+```
+
+Token kisi database mein stored nahi hota.
+
+### 30.3 Todo record comparison
+
+Logical values same hain:
+
+```text
+id, title, priority, is_completed,
+created_at, completed_at, owner_uid
+```
+
+Datetime storage:
+
+- Firestore adapter: ISO string inside REST `stringValue`.
+- MongoDB adapter: ISO string.
+- PostgreSQL adapter: native `TIMESTAMPTZ`.
+
+Boolean storage:
+
+- Firestore: `booleanValue`.
+- MongoDB: native document boolean.
+- PostgreSQL: native `BOOLEAN`.
+
+### 30.4 Connection and startup comparison
+
+| Database | Startup behavior |
+|---|---|
+| Firestore | Service-account certificate load; Firebase app once initialize; authorized REST session create |
+| MongoDB | Client create; maximum server-selection wait 5 seconds; startup `ping`; indexes ensure |
+| PostgreSQL | URL required; repository constructors connect and `CREATE TABLE IF NOT EXISTS` run |
+
+Isliye wrong credentials/URL/database service usually startup par fail hota hai,
+na ke first random user request par.
+
+### 30.5 Same email different user kyun?
+
+Example:
+
+```text
+rajputkhawarali@gmail.com in Firestore  -> UID A
+rajputkhawarali@gmail.com in MongoDB    -> UID B
+rajputkhawarali@gmail.com in PostgreSQL -> UID C
+```
+
+Reason:
+
+1. Factory ek selected database ka auth adapter choose karti hai.
+2. Signup duplicate check sirf us selected DB mein hota hai.
+3. New UUID us DB ke account ke liye create hoti hai.
+4. Password hash bhi usi DB mein save hota hai.
+5. Token payload active database name se sign hota hai.
+
+Isliye Firebase/Firestore signup MongoDB login automatically create nahi karta.
+Database switch ke baad user ko us database mein separately signup/login karna
+hota hai.
+
+### 30.6 Same service code kaise reuse hota hai?
+
+```text
+TodoService -> TodoRepository contract
+                    ^
+                    |
+        Firestore / MongoDB / PostgreSQL adapter
+```
+
+`TodoService` sirf `save`, `get_by_id`, `get_by_owner`, `delete` jaanti hai.
+Actual PATCH, PyMongo call, ya SQL adapter ke andar hai. Isi ko dependency
+inversion aur polymorphism kehte hain.
+
+### 30.7 Database select karne ka decision
+
+| Need | Better fit |
+|---|---|
+| Firebase ecosystem and managed cloud documents | Firestore |
+| Flexible JSON-like documents and Compass exploration | MongoDB |
+| Strong relational constraints, SQL queries, reporting | PostgreSQL |
+
+Project ka purpose “winner database” choose karna nahi; same domain/application
+architecture ke peeche adapters demonstrate karna hai.
+
+### 30.8 Current consistency differences jo honestly batani chahiye
+
+- PostgreSQL list `created_at DESC` order guarantee karti hai; other two current
+  adapters explicit sort nahi karti.
+- MongoDB owner index banata hai; PostgreSQL current `owner_uid` index create
+  nahi karta.
+- PostgreSQL current todos table mein users foreign key nahi hai.
+- Firestore auth signup check-then-write hai; high concurrency mein atomic
+  create/transaction stronger hoti.
+- Yeh limitations architecture ko invalidate nahi kartin; production hardening
+  items hain.
+
+---
+
+## 31. Advanced viva questions with ready answers
+
+### Q36. User `owner_uid` body mein doosre user ki bhej de toh?
+
+Create schema mein `owner_uid` field hai hi nahi. Route verified
+`CurrentUser.uid` se `CreateTodoInput.owner_uid` banati hai. Client ownership
+choose nahi kar sakta.
+
+### Q37. Invalid token route tak pohanchta hai?
+
+Protected route dependencies pehle resolve hoti hain. `current_user` token
+verify na kare toh route function execute nahi hota aur response 401 hota hai.
+
+### Q38. Pydantic aur domain dono title validate kyun karte hain?
+
+Pydantic HTTP client ko early 422 feedback deta hai. Domain invariant ensure
+karta hai ke entity kisi bhi entry point—HTTP, script, future worker, ya DB
+restore—se invalid na bane. Yeh duplication nahi, two boundaries ki protection
+hai.
+
+### Q39. Lowercase `high` ka kya hota hai?
+
+HTTP schema explicitly lowercase/uppercase variants allow karti hai.
+`TodoItem.create` `priority.upper()` karke `Priority.HIGH` banata hai; response
+aur storage canonical uppercase use karte hain.
+
+### Q40. Display name response mein kyun nahi aata?
+
+Current `AuthOutput` public auth needs ke liye only UID, normalized email aur
+token rakhta hai. Display name account record mein stored hai but current UI/API
+contract expose nahi karta. Future profile endpoint add kiya ja sakta hai.
+
+### Q41. Password hashing auth repository mein kyun call hoti hai?
+
+Repository account persistence workflow own karti hai, lekin algorithm shared
+`AuthSecurity` infrastructure service provide karti hai. Is se three adapters
+same policy use karte hain aur hashing duplicate nahi hoti.
+
+### Q42. `AuthSecurity` domain mein kyun nahi?
+
+PBKDF2, HMAC, Base64 aur system time technical implementation details hain.
+Domain sirf auth operation ka contract define karta hai; cryptographic adapter
+infrastructure concern hai.
+
+### Q43. Token JWT kyun nahi hai?
+
+Learning project compact custom HMAC token use karta hai to signing/database
+binding clearly demonstrate ho. Production mein established JWT/OAuth/session
+library better review, key rotation and ecosystem support de sakti hai.
+
+### Q44. Kya Base64 token data secure/chhupa deta hai?
+
+Nahi. Base64 encoding readable/reversible hai. HMAC data ko encrypt nahi karta;
+sirf unauthorized modification detect karta hai. Isliye payload mein password
+ya secret nahi rakha.
+
+### Q45. Token logout/revocation kaise hoti hai?
+
+Current token expiry tak cryptographically valid reh sakta hai, lekin every
+request par database user existence check hota hai, so deleted user reject hota
+hai. Per-token blacklist, session table, password-change revocation aur explicit
+logout current implementation mein nahi; production improvement hai.
+
+### Q46. Other user's existing todo ko 404 kyun milta hai, 403 kyun nahi?
+
+Repository `id + owner_uid` together query karti hai. Non-owner ke liye result
+“not found” hota hai. Yeh resource existence leak nahi karta, so 404 reasonable
+security behavior hai.
+
+### Q47. `save()` create aur update dono kyun karta hai?
+
+Service ko persistence mechanism ka difference nahi pata hona chahiye. New todo
+aur completed todo same entity hain; adapter upsert semantics se current entity
+state persist karta hai.
+
+### Q48. Delete se pehle read kyun hota hai?
+
+Delete operations zero affected records par often silently succeed karti hain.
+Pre-read ownership verify karta hai aur missing/not-owned case ko consistent 404
+banata hai. Trade-off extra DB call hai.
+
+### Q49. Routes normal `def` hain, `async def` kyun nahi?
+
+Current PyMongo, Psycopg usage and Firestore `requests`-style session blocking
+APIs hain. FastAPI sync route functions ko worker thread mein chala sakta hai,
+isliye event loop directly block nahi hota. Full async scale ke liye async DB
+drivers/adapters choose karne honge.
+
+### Q50. `app.state` global variables se better kaise hai?
+
+Dependencies request ke app instance se configured services leti hain. Multiple
+app instances different settings/fakes use kar sakti hain, aur routes concrete
+module globals se tightly coupled nahi hoti.
+
+### Q51. Database switch running server ke andar live kyun nahi hota?
+
+Settings `lru_cache` se startup par load hoti hain; repositories/connections bhi
+startup par create hote hain. Environment change existing process ko rewire nahi
+karta. Server restart clean consistent repository pair banata hai.
+
+### Q52. `DATABASE=firebase` chalega?
+
+Haan. `selected_database` beginner-friendly `firebase` alias ko canonical
+`firestore` banata hai. Health response aur token canonical `firestore` value
+use karte hain.
+
+### Q53. Factory same database mein auth aur todos kaise guarantee karti hai?
+
+One `database = settings.selected_database` branch one shared `AuthSecurity`
+aur matching todo/auth adapter pair return karti hai. Separate independent
+factory calls nahi, isliye mixed Mongo-auth/Postgres-todo configuration current
+design mein possible nahi.
+
+### Q54. `firebase-admin` use hone ka matlab Firebase Auth use ho rahi hai?
+
+Nahi. Firebase Admin service-account credential aur authorized Firestore access
+ke liye use hota hai. Signup/login records custom `auth_users` collection mein
+selected-database repository manage karti hai.
+
+### Q55. Firestore email ko SHA-256 key kyun, encryption kyun nahi?
+
+Deterministic key exact document lookup aur normalized-email uniqueness deti
+hai. SHA-256 one-way hash hai, encryption nahi. Actual email document field mein
+stored hai, so hash privacy/anonymity guarantee nahi.
+
+### Q56. MongoDB `_id` ObjectId kyun nahi?
+
+Cross-database consistency ke liye application UUID strings generate karti hai.
+Same entity identity format Firestore, MongoDB, PostgreSQL aur API mein portable
+rehta hai.
+
+### Q57. PostgreSQL foreign key kyun nahi hai?
+
+Current beginner-friendly schema ownership string se enforce karta hai and
+service/auth flow valid UID provide karti hai. Production relational design
+`todos.owner_uid REFERENCES users(id)` plus index and deletion policy add kar
+sakta hai.
+
+### Q58. PostgreSQL context manager kya guarantee karta hai?
+
+Connection block success par transaction commit, exception par rollback, aur
+block exit par connection cleanup manage karta hai. Manual commit/close code
+repeat nahi hota.
+
+### Q59. Infrastructure DB error todo route mein kya ban sakta hai?
+
+Expected domain/auth errors explicitly map hote hain. Unexpected unhandled
+connection/programming error middleware log ke sath 500 banega. Production mein
+central exception handler aur sanitized error monitoring add karni chahiye.
+
+### Q60. Current list ordering all databases mein same hai?
+
+Nahi. PostgreSQL explicit newest-first hai; MongoDB/Firestore current adapter
+natural/API order use karti hain. Consistent product requirement ho toh
+repository contract mein ordering define karke all adapters implement karenge.
+
+### Q61. `@lru_cache` ka downside kya hai?
+
+Process ke andar changed `.env` automatically reload nahi hoti. Benefit stable
+single settings object and fewer reads hai. Development switch ke baad process
+restart expected hai; tests cache clear ya explicit settings inject kar sakti
+hain.
+
+### Q62. `ContextVar` simple global request ID se better kyun hai?
+
+Concurrent requests same process/thread execution context overlap kar sakti
+hain. `ContextVar` har async context ka label isolate karta hai; `finally` reset
+next request ko old label inherit karne se rokta hai.
+
+### Q63. Project truly database-independent hai?
+
+Domain and application selected database se independent hain; API contract bhi
+same hai. Complete system external capabilities se totally independent nahi—
+infrastructure adapters intentionally database-specific hain. Correct claim
+“business logic and use cases are storage-independent” hai.
+
+### Q64. Professional production mein sab se pehle kya improve karenge?
+
+Established auth/session mechanism, secret manager, rate limiting, migrations,
+connection pooling, database indexes/foreign keys, consistent ordering,
+central error handling, integration CI and observability. Priority deployment
+risk aur expected scale par depend karegi.
+
+### Q65. Ek sentence mein poora backend kaise explain karenge?
+
+> “FastAPI presentation verified request ko application use case tak bhejti
+> hai, domain business rule decide karta hai, selected infrastructure adapter
+> same database mein user/todo persist karta hai, aur result database-independent
+> response ban kar client ko milta hai.”
 
 ---
 

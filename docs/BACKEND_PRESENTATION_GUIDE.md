@@ -272,6 +272,12 @@ Purpose:
 
 Path: [`backend/DDD/app/main.py`](../backend/DDD/app/main.py)
 
+Purpose:
+
+- Complete FastAPI application assemble karna.
+- Configuration, repositories, services, middleware aur routes ko aik jagah wire karna.
+- Business logic likhe baghair application startup control karna.
+
 Main function:
 
 ```python
@@ -317,6 +323,12 @@ Is line ki wajah se Uvicorn import ke waqt complete application ready hoti hai.
 ### 5.4 `app/config.py` — typed settings
 
 Path: [`backend/DDD/app/config.py`](../backend/DDD/app/config.py)
+
+Purpose:
+
+- `.env` aur terminal environment values ko typed `Settings` object mein load karna.
+- Database, server, CORS aur authentication configuration ko centralize karna.
+- Missing ya invalid configuration ko startup par detect karna.
 
 Top-level value:
 
@@ -373,6 +385,12 @@ Properties/functions:
 
 Path: [`backend/DDD/app/logging.py`](../backend/DDD/app/logging.py)
 
+Purpose:
+
+- Har API request aur important layer step ko readable logs mein show karna.
+- English aur Roman Urdu messages ko same request number ke sath align karna.
+- Request status, duration aur safe errors trace karna.
+
 Important module values:
 
 | Name | Purpose |
@@ -404,6 +422,11 @@ request old ID inherit nahi karti.
 
 Path: [`backend/DDD/.env.example`](../backend/DDD/.env.example)
 
+Purpose:
+
+- Required environment-variable names aur safe sample formats document karna.
+- New developer ko real secrets commit kiye baghair `.env` banane ka template dena.
+
 Is file mein safe sample configuration hai:
 
 - selected `DATABASE`;
@@ -422,6 +445,11 @@ hai.
 
 Path: [`backend/DDD/requirements.txt`](../backend/DDD/requirements.txt)
 
+Purpose:
+
+- Backend ko run karne wali direct Python dependencies declare karna.
+- Fresh virtual environment mein repeatable package installation support karna.
+
 | Package | Project mein kaam |
 |---|---|
 | `fastapi` | API, middleware, dependencies |
@@ -435,6 +463,26 @@ Path: [`backend/DDD/requirements.txt`](../backend/DDD/requirements.txt)
 | `pymongo` | MongoDB driver |
 | `psycopg[binary]` | PostgreSQL driver |
 
+### 5.8 `README.md`
+
+Path: [`backend/DDD/README.md`](../backend/DDD/README.md)
+
+Purpose:
+
+- Backend install, configure aur run karne ki practical instructions dena.
+- Database switching, authentication behavior aur API endpoints ka quick reference dena.
+- Naye developer ko project use karna sikhana; detailed architecture prove karna iska kaam nahi.
+
+### 5.9 `ARCHITECTURE.md`
+
+Path: [`backend/DDD/ARCHITECTURE.md`](../backend/DDD/ARCHITECTURE.md)
+
+Purpose:
+
+- Har DDD layer ki allowed aur forbidden responsibilities define karna.
+- Dependency direction aur future file placement ke professional rules preserve karna.
+- Refactoring ke waqt architecture boundaries ko accidental mixing se bachana.
+
 ---
 
 ## 6. Presentation files
@@ -445,6 +493,12 @@ isi layer mein aati hai, isliye file-by-file explanation yahan se start hoti hai
 ### 6.1 `presentation/schemas.py`
 
 Path: [`backend/DDD/app/presentation/schemas.py`](../backend/DDD/app/presentation/schemas.py)
+
+Purpose:
+
+- API ke incoming JSON requests validate karna.
+- Outgoing HTTP responses ka public shape define karna.
+- FastAPI/Pydantic concerns ko application aur domain layers se bahar rakhna.
 
 | Pydantic class | Fields/rules | Used by |
 |---|---|---|
@@ -464,6 +518,12 @@ Domain validates business invariants.
 ### 6.2 `presentation/dependencies.py`
 
 Path: [`backend/DDD/app/presentation/dependencies.py`](../backend/DDD/app/presentation/dependencies.py)
+
+Purpose:
+
+- Routes ko configured services dependency injection se dena.
+- Bearer JWT verify karke trusted `CurrentUser` banana.
+- Authentication failures ko safe HTTP 401 responses mein map karna.
 
 #### `CurrentUser`
 
@@ -516,6 +576,12 @@ Owner UID request body se trust nahi hoti. Verified token se aati hai.
 
 Path: [`backend/DDD/app/presentation/routers/auth.py`](../backend/DDD/app/presentation/routers/auth.py)
 
+Purpose:
+
+- Signup aur login HTTP endpoints expose karna.
+- Request schemas ko application DTOs aur service outputs ko HTTP responses mein map karna.
+- Authentication errors ko correct HTTP status codes dena.
+
 Router:
 
 ```python
@@ -541,6 +607,12 @@ Route ka kaam:
 ### 6.4 `presentation/routers/todos.py`
 
 Path: [`backend/DDD/app/presentation/routers/todos.py`](../backend/DDD/app/presentation/routers/todos.py)
+
+Purpose:
+
+- Todo list, create, complete aur delete endpoints expose karna.
+- Verified user UID ko todo use cases tak safely pass karna.
+- Domain/application results aur errors ko HTTP responses mein translate karna.
 
 Router:
 
@@ -577,6 +649,11 @@ database query nahi hoti.
 
 Path: [`backend/DDD/app/application/dto.py`](../backend/DDD/app/application/dto.py)
 
+Purpose:
+
+- Presentation aur application services ke darmiyan simple typed data carry karna.
+- Use-case input/output ko HTTP schemas aur database models se independent rakhna.
+
 DTO = Data Transfer Object.
 
 Input DTOs:
@@ -609,6 +686,12 @@ Domain entity       = identity + state + business behavior
 
 Path: [`backend/DDD/app/application/auth_service.py`](../backend/DDD/app/application/auth_service.py)
 
+Purpose:
+
+- Signup, login aur token authentication use cases coordinate karna.
+- Route ko database-specific repository details se independent rakhna.
+- Repository result ko application `AuthOutput` mein convert karna.
+
 Main class:
 
 ```python
@@ -632,6 +715,12 @@ workflow order jaanti hai.
 ### 7.3 `application/todo_service.py`
 
 Path: [`backend/DDD/app/application/todo_service.py`](../backend/DDD/app/application/todo_service.py)
+
+Purpose:
+
+- Todo create, list, complete aur delete workflows ka order control karna.
+- Domain entity rules ko repository persistence ke sath coordinate karna.
+- Domain entities ko API-friendly application outputs mein convert karna.
 
 #### `to_output(todo)`
 
@@ -667,6 +756,11 @@ Domain layer framework aur database se independent hai.
 
 Path: [`backend/DDD/app/domain/auth.py`](../backend/DDD/app/domain/auth.py)
 
+Purpose:
+
+- Authentication ka database-independent repository contract define karna.
+- Auth result (`UserData`) aur expected validation error ka common domain shape dena.
+
 #### `ValidationException`
 
 Safe authentication/input error. Infrastructure is exception ko raise kar sakti
@@ -700,6 +794,12 @@ ABC ka purpose:
 ### 8.2 `domain/todo.py`
 
 Path: [`backend/DDD/app/domain/todo.py`](../backend/DDD/app/domain/todo.py)
+
+Purpose:
+
+- Todo entity, value objects aur core business rules define karna.
+- Todo repository contract aur business-specific errors provide karna.
+- Framework/database change ke bawajood task rules ko stable rakhna.
 
 #### Domain errors
 
@@ -784,6 +884,12 @@ database operation tak carry karti hain.
 
 Path: [`backend/DDD/app/infrastructure/security.py`](../backend/DDD/app/infrastructure/security.py)
 
+Purpose:
+
+- Passwords ko salted PBKDF2 hashes mein safely store/verify karna.
+- Database-bound JWT access tokens create aur validate karna.
+- Shared security implementation ko three database adapters mein duplicate hone se bachana.
+
 Main class:
 
 ```python
@@ -821,6 +927,12 @@ service ko token format ya hashing algorithm ka knowledge nahi hota.
 ### 9.2 `infrastructure/repository_factory.py`
 
 Path: [`backend/DDD/app/infrastructure/repository_factory.py`](../backend/DDD/app/infrastructure/repository_factory.py)
+
+Purpose:
+
+- Selected `DATABASE` ke mutabiq matching auth aur todo repositories create karna.
+- Database client/session setup ko application startup se separate rakhna.
+- Users aur todos ko hamesha same selected database adapter se bind karna.
 
 Main function:
 
@@ -862,6 +974,11 @@ PostgreSQL todo wiring possible nahi hoti.
 
 Path: [`backend/DDD/app/infrastructure/firestore/auth_repository.py`](../backend/DDD/app/infrastructure/firestore/auth_repository.py)
 
+Purpose:
+
+- `AuthRepository` contract ko Firestore REST operations se implement karna.
+- Firestore mein users create/find karke password aur JWT workflow connect karna.
+
 Class:
 
 ```python
@@ -901,6 +1018,12 @@ Email hash document ID kyun?
 ### 10.2 `firestore/todo_repository.py`
 
 Path: [`backend/DDD/app/infrastructure/firestore/todo_repository.py`](../backend/DDD/app/infrastructure/firestore/todo_repository.py)
+
+Purpose:
+
+- `TodoRepository` contract ko Firestore REST operations se implement karna.
+- Domain entities aur Firestore typed documents ke darmiyan mapping karna.
+- Har owner's todos ko uski own subcollection mein isolate karna.
 
 Class:
 
@@ -945,6 +1068,11 @@ GET page -> documents add -> nextPageToken?
 
 Path: [`backend/DDD/app/infrastructure/mongodb/auth_repository.py`](../backend/DDD/app/infrastructure/mongodb/auth_repository.py)
 
+Purpose:
+
+- `AuthRepository` contract ko MongoDB user collection se implement karna.
+- Unique email accounts, password verification aur JWT authentication handle karna.
+
 Class:
 
 ```python
@@ -977,6 +1105,11 @@ password_hash
 ### 11.2 `mongodb/todo_repository.py`
 
 Path: [`backend/DDD/app/infrastructure/mongodb/todo_repository.py`](../backend/DDD/app/infrastructure/mongodb/todo_repository.py)
+
+Purpose:
+
+- `TodoRepository` contract ko MongoDB collection operations se implement karna.
+- Domain entities aur MongoDB documents map karke owner-scoped CRUD provide karna.
 
 Class:
 
@@ -1017,6 +1150,11 @@ owner_uid
 
 Path: [`backend/DDD/app/infrastructure/postgresql/auth_repository.py`](../backend/DDD/app/infrastructure/postgresql/auth_repository.py)
 
+Purpose:
+
+- `AuthRepository` contract ko PostgreSQL SQL queries se implement karna.
+- Users table create/use karke signup, password login aur JWT authentication provide karna.
+
 Class:
 
 ```python
@@ -1052,6 +1190,11 @@ password_hash TEXT NOT NULL
 ### 12.2 `postgresql/todo_repository.py`
 
 Path: [`backend/DDD/app/infrastructure/postgresql/todo_repository.py`](../backend/DDD/app/infrastructure/postgresql/todo_repository.py)
+
+Purpose:
+
+- `TodoRepository` contract ko PostgreSQL SQL queries se implement karna.
+- Todos table aur domain entity ke darmiyan owner-safe CRUD mapping provide karna.
 
 Class:
 

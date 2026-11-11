@@ -18,36 +18,36 @@ class Settings(BaseSettings):
     How: Pydantic reads `.env`, applies terminal overrides, and converts types.
     """
 
-    # App/server settings Swagger title, Uvicorn aur browser access control ke
-    # liye hain. Pydantic string values ko int/bool mein convert kar deta hai.
-    app_name: str = "Todo DDD API"
-    app_architecture: str = "DDD"
-    backend_host: str = "127.0.0.1"
-    backend_port: int = 8000
-    backend_reload: bool = True
-    cors_origins: str = "http://localhost:5173,http://127.0.0.1:5173"
-    log_level: str = "INFO"
+    # App/server ki har value .env se required hai. Pydantic strings ko declared
+    # int/bool types mein convert aur validate karta hai.
+    app_name: str
+    app_architecture: str
+    backend_host: str
+    backend_port: int
+    backend_reload: bool
+    cors_origins: str
+    log_level: str
 
     # Yeh one switch users aur todos dono ke repository adapters select karta hai.
-    database: str = "firestore"
+    database: str
     auth_token_secret: str
-    auth_token_expire_minutes: int = 1440
+    auth_token_expire_minutes: int
 
     # Har database group sirf tab use hota hai jab DATABASE us driver ko select kare.
-    mongodb_uri: str = "mongodb://localhost:27017"
-    mongodb_database: str = "todoflow"
-    mongodb_todo_collection: str = "todos"
-    mongodb_user_collection: str = "users"
+    mongodb_uri: str
+    mongodb_database: str
+    mongodb_todo_collection: str
+    mongodb_user_collection: str
 
-    postgresql_url: str = ""
+    postgresql_url: str
 
-    firebase_credentials_path: str = "serviceAccountKey.json"
-    firestore_api_url: str = "https://firestore.googleapis.com/v1"
-    firestore_database_id: str = "(default)"
-    firestore_user_collection: str = "users"
-    firestore_auth_collection: str = "auth_users"
-    firestore_todo_collection: str = "todos"
-    firestore_page_size: int = 1000
+    firebase_credentials_path: str
+    firestore_api_url: str
+    firestore_database_id: str
+    firestore_user_collection: str
+    firestore_auth_collection: str
+    firestore_todo_collection: str
+    firestore_page_size: int
 
     # Terminal environment variables .env ki values ko override kar sakti hain.
     model_config = SettingsConfigDict(

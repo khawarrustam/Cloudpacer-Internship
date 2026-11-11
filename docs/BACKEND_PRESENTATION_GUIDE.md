@@ -347,6 +347,13 @@ Settings groups:
 | PostgreSQL | `postgresql_url` |
 | Firestore | credential path, API URL, database and collection names, page size |
 
+Important configuration rule:
+
+- `Settings` fields types declare karti hai; hard-coded runtime defaults nahi.
+- Har actual value `.env` ya terminal environment variable se aati hai.
+- Missing variable startup par Pydantic validation error deti hai.
+- Terminal variable same-name `.env` value ko override kar sakti hai.
+
 Properties/functions:
 
 | Name | Input/source | Work | Return |
@@ -404,6 +411,9 @@ Is file mein safe sample configuration hai:
 - MongoDB URI and collection names;
 - PostgreSQL URL format;
 - Firestore credential path and collection names.
+
+Every listed key required hai because `config.py` mein runtime defaults nahi
+rakhe gaye. Inactive database fields safe sample/local values rakh sakte hain.
 
 `.env.example` commit hoti hai; real `.env` secrets ke sath Git ignored rehti
 hai.

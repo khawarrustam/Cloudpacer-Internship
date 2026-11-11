@@ -71,8 +71,10 @@ python -m venv .venv
 python -m pip install -r requirements.txt
 ```
 
-Copy `.env.example` to `.env` and set the connection values for the databases
-you use. Keep `AUTH_TOKEN_SECRET` private and change its example value.
+Copy `.env.example` to `.env` and set every listed variable. `Settings` contains
+types only—runtime values and safe local choices all come from `.env` or
+terminal environment overrides. Inactive database fields may retain safe
+local/sample values. Keep `AUTH_TOKEN_SECRET` private.
 
 ## Select a database
 

@@ -99,12 +99,13 @@ The command remains simple because root `main.py` delegates to the professional
 Firestore, MongoDB, and PostgreSQL accounts are independent. The same email may
 sign up in all three databases and receives a different UID in each database.
 A token issued for one database is rejected after switching to another.
+Tokens are standard three-part HS256 JWTs created and verified with PyJWT.
 
 - Firestore accounts: `auth_users` collection
 - MongoDB accounts: `users` collection
 - PostgreSQL accounts: `users` table
 
-Passwords are stored as salted hashes, never plain text.
+Passwords are stored as salted PBKDF2 hashes, never plain text.
 
 ## Endpoints
 

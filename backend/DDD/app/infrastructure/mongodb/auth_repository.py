@@ -14,7 +14,7 @@ class MongoAuthRepository(AuthRepository):
     """What: Store and authenticate users inside MongoDB.
 
     When: MongoDB is the selected database for users and todos.
-    How: Use a unique email index, hashed passwords, and database-bound tokens.
+    How: Use a unique email index, hashed passwords, and database-bound JWTs.
     """
 
     def __init__(

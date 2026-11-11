@@ -26,6 +26,9 @@ requests>=2.31.0
 # .env file se configurations aur API keys load karne ke liye
 python-dotenv>=1.0.0
 
+# Standard HS256 JSON Web Tokens create aur verify karne ke liye
+PyJWT>=2.15.1,<3.0.0
+
 # MongoDB database driver (MongoDB adapter ke zariye data save karne ke liye)
 pymongo>=4.6.0
 

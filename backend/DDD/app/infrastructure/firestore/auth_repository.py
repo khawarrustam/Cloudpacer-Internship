@@ -14,7 +14,7 @@ class FirestoreAuthRepository(AuthRepository):
     """What: Store and authenticate users inside Firestore.
 
     When: Firestore is the selected database for users and todos.
-    How: Use an email-derived document key, hashed password, and signed token.
+    How: Use an email-derived document key, hashed password, and JWT.
     """
 
     def __init__(
@@ -98,7 +98,7 @@ class FirestoreAuthRepository(AuthRepository):
         except Exception as error:
             log_error("Infrastructure", f"Firestore token check failed: {error}")
             raise ValidationException("Firestore session check failed.") from error
-        # Signed token ke baad live DB check deleted/replaced user ko reject karta hai.
+        # Valid JWT ke baad live DB check deleted/replaced user ko reject karta hai.
         if user is None or user["uid"] != uid:
             raise ValidationException("Firestore user no longer exists.")
         return UserData(uid=uid, email=email, token=token)

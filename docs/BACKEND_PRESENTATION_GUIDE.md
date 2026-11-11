@@ -145,7 +145,7 @@ backend/DDD/
 | Domain | Business rule kya hai? | `TodoItem`, `TaskTitle`, repository ABCs |
 | Application | Workflow kis order mein chalega? | `AuthService`, `TodoService` |
 | Presentation | HTTP input/output kya hai? | Schemas, dependencies, routers |
-| Infrastructure | Technically kaise implement hoga? | PBKDF2, HMAC, Firestore, MongoDB, SQL |
+| Infrastructure | Technically kaise implement hoga? | PBKDF2, JWT, Firestore, MongoDB, SQL |
 
 ### Dependency diagram
 
@@ -431,6 +431,7 @@ Path: [`backend/DDD/requirements.txt`](../backend/DDD/requirements.txt)
 | `firebase-admin` | Firestore service-account credential |
 | `requests` | Firestore REST HTTP stack |
 | `python-dotenv` | `.env` loading support |
+| `PyJWT` | Standard HS256 JWT create and verify |
 | `pymongo` | MongoDB driver |
 | `psycopg[binary]` | PostgreSQL driver |
 
@@ -790,9 +791,9 @@ AuthSecurity(secret, database, token_expire_minutes)
 
 Constructor stores:
 
-- secret as bytes;
+- JWT signing secret;
 - active database name;
-- expiry minutes converted to seconds.
+- token expiry minutes.
 
 Methods:
 
@@ -801,23 +802,20 @@ Methods:
 | `normalize_email` | Email | Trim + lowercase | Clean email |
 | `hash_password` | Password | Random salt + PBKDF2-HMAC-SHA256 | `salt:hash` |
 | `password_matches` | Password + saved hash | Derive again + `compare_digest` | Boolean |
-| `create_token` | UID + email | JSON payload + Base64 + HMAC signature | Signed token |
-| `read_token` | Token | Signature, DB, expiry and fields check | `(uid, email)` |
+| `create_token` | UID + email | PyJWT `encode` with HS256 and standard claims | JWT string |
+| `read_token` | JWT | PyJWT `decode`; signature, claims, DB and expiry check | `(uid, email)` |
 | `_derive_password_hash` | Password + salt | 120,000 PBKDF2 rounds | Hex hash |
-| `_read_payload` | Token | Split, signature verify, JSON decode | Payload dict |
-| `_sign` | Encoded payload | HMAC-SHA256 | Signature bytes |
-| `_encode` | Bytes | URL-safe Base64 without padding | String |
-| `_decode` | String | Padding restore + Base64 decode | Bytes |
 
 Token payload:
 
 ```text
-uid + email + database + expires_at
+sub (user UID) + email + database + iat + exp
 ```
 
 Password/token logic infrastructure mein kyun?
 
-PBKDF2, HMAC, Base64 and system time technical implementation details hain.
+PBKDF2 aur PyJWT/HS256 technical implementation details hain. Application
+service ko token format ya hashing algorithm ka knowledge nahi hota.
 
 ### 9.2 `infrastructure/repository_factory.py`
 
@@ -1309,12 +1307,9 @@ Middleware -> request start/end/status/time
 | `normalize_email` | `security.py` | Canonical email |
 | `hash_password` | `security.py` | Salted PBKDF2 hash |
 | `password_matches` | `security.py` | Safe password compare |
-| `create_token` | `security.py` | Signed DB-bound token |
-| `read_token` | `security.py` | Token validation |
+| `create_token` | `security.py` | Standard DB-bound JWT |
+| `read_token` | `security.py` | PyJWT validation |
 | `_derive_password_hash` | `security.py` | PBKDF2 calculation |
-| `_read_payload` | `security.py` | Token parse/signature check |
-| `_sign` | `security.py` | HMAC signature |
-| `_encode/_decode` | `security.py` | URL-safe Base64 |
 | `create_repositories` | `repository_factory.py` | Selected adapter pair |
 | `_create_firestore_repositories` | `repository_factory.py` | Firestore wiring |
 | `_create_mongodb_repositories` | `repository_factory.py` | Mongo wiring |

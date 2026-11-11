@@ -14,7 +14,7 @@ class PostgreSQLAuthRepository(AuthRepository):
     """What: Store and authenticate users inside PostgreSQL.
 
     When: PostgreSQL is the selected database for users and todos.
-    How: Use a unique email column, hashed passwords, and database-bound tokens.
+    How: Use a unique email column, hashed passwords, and database-bound JWTs.
     """
 
     def __init__(self, connection_url: str, security: AuthSecurity) -> None:

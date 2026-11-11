@@ -28,7 +28,7 @@ class AuthService:
         return self._to_output(user.uid, user.email, user.token)
 
     def login(self, data: LoginInput) -> AuthOutput:
-        """Verify selected-database credentials and return a signed token."""
+        """Verify selected-database credentials and return a standard JWT."""
         user = self.repository.login(data.email, data.password)
         log_step("Application", "Login completed.", "Login mukammal ho gaya.")
         return self._to_output(user.uid, user.email, user.token)

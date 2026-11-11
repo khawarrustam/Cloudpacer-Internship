@@ -34,7 +34,7 @@ must not be moved between layers unless the placement rules below support it.
 |---|---|---|
 | `domain/` | Todo entity, value objects, business errors, repository contracts, auth user contract | FastAPI, Pydantic HTTP schemas, MongoDB, PostgreSQL, Firestore, environment variables |
 | `application/` | Input/output DTOs and use cases that coordinate domain objects/repositories | HTTP status codes, database queries, SDK clients, environment reads |
-| `infrastructure/` | Concrete repository adapters, password hashing, signed tokens, SDK/driver calls, repository factory | FastAPI routes, UI response models, todo business rules |
+| `infrastructure/` | Concrete repository adapters, password hashing, JWT handling, SDK/driver calls, repository factory | FastAPI routes, UI response models, todo business rules |
 | `presentation/` | Pydantic request/response schemas, FastAPI dependencies, auth/todo routers, HTTP error mapping | SQL, PyMongo queries, Firestore URLs, password hashing |
 | `config.py` | Typed environment settings and selected-database normalization | Repository creation, API routes, business rules |
 | `logging.py` | Existing request and bilingual step logging | Domain decisions or persistence logic |
@@ -109,7 +109,7 @@ nested package markers are intentionally omitted.
 > Keep HTTP validation, dependencies, and error translation only in
 > presentation. Use typed settings for `.env`. Use FastAPI dependency injection
 > rather than mutable router globals. Keep one selected database for both users
-> and todos; bind signed tokens to that database. Split modules only at real
+> and todos; bind JWT access tokens to that database. Split modules only at real
 > responsibility boundaries and keep code beginner-readable. Add concise
 > What/When/How docstrings where a function or class crosses a layer boundary.
 > Do not log passwords/tokens or commit secrets. After moving code, verify

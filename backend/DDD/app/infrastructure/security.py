@@ -1,23 +1,25 @@
-"""Shared password hashing and signed-token implementation."""
+"""Shared password hashing and standard JWT implementation."""
 
-import base64
+from datetime import datetime, timedelta, timezone
 import hashlib
 import hmac
-import json
 import secrets
-import time
+
+import jwt
+from jwt import ExpiredSignatureError, InvalidTokenError
 
 from app.domain.auth import ValidationException
 
 
 class AuthSecurity:
-    """What: Hash passwords and sign database-bound login tokens.
+    """What: Hash passwords and create database-bound JWT access tokens.
 
     When: A concrete AuthRepository signs up, logs in, or verifies a user.
-    How: PBKDF2 protects passwords and HMAC-SHA256 protects token payloads.
+    How: PBKDF2 protects passwords and PyJWT handles standard HS256 tokens.
     """
 
     PASSWORD_ITERATIONS = 120_000
+    JWT_ALGORITHM = "HS256"
 
     def __init__(
         self,
@@ -25,11 +27,11 @@ class AuthSecurity:
         database: str,
         token_expire_minutes: int,
     ) -> None:
-        # Same object active database name token mein bind karta hai; isi liye
-        # MongoDB token PostgreSQL/Firestore process mein accept nahi hota.
-        self.secret = secret.encode("utf-8")
+        # JWT active database name se bind hoti hai; isi liye MongoDB token
+        # PostgreSQL/Firestore process mein accept nahi hoti.
+        self.secret = secret
         self.database = database
-        self.token_expire_seconds = token_expire_minutes * 60
+        self.token_expire_minutes = token_expire_minutes
 
     @staticmethod
     def normalize_email(email: str) -> str:
@@ -54,36 +56,46 @@ class AuthSecurity:
         return hmac.compare_digest(actual_hash, expected_hash)
 
     def create_token(self, uid: str, email: str) -> str:
-        """Create a signed token containing user and selected database."""
-        # Payload readable Base64 hota hai; HMAC signature modification detect karti hai.
+        """Create a standard JWT containing user, database, and expiry claims."""
+        now = datetime.now(timezone.utc)
         payload = {
-            "uid": uid,
+            # `sub` standard JWT subject claim hai aur current user UID rakhti hai.
+            "sub": uid,
             "email": email,
             "database": self.database,
-            "expires_at": int(time.time()) + self.token_expire_seconds,
+            "iat": now,
+            "exp": now + timedelta(minutes=self.token_expire_minutes),
         }
-        payload_bytes = json.dumps(
-            payload,
-            separators=(",", ":"),
-            sort_keys=True,
-        ).encode("utf-8")
-        encoded_payload = self._encode(payload_bytes)
-        signature = self._sign(encoded_payload)
-        # Final format: base64url(payload).base64url(signature)
-        return f"{encoded_payload}.{self._encode(signature)}"
+        # PyJWT standard header.payload.signature format create karti hai.
+        return jwt.encode(payload, self.secret, algorithm=self.JWT_ALGORITHM)
 
     def read_token(self, token: str) -> tuple[str, str]:
-        """Verify signature, database, expiry, UID, and email."""
-        payload = self._read_payload(token)
+        """Verify the JWT and return its selected-database user identity."""
+        try:
+            payload = jwt.decode(
+                token,
+                self.secret,
+                algorithms=[self.JWT_ALGORITHM],
+                options={
+                    "require": ["sub", "email", "database", "iat", "exp"]
+                },
+            )
+        except ExpiredSignatureError as error:
+            raise ValidationException(
+                "Session expired. Please log in again."
+            ) from error
+        except InvalidTokenError as error:
+            raise ValidationException(
+                "Invalid session. Please log in again."
+            ) from error
+
         # Signature valid hona enough nahi; token current database ka bhi hona chahiye.
         if payload.get("database") != self.database:
             raise ValidationException(
                 f"Please log in or sign up in the {self.database} database."
             )
-        if payload.get("expires_at", 0) < int(time.time()):
-            raise ValidationException("Session expired. Please log in again.")
 
-        uid = payload.get("uid")
+        uid = payload.get("sub")
         email = payload.get("email")
         if not isinstance(uid, str) or not isinstance(email, str):
             raise ValidationException("Invalid session. Please log in again.")
@@ -97,39 +109,3 @@ class AuthSecurity:
             salt.encode("utf-8"),
             self.PASSWORD_ITERATIONS,
         ).hex()
-
-    def _read_payload(self, token: str) -> dict:
-        """Decode and verify the signed JSON payload."""
-        try:
-            encoded_payload, encoded_signature = token.split(".", 1)
-            received_signature = self._decode(encoded_signature)
-            # Payload ka aik character bhi change ho toh expected signature match nahi karegi.
-            if not hmac.compare_digest(
-                received_signature,
-                self._sign(encoded_payload),
-            ):
-                raise ValidationException("Invalid session. Please log in again.")
-            return json.loads(self._decode(encoded_payload).decode("utf-8"))
-        except ValidationException:
-            raise
-        except Exception as error:
-            raise ValidationException(
-                "Invalid session. Please log in again."
-            ) from error
-
-    def _sign(self, encoded_payload: str) -> bytes:
-        """Sign one encoded payload with the application secret."""
-        return hmac.new(
-            self.secret,
-            encoded_payload.encode("utf-8"),
-            hashlib.sha256,
-        ).digest()
-
-    @staticmethod
-    def _encode(value: bytes) -> str:
-        return base64.urlsafe_b64encode(value).rstrip(b"=").decode("utf-8")
-
-    @staticmethod
-    def _decode(value: str) -> bytes:
-        padding = "=" * (-len(value) % 4)
-        return base64.urlsafe_b64decode(value + padding)

@@ -313,7 +313,7 @@ Yeh layer interfaces ki **Concrete Implementations** deti hai:
 1. **`FirestoreTodoRepository`**: Google Cloud Firestore REST API ke sath HTTPS ke zariye baat karti hai.
 2. **`MongoTodoRepository`**: MongoDB documents ko PyMongo ke zariye read/write karti hai.
 3. **`PostgreSQLTodoRepository`**: PostgreSQL `todos` table ko Psycopg ke zariye read/write karti hai.
-4. Har database ka **AuthRepository** usi database mein user save karta hai. `AuthSecurity` password hash aur database-specific signed token banata hai.
+4. Har database ka **AuthRepository** usi database mein user save karta hai. `AuthSecurity` password hash aur database-specific JWT banata hai.
 
 ```python
 class FirestoreTodoRepository(TodoRepository):

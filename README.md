@@ -22,6 +22,7 @@ Install these before continuing:
 - Node.js 18 or newer
 - At least one todo database: Firestore, MongoDB, or PostgreSQL
 - A Firebase project and service-account JSON file only when using Firestore
+- A Google Cloud Web OAuth client ID to show the optional Google login button
 
 The DDD backend stores both users and todos in the selected database. Firestore,
 MongoDB, and PostgreSQL accounts are separate from each other.
@@ -37,7 +38,33 @@ be enabled because Firestore itself stores the selected database's accounts.
 `serviceAccountKey.json` is excluded by `.gitignore`; never commit it.
 For MongoDB or PostgreSQL, use the connection values in `backend/DDD/.env`.
 
-### 2. Install the DDD backend
+### 2. Configure Google login
+
+Google login uses **Google Identity Services**, not Firebase Authentication.
+
+1. Open [Google Auth Platform](https://console.cloud.google.com/auth/overview)
+   and select/create a project.
+2. Complete **Branding** with an app name and support email.
+3. In **Audience**, choose the audience for the app. During development you can
+   keep the app in testing and add your Google account as a test user if needed.
+4. Open **Clients**, create an OAuth client, and select **Web application**.
+5. Add these **Authorized JavaScript origins**:
+   - `http://localhost:5173`
+   - `http://127.0.0.1:5173`
+6. Copy the generated client ID into both files:
+
+```env
+# backend/DDD/.env
+GOOGLE_CLIENT_ID=your-id.apps.googleusercontent.com
+
+# frontend/.env
+VITE_GOOGLE_CLIENT_ID=your-id.apps.googleusercontent.com
+```
+
+Use the exact same client ID in both places and restart both servers. This
+popup/callback flow does not need a client secret or authorized redirect URI.
+
+### 3. Install the DDD backend
 
 Open PowerShell in the repository root:
 
@@ -48,7 +75,7 @@ python -m venv .venv
 python -m pip install -r requirements.txt
 ```
 
-### 3. Install the frontend
+### 4. Install the frontend
 
 Open another PowerShell window in the repository root:
 
@@ -113,6 +140,7 @@ different URL, create `frontend/.env`:
 
 ```env
 VITE_API_URL=http://127.0.0.1:8000
+VITE_GOOGLE_CLIENT_ID=your-id.apps.googleusercontent.com
 ```
 
 Restart `npm run dev` after changing `.env`.
@@ -146,10 +174,13 @@ that `VITE_API_URL` is correct.
 
 Confirm which `DATABASE` is active. An account created in Firestore must sign up
 again in MongoDB or PostgreSQL because each database has separate users.
+The same rule applies to Google login: the Google identity is verified once,
+but each selected database creates and owns a different local UID/account.
 
 ## More documentation
 
 - [Detailed DDD backend guide](backend/DDD/README.md)
+- [Google login integration — complete flow](docs/GOOGLE_LOGIN_INTEGRATION_GUIDE.md)
 - [Frontend architecture guide](frontend/README.md)
 - [Redux Toolkit guide](frontend/REDUX_TOOLKIT_GUIDE.md)
 - [DDD vs MVC comparison](docs/architecture.md)

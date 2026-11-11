@@ -5,6 +5,7 @@
 !.env.example
 !**/.env.example
 *serviceAccountKey.json
+client_secret_*.json
 
 # Python
 .venv/

@@ -25,6 +25,8 @@ class MongoAuthRepository(AuthRepository):
         self.collection = collection
         # Unique index selected Mongo database mein duplicate normalized email rokta hai.
         self.collection.create_index("email", unique=True)
+        # Sparse index Google-only/link records par stable subject unique rakhta hai.
+        self.collection.create_index("google_sub", unique=True, sparse=True)
         self.security = security
 
     def signup(self, email: str, password: str, name: str) -> UserData:
@@ -62,7 +64,7 @@ class MongoAuthRepository(AuthRepository):
         user = self.collection.find_one({"email": clean_email})
         if user is None or not self.security.password_matches(
             password,
-            user["password_hash"],
+            user.get("password_hash"),
         ):
             raise ValidationException("Invalid MongoDB email or password.")
 
@@ -74,6 +76,59 @@ class MongoAuthRepository(AuthRepository):
             "MongoDB authentication kamyab ho gayi.",
         )
         return UserData(uid=uid, email=clean_email, token=token)
+
+    def login_with_google(self, credential: str) -> UserData:
+        """Verify Google, then find/create its user only in MongoDB."""
+        profile = self.security.verify_google_credential(credential)
+        try:
+            # Stable Google subject first; email fallback existing password account links.
+            user = self.collection.find_one({"google_sub": profile.subject})
+            if user is None:
+                user = self.collection.find_one({"email": profile.email})
+
+            if user is None:
+                user = {
+                    "_id": str(uuid.uuid4()),
+                    "email": profile.email,
+                    "display_name": profile.display_name,
+                    "google_sub": profile.subject,
+                }
+                self.collection.insert_one(user)
+            else:
+                saved_subject = user.get("google_sub")
+                if saved_subject and saved_subject != profile.subject:
+                    raise ValidationException(
+                        "This MongoDB email belongs to another Google account."
+                    )
+                if not saved_subject and not profile.can_link_existing_email:
+                    raise ValidationException(
+                        "Use your MongoDB password for this non-Gmail account."
+                    )
+                if not saved_subject:
+                    self.collection.update_one(
+                        {"_id": user["_id"]},
+                        {"$set": {"google_sub": profile.subject}},
+                    )
+                    user["google_sub"] = profile.subject
+        except ValidationException:
+            raise
+        except DuplicateKeyError as error:
+            raise ValidationException(
+                "This Google account already exists in MongoDB."
+            ) from error
+        except Exception as error:
+            log_error("Infrastructure", f"MongoDB Google login failed: {error}")
+            raise ValidationException("MongoDB Google login failed.") from error
+
+        uid = str(user["_id"])
+        email = str(user["email"])
+        token = self.security.create_token(uid, email)
+        log_step(
+            "Infrastructure",
+            "MongoDB Google authentication succeeded.",
+            "MongoDB Google authentication kamyab ho gayi.",
+        )
+        return UserData(uid=uid, email=email, token=token)
 
     def authenticate(self, token: str) -> UserData:
         """Accept the token only if its MongoDB user still exists."""

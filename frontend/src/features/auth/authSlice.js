@@ -42,6 +42,22 @@ export const signupUser = createAsyncThunk(
   },
 );
 
+export const googleLoginUser = createAsyncThunk(
+  'auth/googleLoginUser',
+  async ({ credential }, { rejectWithValue }) => {
+    try {
+      // Backend Google token verify karke apni database-bound JWT return karta hai.
+      const data = await authApi.loginWithGoogle(credential);
+      saveSession(data);
+      return { uid: data.uid, email: data.email };
+    } catch (error) {
+      return rejectWithValue(
+        getApiErrorMessage(error, 'Google login failed. Please try again.'),
+      );
+    }
+  },
+);
+
 const initialState = {
   // English: The session stays only in memory; refresh means login again.
   // Roman Urdu: Session sirf memory mein hai; refresh par dobara login hoga.
@@ -86,6 +102,16 @@ const authSlice = createSlice({
         state.user = action.payload;
       })
       .addCase(signupUser.rejected, (state) => {
+        state.status = 'failed';
+      })
+      .addCase(googleLoginUser.pending, (state) => {
+        state.status = 'loading';
+      })
+      .addCase(googleLoginUser.fulfilled, (state, action) => {
+        state.status = 'succeeded';
+        state.user = action.payload;
+      })
+      .addCase(googleLoginUser.rejected, (state) => {
         state.status = 'failed';
       });
   },

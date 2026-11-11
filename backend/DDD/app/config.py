@@ -32,6 +32,7 @@ class Settings(BaseSettings):
     database: str
     auth_token_secret: str
     auth_token_expire_minutes: int
+    google_client_id: str
 
     # Har database group sirf tab use hota hai jab DATABASE us driver ko select kare.
     mongodb_uri: str

@@ -20,7 +20,7 @@ class UserData:
 class AuthRepository(ABC):
     """What: Define storage-independent authentication operations.
 
-    When: AuthService needs signup, login, or token verification.
+    When: AuthService needs signup, password login, Google login, or token verification.
     How: Each selected database provides its own concrete implementation.
     """
 
@@ -34,6 +34,11 @@ class AuthRepository(ABC):
     @abstractmethod
     def login(self, email: str, password: str) -> UserData:
         """Verify selected-database credentials."""
+        raise NotImplementedError
+
+    @abstractmethod
+    def login_with_google(self, credential: str) -> UserData:
+        """Verify Google and create or find a user in the selected database."""
         raise NotImplementedError
 
     @abstractmethod

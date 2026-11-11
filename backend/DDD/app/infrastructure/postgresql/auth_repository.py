@@ -75,7 +75,7 @@ class PostgreSQLAuthRepository(AuthRepository):
 
         if user is None or not self.security.password_matches(
             password,
-            user["password_hash"],
+            user.get("password_hash"),
         ):
             raise ValidationException("Invalid PostgreSQL email or password.")
 
@@ -91,6 +91,78 @@ class PostgreSQLAuthRepository(AuthRepository):
             token=token,
         )
 
+    def login_with_google(self, credential: str) -> UserData:
+        """Verify Google, then find/create its user only in PostgreSQL."""
+        profile = self.security.verify_google_credential(credential)
+        try:
+            with psycopg.connect(
+                self.connection_url,
+                row_factory=dict_row,
+            ) as connection:
+                # Stable Google subject first; email fallback links a password account.
+                user = connection.execute(
+                    "SELECT id, email, google_sub FROM users WHERE google_sub = %s",
+                    (profile.subject,),
+                ).fetchone()
+                if user is None:
+                    user = connection.execute(
+                        "SELECT id, email, google_sub FROM users WHERE email = %s",
+                        (profile.email,),
+                    ).fetchone()
+
+                if user is None:
+                    uid = str(uuid.uuid4())
+                    connection.execute(
+                        """
+                        INSERT INTO users (
+                            id, email, display_name, password_hash, google_sub
+                        ) VALUES (%s, %s, %s, NULL, %s)
+                        """,
+                        (
+                            uid,
+                            profile.email,
+                            profile.display_name,
+                            profile.subject,
+                        ),
+                    )
+                    user = {
+                        "id": uid,
+                        "email": profile.email,
+                        "google_sub": profile.subject,
+                    }
+                else:
+                    saved_subject = user.get("google_sub")
+                    if saved_subject and saved_subject != profile.subject:
+                        raise ValidationException(
+                            "This PostgreSQL email belongs to another Google account."
+                        )
+                    if not saved_subject and not profile.can_link_existing_email:
+                        raise ValidationException(
+                            "Use your PostgreSQL password for this non-Gmail account."
+                        )
+                    if not saved_subject:
+                        connection.execute(
+                            "UPDATE users SET google_sub = %s WHERE id = %s",
+                            (profile.subject, user["id"]),
+                        )
+        except ValidationException:
+            raise
+        except psycopg.errors.UniqueViolation as error:
+            raise ValidationException(
+                "This Google account already exists in PostgreSQL."
+            ) from error
+        except Exception as error:
+            log_error("Infrastructure", f"PostgreSQL Google login failed: {error}")
+            raise ValidationException("PostgreSQL Google login failed.") from error
+
+        token = self.security.create_token(user["id"], user["email"])
+        log_step(
+            "Infrastructure",
+            "PostgreSQL Google authentication succeeded.",
+            "PostgreSQL Google authentication kamyab ho gayi.",
+        )
+        return UserData(uid=user["id"], email=user["email"], token=token)
+
     def authenticate(self, token: str) -> UserData:
         """Accept the token only if its PostgreSQL user still exists."""
         uid, email = self.security.read_token(token)
@@ -103,15 +175,30 @@ class PostgreSQLAuthRepository(AuthRepository):
         return UserData(uid=uid, email=email, token=token)
 
     def _create_table(self) -> None:
-        """Create the users table without changing an existing table."""
+        """Create or safely extend the users table for both login methods."""
         # IF NOT EXISTS existing table/data ko delete ya reset nahi karta.
-        query = """
+        create_table = """
             CREATE TABLE IF NOT EXISTS users (
                 id TEXT PRIMARY KEY,
                 email TEXT UNIQUE NOT NULL,
                 display_name TEXT NOT NULL,
-                password_hash TEXT NOT NULL
+                password_hash TEXT,
+                google_sub TEXT
             )
         """
         with psycopg.connect(self.connection_url) as connection:
-            connection.execute(query)
+            connection.execute(create_table)
+            # Existing password-only table ko data loss ke baghair migrate karte hain.
+            connection.execute(
+                "ALTER TABLE users ADD COLUMN IF NOT EXISTS google_sub TEXT"
+            )
+            connection.execute(
+                "ALTER TABLE users ALTER COLUMN password_hash DROP NOT NULL"
+            )
+            connection.execute(
+                """
+                CREATE UNIQUE INDEX IF NOT EXISTS users_google_sub_unique
+                ON users (google_sub)
+                WHERE google_sub IS NOT NULL
+                """
+            )

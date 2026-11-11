@@ -2,11 +2,16 @@
 
 from fastapi import APIRouter, HTTPException
 
-from app.application.dto import LoginInput, SignupInput
+from app.application.dto import GoogleLoginInput, LoginInput, SignupInput
 from app.domain.auth import ValidationException
 from app.logging import log_step
 from app.presentation.dependencies import AuthServiceDep
-from app.presentation.schemas import AuthResponse, LoginRequest, SignupRequest
+from app.presentation.schemas import (
+    AuthResponse,
+    GoogleLoginRequest,
+    LoginRequest,
+    SignupRequest,
+)
 
 
 router = APIRouter(prefix="/auth", tags=["Auth"])
@@ -59,6 +64,35 @@ def login(
             email=result.email,
             token=result.token,
             message="Login successful",
+        )
+    except ValidationException as error:
+        raise HTTPException(401, str(error)) from error
+
+
+@router.post("/google", response_model=AuthResponse)
+def login_with_google(
+    request: GoogleLoginRequest,
+    auth_service: AuthServiceDep,
+) -> AuthResponse:
+    """What: Sign up or log in with Google in the selected database.
+
+    When: Google Identity Services returns an ID-token credential.
+    How: Verify Google, find/create the database user, and return our JWT.
+    """
+    log_step(
+        "Presentation",
+        "Google login request received.",
+        "Google login request mil gayi.",
+    )
+    try:
+        result = auth_service.login_with_google(
+            GoogleLoginInput(credential=request.credential)
+        )
+        return AuthResponse(
+            uid=result.uid,
+            email=result.email,
+            token=result.token,
+            message="Google login successful",
         )
     except ValidationException as error:
         raise HTTPException(401, str(error)) from error

@@ -6,6 +6,7 @@ Axios, Tailwind CSS, and Vite. It communicates with the DDD API by default.
 ## Capabilities
 
 - Selected-database signup and login through the backend
+- Google Identity Services login through the same selected-database backend
 - Create, search, filter, sort, complete, and delete todos
 - In-memory login session with no browser local storage
 - Per-action loading states and user-friendly API errors
@@ -101,7 +102,11 @@ create `frontend/.env`:
 
 ```env
 VITE_API_URL=http://127.0.0.1:8000
+VITE_GOOGLE_CLIENT_ID=your-web-client-id.apps.googleusercontent.com
 ```
+
+`VITE_GOOGLE_CLIENT_ID` must exactly match backend `GOOGLE_CLIENT_ID`. It is a
+public Web client ID, not a secret. Never put a Google client secret in Vite.
 
 Restart the Vite development server after changing environment values.
 
@@ -151,6 +156,10 @@ Generated `dist` output is excluded from Git.
 - **CORS error:** use `localhost:5173` or `127.0.0.1:5173`, both allowed by the
   DDD backend.
 - **Login fails:** sign up in the database currently selected by the backend.
+- **Google button says setup pending:** add the client ID to both `.env` files
+  and restart Vite/backend.
+- **Google origin error:** add both local frontend URLs as Authorized JavaScript
+  origins on the Google Cloud Web OAuth client.
 - **Page refresh:** the in-memory session is cleared, so log in again.
 - **Session expires:** a backend `401` clears the in-memory session automatically.
 - **Environment change is ignored:** restart `npm run dev`.
@@ -158,6 +167,7 @@ Generated `dist` output is excluded from Git.
 ## Related documentation
 
 - [Repository run guide](../README.md)
+- [Google login complete flow](../docs/GOOGLE_LOGIN_INTEGRATION_GUIDE.md)
 - [DDD backend documentation](../backend/DDD/README.md)
 - [Redux Toolkit learning guide](REDUX_TOOLKIT_GUIDE.md)
 - [Architecture comparison](../docs/architecture.md)

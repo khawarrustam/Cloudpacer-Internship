@@ -20,6 +20,9 @@ pydantic-settings>=2.2.0
 # Firestore service-account credentials load karne ke liye Firebase Admin SDK
 firebase-admin>=6.5.0
 
+# Google Identity Services ke ID tokens backend par verify karne ke liye
+google-auth>=2.62.0,<3.0.0
+
 # Firestore REST API ko authenticated HTTPS calls bhejne ke liye
 requests>=2.31.0
 

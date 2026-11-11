@@ -1,10 +1,11 @@
 import { useState } from 'react';
 import { Eye, EyeOff } from 'lucide-react';
 import Button from './ui/Button';
+import GoogleSignInButton from './GoogleSignInButton';
 import Input from './ui/Input';
 import { toast } from './ui/Toast';
 
-export default function AuthForm({ onSignup, onLogin, loading }) {
+export default function AuthForm({ onSignup, onLogin, onGoogleLogin, loading }) {
   // English: Form values are temporary, so local state is simpler than Redux here.
   // Roman Urdu: Form values temporary hain, is liye local state Redux se simple hai.
   const [isLogin, setIsLogin] = useState(true);
@@ -39,6 +40,14 @@ export default function AuthForm({ onSignup, onLogin, loading }) {
     setError(null);
   };
 
+  const handleGoogleLogin = async (credential) => {
+    // Google credential backend verify karega; frontend usay decode/trust nahi karti.
+    setError(null);
+    const result = await onGoogleLogin(credential);
+    if (result.success) toast.success('Signed in with Google.');
+    return result;
+  };
+
   return (
     <main className="flex min-h-screen items-center justify-center px-4 py-10">
       <section className="w-full max-w-md rounded-2xl border border-[var(--border)] bg-white p-6 shadow-[var(--shadow-md)] sm:p-8">
@@ -53,6 +62,18 @@ export default function AuthForm({ onSignup, onLogin, loading }) {
               : 'Create an account to start your task list.'}
           </p>
         </header>
+
+        <GoogleSignInButton
+          onCredential={handleGoogleLogin}
+          onError={setError}
+          disabled={loading}
+        />
+
+        <div className="my-5 flex items-center gap-3 text-xs font-semibold uppercase tracking-wide text-[var(--text-muted)]">
+          <span className="h-px flex-1 bg-[var(--border)]" />
+          <span>or use email</span>
+          <span className="h-px flex-1 bg-[var(--border)]" />
+        </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
           {!isLogin && (

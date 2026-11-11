@@ -40,6 +40,7 @@ def create_repositories(
         secret=settings.auth_token_secret,
         database=database,
         token_expire_minutes=settings.auth_token_expire_minutes,
+        google_client_id=settings.google_client_id,
     )
 
     # Har branch matching todo + auth pair return karti hai; mixed databases

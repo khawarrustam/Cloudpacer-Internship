@@ -2,6 +2,7 @@ import AuthForm from './components/AuthForm';
 import TodoDashboard from './components/TodoDashboard';
 import { useDispatch, useSelector } from 'react-redux';
 import {
+  googleLoginUser,
   loginUser,
   logoutUser,
   selectAuthStatus,
@@ -40,6 +41,10 @@ export default function App() {
     runAuthAction(signupUser({ email, password, displayName }))
   );
 
+  const googleLogin = (credential) => (
+    runAuthAction(googleLoginUser({ credential }))
+  );
+
   // English: Authentication state decides which main screen is rendered.
   // Roman Urdu: Login state decide karti hai ke auth form show ho ya todo dashboard.
   if (!isLoggedIn) {
@@ -47,6 +52,7 @@ export default function App() {
       <AuthForm
         onLogin={login}
         onSignup={signup}
+        onGoogleLogin={googleLogin}
         loading={status === 'loading'}
       />
     );

@@ -2,6 +2,7 @@
 
 import hashlib
 import uuid
+from urllib.parse import unquote
 
 from google.auth.transport.requests import AuthorizedSession
 
@@ -26,6 +27,10 @@ class FirestoreAuthRepository(AuthRepository):
         self.session = session
         self.users_url = users_url
         self.security = security
+        # runQuery Google `sub` lookup deta hai; email ko identity key nahi banate.
+        documents_url, encoded_collection = users_url.rsplit("/", 1)
+        self.run_query_url = f"{documents_url}:runQuery"
+        self.collection_id = unquote(encoded_collection)
 
     def signup(self, email: str, password: str, name: str) -> UserData:
         """Create a Firestore-only account and return its token."""
@@ -74,7 +79,7 @@ class FirestoreAuthRepository(AuthRepository):
 
         if user is None or not self.security.password_matches(
             password,
-            user["password_hash"],
+            user.get("password_hash"),
         ):
             raise ValidationException("Invalid Firestore email or password.")
 
@@ -89,6 +94,54 @@ class FirestoreAuthRepository(AuthRepository):
             email=user["email"],
             token=token,
         )
+
+    def login_with_google(self, credential: str) -> UserData:
+        """Verify Google, then find/create its user only in Firestore."""
+        profile = self.security.verify_google_credential(credential)
+        try:
+            # Stable Google subject first; email may change during account lifetime.
+            user = self._find_google_user(profile.subject)
+            if user is None:
+                user = self._find_user(profile.email)
+
+            if user is None:
+                user = {
+                    "uid": str(uuid.uuid4()),
+                    "email": profile.email,
+                    "display_name": profile.display_name,
+                    "google_sub": profile.subject,
+                }
+            else:
+                saved_subject = user.get("google_sub")
+                if saved_subject and saved_subject != profile.subject:
+                    raise ValidationException(
+                        "This Firestore email belongs to another Google account."
+                    )
+                if not saved_subject and not profile.can_link_existing_email:
+                    raise ValidationException(
+                        "Use your Firestore password for this non-Gmail account."
+                    )
+                # Existing password account same selected DB mein Google se link hota hai.
+                user["google_sub"] = profile.subject
+
+            response = self.session.patch(
+                self._user_url(user["email"]),
+                json=self._to_document(user),
+            )
+            response.raise_for_status()
+        except ValidationException:
+            raise
+        except Exception as error:
+            log_error("Infrastructure", f"Firestore Google login failed: {error}")
+            raise ValidationException("Firestore Google login failed.") from error
+
+        token = self.security.create_token(user["uid"], user["email"])
+        log_step(
+            "Infrastructure",
+            "Firestore Google authentication succeeded.",
+            "Firestore Google authentication kamyab ho gayi.",
+        )
+        return UserData(uid=user["uid"], email=user["email"], token=token)
 
     def authenticate(self, token: str) -> UserData:
         """Accept the token only if its Firestore user still exists."""
@@ -110,6 +163,29 @@ class FirestoreAuthRepository(AuthRepository):
             return None
         response.raise_for_status()
         return self._from_document(response.json())
+
+    def _find_google_user(self, subject: str) -> dict | None:
+        """Return one Firestore user by stable Google subject, or None."""
+        query = {
+            "structuredQuery": {
+                "from": [{"collectionId": self.collection_id}],
+                "where": {
+                    "fieldFilter": {
+                        "field": {"fieldPath": "google_sub"},
+                        "op": "EQUAL",
+                        "value": {"stringValue": subject},
+                    }
+                },
+                "limit": 1,
+            }
+        }
+        response = self.session.post(self.run_query_url, json=query)
+        response.raise_for_status()
+        for result in response.json():
+            document = result.get("document")
+            if document:
+                return self._from_document(document)
+        return None
 
     def _user_url(self, email: str) -> str:
         """Build a private, stable document URL for a normalized email."""

@@ -42,7 +42,7 @@ Presentation mein yeh bol sakte hain:
 > Presentation aur Infrastructure folders hain.
 >
 > Domain folder business entities, validation rules aur repository contracts
-> rakhta hai. Application folder signup, login aur todo workflows coordinate
+> rakhta hai. Application folder signup, password/Google login aur todo workflows coordinate
 > karta hai. Presentation folder HTTP request/response schemas, authentication
 > dependencies aur API routes rakhta hai. Infrastructure folder password/token
 > security aur Firestore, MongoDB, PostgreSQL ki concrete repository
@@ -59,6 +59,10 @@ Project ko one line mein:
 ```text
 Presentation receives -> Application coordinates -> Domain decides -> Infrastructure saves
 ```
+
+Google login ka separate complete flow:
+
+- [`docs/GOOGLE_LOGIN_INTEGRATION_GUIDE.md`](GOOGLE_LOGIN_INTEGRATION_GUIDE.md)
 
 ---
 
@@ -354,7 +358,7 @@ Settings groups:
 | Browser | `cors_origins` |
 | Logs | `log_level` |
 | Database selection | `database` |
-| Auth | `auth_token_secret`, `auth_token_expire_minutes` |
+| Auth | `auth_token_secret`, `auth_token_expire_minutes`, `google_client_id` |
 | MongoDB | URI, database, todo/user collection names |
 | PostgreSQL | `postgresql_url` |
 | Firestore | credential path, API URL, database and collection names, page size |
@@ -431,6 +435,7 @@ Is file mein safe sample configuration hai:
 
 - selected `DATABASE`;
 - auth token secret sample;
+- Google Web OAuth client ID;
 - MongoDB URI and collection names;
 - PostgreSQL URL format;
 - Firestore credential path and collection names.
@@ -440,6 +445,16 @@ rakhe gaye. Inactive database fields safe sample/local values rakh sakte hain.
 
 `.env.example` commit hoti hai; real `.env` secrets ke sath Git ignored rehti
 hai.
+
+Google login setup:
+
+1. Google Auth Platform mein Web application OAuth client create hota hai.
+2. `http://localhost:5173` aur `http://127.0.0.1:5173` Authorized JavaScript
+   origins mein add hote hain.
+3. Same public client ID backend `GOOGLE_CLIENT_ID` aur frontend
+   `VITE_GOOGLE_CLIENT_ID` mein jati hai.
+4. Google client secret, redirect URI aur Firebase Authentication is callback
+   flow ke liye required nahi hain.
 
 ### 5.7 `requirements.txt`
 
@@ -457,6 +472,7 @@ Purpose:
 | `pydantic[email]` | HTTP validation and email validation |
 | `pydantic-settings` | Typed `.env` settings |
 | `firebase-admin` | Firestore service-account credential |
+| `google-auth` | Google ID-token signature, audience and expiry verification |
 | `requests` | Firestore REST HTTP stack |
 | `python-dotenv` | `.env` loading support |
 | `PyJWT` | Standard HS256 JWT create and verify |
@@ -504,7 +520,8 @@ Purpose:
 |---|---|---|
 | `SignupRequest` | Valid email, password min 6, display name default User | Signup route input |
 | `LoginRequest` | Valid email, password min 6 | Login route input |
-| `AuthResponse` | uid, email, token, message | Signup/login output |
+| `GoogleLoginRequest` | Google ID-token credential min 20 chars | Google route input |
+| `AuthResponse` | uid, email, token, message | Signup/login/Google output |
 | `CreateTodoRequest` | Title 3–120; six upper/lower priority literals; default MEDIUM | Create route input |
 | `TodoResponse` | Complete public todo shape | Todo route output |
 
@@ -578,7 +595,7 @@ Path: [`backend/DDD/app/presentation/routers/auth.py`](../backend/DDD/app/presen
 
 Purpose:
 
-- Signup aur login HTTP endpoints expose karna.
+- Signup, password login aur Google login HTTP endpoints expose karna.
 - Request schemas ko application DTOs aur service outputs ko HTTP responses mein map karna.
 - Authentication errors ko correct HTTP status codes dena.
 
@@ -594,6 +611,7 @@ Functions:
 |---|---|---|---|---|
 | `signup` | `POST /auth/signup` | `SignupRequest -> SignupInput -> AuthService.signup -> AuthResponse` | 201 | Validation -> 400 |
 | `login` | `POST /auth/login` | `LoginRequest -> LoginInput -> AuthService.login -> AuthResponse` | 200 | Validation -> 401 |
+| `login_with_google` | `POST /auth/google` | `GoogleLoginRequest -> GoogleLoginInput -> AuthService.login_with_google -> AuthResponse` | 200 | Invalid Google token -> 401 |
 
 Route ka kaam:
 
@@ -662,6 +680,7 @@ Input DTOs:
 |---|---|---|
 | `SignupInput` | email, password, display_name | `AuthService.signup` |
 | `LoginInput` | email, password | `AuthService.login` |
+| `GoogleLoginInput` | Google ID-token credential | `AuthService.login_with_google` |
 | `CreateTodoInput` | title, priority, owner_uid | `TodoService.create` |
 | `TodoActionInput` | todo_id, owner_uid | Complete/delete |
 
@@ -688,7 +707,7 @@ Path: [`backend/DDD/app/application/auth_service.py`](../backend/DDD/app/applica
 
 Purpose:
 
-- Signup, login aur token authentication use cases coordinate karna.
+- Signup, password/Google login aur token authentication use cases coordinate karna.
 - Route ko database-specific repository details se independent rakhna.
 - Repository result ko application `AuthOutput` mein convert karna.
 
@@ -704,6 +723,7 @@ Constructor repository abstraction receive karta hai.
 |---|---|---|---|
 | `signup(data)` | `SignupInput` | `repository.signup(...)`, log, `_to_output` | `AuthOutput` |
 | `login(data)` | `LoginInput` | `repository.login(...)`, log, `_to_output` | `AuthOutput` |
+| `login_with_google(data)` | `GoogleLoginInput` | `repository.login_with_google(...)`, log, `_to_output` | `AuthOutput` |
 | `authenticate(token)` | Token string | `repository.authenticate(token)`, `_to_output` | `AuthOutput` |
 | `_to_output(uid,email,token)` | Three strings | `AuthOutput(...)` | `AuthOutput` |
 
@@ -784,6 +804,7 @@ Authentication contract:
 |---|---|---|---|
 | `signup` | email, password, name | `UserData` | Selected DB mein account create |
 | `login` | email, password | `UserData` | Credentials verify |
+| `login_with_google` | Google credential | `UserData` | Verify Google; find/create selected-DB user |
 | `authenticate` | token | `UserData` | Token and live DB user verify |
 
 ABC ka purpose:
@@ -887,20 +908,22 @@ Path: [`backend/DDD/app/infrastructure/security.py`](../backend/DDD/app/infrastr
 Purpose:
 
 - Passwords ko salted PBKDF2 hashes mein safely store/verify karna.
+- Google ID token ko official `google-auth` library se verify karna.
 - Database-bound JWT access tokens create aur validate karna.
 - Shared security implementation ko three database adapters mein duplicate hone se bachana.
 
 Main class:
 
 ```python
-AuthSecurity(secret, database, token_expire_minutes)
+AuthSecurity(secret, database, token_expire_minutes, google_client_id)
 ```
 
 Constructor stores:
 
 - JWT signing secret;
 - active database name;
-- token expiry minutes.
+- token expiry minutes;
+- Google Web client ID and reusable Google request transport.
 
 Methods:
 
@@ -909,6 +932,7 @@ Methods:
 | `normalize_email` | Email | Trim + lowercase | Clean email |
 | `hash_password` | Password | Random salt + PBKDF2-HMAC-SHA256 | `salt:hash` |
 | `password_matches` | Password + saved hash | Derive again + `compare_digest` | Boolean |
+| `verify_google_credential` | Google ID token | Verify signature, audience, issuer, expiry and email | `GoogleProfile` |
 | `create_token` | UID + email | PyJWT `encode` with HS256 and standard claims | JWT string |
 | `read_token` | JWT | PyJWT `decode`; signature, claims, DB and expiry check | `(uid, email)` |
 | `_derive_password_hash` | Password + salt | 120,000 PBKDF2 rounds | Hex hash |
@@ -921,7 +945,7 @@ sub (user UID) + email + database + iat + exp
 
 Password/token logic infrastructure mein kyun?
 
-PBKDF2 aur PyJWT/HS256 technical implementation details hain. Application
+PBKDF2, `google-auth` aur PyJWT/HS256 technical implementation details hain. Application
 service ko token format ya hashing algorithm ka knowledge nahi hota.
 
 ### 9.2 `infrastructure/repository_factory.py`
@@ -977,7 +1001,7 @@ Path: [`backend/DDD/app/infrastructure/firestore/auth_repository.py`](../backend
 Purpose:
 
 - `AuthRepository` contract ko Firestore REST operations se implement karna.
-- Firestore mein users create/find karke password aur JWT workflow connect karna.
+- Firestore mein users create/find karke password, Google aur JWT workflow connect karna.
 
 Class:
 
@@ -1003,8 +1027,10 @@ Methods:
 |---|---|---|
 | `signup` | Normalize -> `_find_user` -> UUID -> hash -> PATCH -> token | `UserData` |
 | `login` | Normalize -> `_find_user` -> password compare -> token | `UserData` |
+| `login_with_google` | Verify Google `sub` -> query/link/create -> token | `UserData` |
 | `authenticate` | `read_token` -> `_find_user` -> UID match | `UserData` |
 | `_find_user` | Authorized GET; 404 -> None | User dict or None |
+| `_find_google_user` | Firestore `runQuery` by stable `google_sub` | User dict or None |
 | `_user_url` | SHA-256 normalized email | Document URL |
 | `_to_document` | Python dict -> Firestore `stringValue` fields | REST document |
 | `_from_document` | Firestore fields -> plain dict | User dict |
@@ -1071,7 +1097,7 @@ Path: [`backend/DDD/app/infrastructure/mongodb/auth_repository.py`](../backend/D
 Purpose:
 
 - `AuthRepository` contract ko MongoDB user collection se implement karna.
-- Unique email accounts, password verification aur JWT authentication handle karna.
+- Unique email/Google-sub accounts, password verification aur JWT authentication handle karna.
 
 Class:
 
@@ -1083,6 +1109,7 @@ Constructor:
 
 - Mongo `Collection` receive.
 - `email` unique index create.
+- `google_sub` unique sparse index create.
 - Shared `AuthSecurity` store.
 
 Methods:
@@ -1091,6 +1118,7 @@ Methods:
 |---|---|
 | `signup` | Normalize -> UUID -> hash -> `insert_one` -> token |
 | `login` | `find_one(email)` -> password compare -> token |
+| `login_with_google` | Verify `sub` -> find/link/insert -> token |
 | `authenticate` | Token read -> `find_one(_id + email)` -> live user check |
 
 User document:
@@ -1100,6 +1128,7 @@ _id = user UUID
 email
 display_name
 password_hash
+google_sub (Google-linked account only)
 ```
 
 ### 11.2 `mongodb/todo_repository.py`
@@ -1153,7 +1182,7 @@ Path: [`backend/DDD/app/infrastructure/postgresql/auth_repository.py`](../backen
 Purpose:
 
 - `AuthRepository` contract ko PostgreSQL SQL queries se implement karna.
-- Users table create/use karke signup, password login aur JWT authentication provide karna.
+- Users table create/use karke signup, password/Google login aur JWT authentication provide karna.
 
 Class:
 
@@ -1173,8 +1202,9 @@ Methods:
 |---|---|---|
 | `signup` | Parameterized `INSERT users`; unique violation map; token | `UserData` |
 | `login` | `SELECT ... WHERE email=%s`; password compare; token | `UserData` |
+| `login_with_google` | Verify `sub`; SELECT/link/INSERT; token | `UserData` |
 | `authenticate` | Token read; `SELECT id WHERE id AND email` | `UserData` |
-| `_create_table` | `CREATE TABLE IF NOT EXISTS users` | None |
+| `_create_table` | Create/extend table and unique Google-sub index | None |
 
 Users table:
 
@@ -1182,7 +1212,8 @@ Users table:
 id TEXT PRIMARY KEY
 email TEXT UNIQUE NOT NULL
 display_name TEXT NOT NULL
-password_hash TEXT NOT NULL
+password_hash TEXT NULL
+google_sub TEXT NULL (unique when present)
 ```
 
 `dict_row` login query mein readable `user["password_hash"]` access deti hai.
@@ -1266,7 +1297,35 @@ POST /auth/login
  -> AuthResponse
 ```
 
-### 13.3 Protected request authentication flow
+### 13.3 Google login flow
+
+```text
+Google button returns credential (Google ID token)
+ -> POST /auth/google
+ -> GoogleLoginRequest
+ -> GoogleLoginInput
+ -> AuthService.login_with_google
+ -> selected AuthRepository.login_with_google
+ -> AuthSecurity.verify_google_credential
+ -> verify signature + audience + issuer + expiry
+ -> use stable Google sub
+ -> find/link/create user only in selected database
+ -> create database-bound TodoFlow JWT
+ -> AuthResponse
+```
+
+Important isolation:
+
+```text
+Same Google sub + Firestore  -> Firestore local UUID
+Same Google sub + MongoDB    -> MongoDB local UUID
+Same Google sub + PostgreSQL -> PostgreSQL local UUID
+```
+
+Existing password account automatic linking sirf Gmail/Google Workspace email
+ke liye hoti hai, jahan Google email authority confirm karta hai.
+
+### 13.4 Protected request authentication flow
 
 ```text
 Authorization Bearer token
@@ -1280,7 +1339,7 @@ Authorization Bearer token
  -> route executes
 ```
 
-### 13.4 Create todo flow
+### 13.5 Create todo flow
 
 ```text
 POST /todos
@@ -1295,7 +1354,7 @@ POST /todos
  -> TodoResponse
 ```
 
-### 13.5 List todos flow
+### 13.6 List todos flow
 
 ```text
 GET /todos
@@ -1307,7 +1366,7 @@ GET /todos
  -> list[TodoResponse]
 ```
 
-### 13.6 Complete todo flow
+### 13.7 Complete todo flow
 
 ```text
 PATCH /todos/{id}/complete
@@ -1320,7 +1379,7 @@ PATCH /todos/{id}/complete
  -> TodoResponse
 ```
 
-### 13.7 Delete todo flow
+### 13.8 Delete todo flow
 
 ```text
 DELETE /todos/{id}
@@ -1421,6 +1480,7 @@ Middleware -> request start/end/status/time
 | `TodoItem.complete` | `domain/todo.py` | One-time completion |
 | `AuthService.signup` | `auth_service.py` | Signup workflow |
 | `AuthService.login` | `auth_service.py` | Login workflow |
+| `AuthService.login_with_google` | `auth_service.py` | Google login workflow |
 | `AuthService.authenticate` | `auth_service.py` | Token workflow |
 | `AuthService._to_output` | `auth_service.py` | User result mapping |
 | `to_output` | `todo_service.py` | Entity -> output DTO |
@@ -1439,6 +1499,7 @@ Middleware -> request start/end/status/time
 | `current_user` | `dependencies.py` | Bearer token -> verified user |
 | `signup` | `routers/auth.py` | Signup HTTP endpoint |
 | `login` | `routers/auth.py` | Login HTTP endpoint |
+| `login_with_google` | `routers/auth.py` | Google login HTTP endpoint |
 | `list_todos` | `routers/todos.py` | Todo list endpoint |
 | `create_todo` | `routers/todos.py` | Todo creation endpoint |
 | `complete_todo` | `routers/todos.py` | Completion endpoint |
@@ -1451,6 +1512,7 @@ Middleware -> request start/end/status/time
 | `normalize_email` | `security.py` | Canonical email |
 | `hash_password` | `security.py` | Salted PBKDF2 hash |
 | `password_matches` | `security.py` | Safe password compare |
+| `verify_google_credential` | `security.py` | Verify Google ID token/profile |
 | `create_token` | `security.py` | Standard DB-bound JWT |
 | `read_token` | `security.py` | PyJWT validation |
 | `_derive_password_hash` | `security.py` | PBKDF2 calculation |
@@ -1463,7 +1525,7 @@ Middleware -> request start/end/status/time
 
 ```text
 AuthRepository:
-  signup, login, authenticate
+  signup, login, login_with_google, authenticate
 
 TodoRepository:
   save, get_by_id, get_by_owner, delete
@@ -1527,6 +1589,12 @@ Explain:
 3. `dependencies.current_user`;
 4. `AuthSecurity`;
 5. one selected auth repository.
+
+Google flow ki one-line explanation:
+
+```text
+Google ID token -> backend verification -> selected DB local user -> TodoFlow JWT
+```
 
 #### Part 5 — Three adapters (3 minutes)
 
@@ -1670,6 +1738,34 @@ hain.
 Un mein exports ya initialization nahi thi. Root `app/__init__.py` explicit
 package marker hai; Python 3 nested folders ko namespace packages ke through
 import karta hai.
+
+### Q26. Kya Google login Firebase Authentication use karti hai?
+
+Nahi. Google Identity Services identity prove karti hai. Actual TodoFlow user
+selected Firestore, MongoDB ya PostgreSQL database mein save hota hai.
+
+### Q27. Google ID token aur TodoFlow JWT mein kya difference hai?
+
+Google ID token sirf `/auth/google` par identity verify karne ke liye aata hai.
+Backend uske baad apni database-bound TodoFlow JWT issue karta hai jo protected
+todo requests mein use hoti hai.
+
+### Q28. Google user ko email ke bajaye `sub` se kyun identify karte hain?
+
+Email change ho sakti hai. Google `sub` stable account identifier hai aur reuse
+nahi hota, isliye repository `google_sub` store karti hai.
+
+### Q29. Same Google email teen databases mein same user kyun nahi hai?
+
+Har selected repository sirf apna database read/write karti hai aur new local
+UUID banati hai. Isliye same Google `sub` ke Firestore, MongoDB aur PostgreSQL
+local UIDs different hote hain.
+
+### Q30. Client ID aur client secret dono frontend mein kyun nahi hain?
+
+Web Client ID public identifier hai aur button/audience verification ke liye
+chahiye. Client secret browser mein expose nahi karna chahiye aur is ID-token
+callback flow mein backend ko bhi uski zaroorat nahi.
 
 ### Final answer formula
 

@@ -74,7 +74,9 @@ python -m pip install -r requirements.txt
 Copy `.env.example` to `.env` and set every listed variable. `Settings` contains
 types only—runtime values and safe local choices all come from `.env` or
 terminal environment overrides. Inactive database fields may retain safe
-local/sample values. Keep `AUTH_TOKEN_SECRET` private.
+local/sample values. Keep `AUTH_TOKEN_SECRET` private. Set `GOOGLE_CLIENT_ID`
+to the Web OAuth client ID also used by `frontend/.env`; a client secret is not
+used for this Google Identity Services flow.
 
 ## Select a database
 
@@ -101,6 +103,13 @@ sign up in all three databases and receives a different UID in each database.
 A token issued for one database is rejected after switching to another.
 Tokens are standard three-part HS256 JWTs created and verified with PyJWT.
 
+Google login follows the same isolation rule. The backend verifies Google's ID
+token and stable `sub`, then finds or creates a local user only in the active
+database. Therefore the same Google account receives three different local UIDs
+when first used in Firestore, MongoDB, and PostgreSQL. An existing same-email
+password account in one database is linked only inside that database when
+Google is authoritative for the email (Gmail or Google Workspace).
+
 - Firestore accounts: `auth_users` collection
 - MongoDB accounts: `users` collection
 - PostgreSQL accounts: `users` table
@@ -114,6 +123,7 @@ Passwords are stored as salted PBKDF2 hashes, never plain text.
 | `GET` | `/` | Health check and active database |
 | `POST` | `/auth/signup` | Create account in active database |
 | `POST` | `/auth/login` | Login from active database |
+| `POST` | `/auth/google` | Verify Google and login/create in active database |
 | `GET` | `/todos` | List current user's todos |
 | `POST` | `/todos` | Create todo |
 | `PATCH` | `/todos/{id}/complete` | Complete todo |
@@ -137,3 +147,6 @@ Passwords are stored as salted PBKDF2 hashes, never plain text.
 Request logs still show Presentation, Auth, Application, and Infrastructure in
 English plus Roman Urdu. Public boundary functions use concise What/When/How
 docstrings so the reason and layer responsibility stay aligned with the code.
+
+For the complete frontend-to-database Google flow, read
+[`docs/GOOGLE_LOGIN_INTEGRATION_GUIDE.md`](../../docs/GOOGLE_LOGIN_INTEGRATION_GUIDE.md).

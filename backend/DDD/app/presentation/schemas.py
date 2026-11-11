@@ -22,6 +22,12 @@ class LoginRequest(BaseModel):
     password: str = Field(min_length=6)
 
 
+class GoogleLoginRequest(BaseModel):
+    """Validate the Google ID token received by POST /auth/google."""
+
+    credential: str = Field(min_length=20)
+
+
 class AuthResponse(BaseModel):
     """Define the public JSON returned after signup or login."""
 

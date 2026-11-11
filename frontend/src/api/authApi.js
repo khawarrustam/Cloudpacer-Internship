@@ -11,4 +11,8 @@ export const authApi = {
     const response = await apiClient.post('/auth/login', data);
     return response.data;
   },
+  async loginWithGoogle(credential) {
+    const response = await apiClient.post('/auth/google', { credential });
+    return response.data;
+  },
 };

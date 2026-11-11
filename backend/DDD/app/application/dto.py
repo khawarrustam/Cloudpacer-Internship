@@ -42,6 +42,13 @@ class LoginInput:
 
 
 @dataclass(frozen=True)
+class GoogleLoginInput:
+    """Google ID token passed from the HTTP route to the auth service."""
+
+    credential: str
+
+
+@dataclass(frozen=True)
 class TodoOutput:
     """Database-independent todo data returned by application services."""
 

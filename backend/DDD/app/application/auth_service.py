@@ -1,12 +1,17 @@
 """Authentication application use cases."""
 
-from app.application.dto import AuthOutput, LoginInput, SignupInput
+from app.application.dto import (
+    AuthOutput,
+    GoogleLoginInput,
+    LoginInput,
+    SignupInput,
+)
 from app.domain.auth import AuthRepository
 from app.logging import log_step
 
 
 class AuthService:
-    """What: Coordinate signup, login, and token authentication.
+    """What: Coordinate signup, password/Google login, and token authentication.
 
     When: Presentation routes need an authentication use case.
     How: Delegate persistence/security work through AuthRepository.
@@ -31,6 +36,17 @@ class AuthService:
         """Verify selected-database credentials and return a standard JWT."""
         user = self.repository.login(data.email, data.password)
         log_step("Application", "Login completed.", "Login mukammal ho gaya.")
+        return self._to_output(user.uid, user.email, user.token)
+
+    def login_with_google(self, data: GoogleLoginInput) -> AuthOutput:
+        """Verify Google and return the selected-database user's JWT."""
+        # Repository Google identity ko current database ke user se bind karti hai.
+        user = self.repository.login_with_google(data.credential)
+        log_step(
+            "Application",
+            "Google login completed.",
+            "Google login mukammal ho gaya.",
+        )
         return self._to_output(user.uid, user.email, user.token)
 
     def authenticate(self, token: str) -> AuthOutput:

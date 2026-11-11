@@ -34,7 +34,7 @@ must not be moved between layers unless the placement rules below support it.
 |---|---|---|
 | `domain/` | Todo entity, value objects, business errors, repository contracts, auth user contract | FastAPI, Pydantic HTTP schemas, MongoDB, PostgreSQL, Firestore, environment variables |
 | `application/` | Input/output DTOs and use cases that coordinate domain objects/repositories | HTTP status codes, database queries, SDK clients, environment reads |
-| `infrastructure/` | Concrete repository adapters, password hashing, JWT handling, SDK/driver calls, repository factory | FastAPI routes, UI response models, todo business rules |
+| `infrastructure/` | Concrete repository adapters, password hashing, Google ID-token/JWT handling, SDK/driver calls, repository factory | FastAPI routes, UI response models, todo business rules |
 | `presentation/` | Pydantic request/response schemas, FastAPI dependencies, auth/todo routers, HTTP error mapping | SQL, PyMongo queries, Firestore URLs, password hashing |
 | `config.py` | Typed environment settings and selected-database normalization | Repository creation, API routes, business rules |
 | `logging.py` | Existing request and bilingual step logging | Domain decisions or persistence logic |
@@ -73,10 +73,10 @@ backend/DDD/
 |   |   `-- todo.py               # Todo rules/contracts
 |   |-- application/
 |   |   |-- dto.py                # Use-case boundary data
-|   |   |-- auth_service.py       # Signup/login/token use cases
+|   |   |-- auth_service.py       # Signup/password/Google/token use cases
 |   |   `-- todo_service.py       # Todo use cases
 |   |-- infrastructure/
-|   |   |-- security.py           # Password hash + signed DB token
+|   |   |-- security.py           # Password + Google token + app JWT
 |   |   |-- repository_factory.py # Selected DB adapter wiring
 |   |   |-- firestore/
 |   |   |   |-- auth_repository.py
@@ -113,8 +113,9 @@ nested package markers are intentionally omitted.
 > responsibility boundaries and keep code beginner-readable. Add concise
 > What/When/How docstrings where a function or class crosses a layer boundary.
 > Do not log passwords/tokens or commit secrets. After moving code, verify
-> imports, compile all modules, inspect OpenAPI routes, run signup/login/token
-> isolation tests for Firestore, MongoDB, and PostgreSQL, and run one protected
+> imports, compile all modules, inspect OpenAPI routes, run signup, password
+> login, Google login, and token-isolation tests for Firestore, MongoDB, and
+> PostgreSQL, and run one protected
 > todo API flow. Delete the old structure only after the replacement passes.
 
 ## 6. Dependency direction

@@ -18,9 +18,9 @@
 3. [Four layers and dependency direction](#3-four-layers-and-dependency-direction)
 4. [Application startup flow](#4-application-startup-flow)
 5. [Root and shared files](#5-root-and-shared-files)
-6. [Domain files](#6-domain-files)
+6. [Presentation files](#6-presentation-files)
 7. [Application files](#7-application-files)
-8. [Presentation files](#8-presentation-files)
+8. [Domain files](#8-domain-files)
 9. [Shared infrastructure files](#9-shared-infrastructure-files)
 10. [Firestore files](#10-firestore-files)
 11. [MongoDB files](#11-mongodb-files)
@@ -437,122 +437,134 @@ Path: [`backend/DDD/requirements.txt`](../backend/DDD/requirements.txt)
 
 ---
 
-## 6. Domain files
+## 6. Presentation files
 
-Domain layer framework aur database se independent hai.
+Presentation layer FastAPI-specific HTTP boundary hai. Request sab se pehle
+isi layer mein aati hai, isliye file-by-file explanation yahan se start hoti hai.
 
-### 6.1 `domain/auth.py`
+### 6.1 `presentation/schemas.py`
 
-Path: [`backend/DDD/app/domain/auth.py`](../backend/DDD/app/domain/auth.py)
+Path: [`backend/DDD/app/presentation/schemas.py`](../backend/DDD/app/presentation/schemas.py)
 
-#### `ValidationException`
+| Pydantic class | Fields/rules | Used by |
+|---|---|---|
+| `SignupRequest` | Valid email, password min 6, display name default User | Signup route input |
+| `LoginRequest` | Valid email, password min 6 | Login route input |
+| `AuthResponse` | uid, email, token, message | Signup/login output |
+| `CreateTodoRequest` | Title 3–120; six upper/lower priority literals; default MEDIUM | Create route input |
+| `TodoResponse` | Complete public todo shape | Todo route output |
 
-Safe authentication/input error. Infrastructure is exception ko raise kar sakti
-hai aur presentation usay HTTP 400/401 mein map karti hai.
-
-#### `UserData`
-
-Frozen dataclass:
-
-```text
-uid + email + token
-```
-
-Repository se application service ko database-independent auth result deti hai.
-
-#### `AuthRepository(ABC)`
-
-Authentication contract:
-
-| Method | Parameters | Return | Required behavior |
-|---|---|---|---|
-| `signup` | email, password, name | `UserData` | Selected DB mein account create |
-| `login` | email, password | `UserData` | Credentials verify |
-| `authenticate` | token | `UserData` | Token and live DB user verify |
-
-ABC ka purpose:
-
-- Application ko Firestore/Mongo/SQL ka pata nahi hota.
-- Three concrete auth repositories same methods implement karti hain.
-
-### 6.2 `domain/todo.py`
-
-Path: [`backend/DDD/app/domain/todo.py`](../backend/DDD/app/domain/todo.py)
-
-#### Domain errors
-
-| Class | Kab raise hoti hai? |
-|---|---|
-| `DomainError` | Parent business error |
-| `InvalidTaskTitleError` | Title length 3–120 ke bahar |
-| `TaskAlreadyCompletedError` | Completed todo dobara complete ho |
-| `TodoNotFoundError` | Current owner ka todo na mile |
-
-#### `Priority(str, Enum)`
-
-Allowed values:
+Important:
 
 ```text
-LOW, MEDIUM, HIGH
+Pydantic validates HTTP.
+Domain validates business invariants.
 ```
 
-#### `TaskTitle`
+### 6.2 `presentation/dependencies.py`
 
-Frozen value object with one field: `value`.
+Path: [`backend/DDD/app/presentation/dependencies.py`](../backend/DDD/app/presentation/dependencies.py)
 
-Method:
+#### `CurrentUser`
+
+Frozen dataclass with `uid` and `email`. Protected routes ko verified identity
+deti hai.
+
+#### `bearer = HTTPBearer()`
+
+`Authorization: Bearer <token>` header parse karta hai.
+
+#### Service provider functions
+
+| Function | Reads | Return |
+|---|---|---|
+| `get_auth_service(request)` | `request.app.state.auth_service` | `AuthService` |
+| `get_todo_service(request)` | `request.app.state.todo_service` | `TodoService` |
+
+#### Dependency aliases
+
+```text
+AuthServiceDep
+TodoServiceDep
+CredentialsDep
+CurrentUserDep
+```
+
+Aliases `Annotated + Depends` use karke route signatures short rakhti hain.
+
+#### `current_user(credentials, auth_service)`
+
+Flow:
+
+```text
+Bearer credentials
+ -> AuthService.authenticate
+ -> selected AuthRepository.authenticate
+ -> CurrentUser(uid, email)
+```
+
+Error mapping:
+
+- Expected `ValidationException` -> HTTP 401.
+- Unexpected error -> safe generic HTTP 401; technical detail log mein.
+
+Security point:
+
+Owner UID request body se trust nahi hoti. Verified token se aati hai.
+
+### 6.3 `presentation/routers/auth.py`
+
+Path: [`backend/DDD/app/presentation/routers/auth.py`](../backend/DDD/app/presentation/routers/auth.py)
+
+Router:
 
 ```python
-__post_init__() -> None
+APIRouter(prefix="/auth", tags=["Auth"])
 ```
 
-Work:
+Functions:
 
-1. Title trim.
-2. Minimum 3 characters.
-3. Maximum 120 characters.
-4. Clean value object mein store.
+| Route function | HTTP | Mapping | Success | Error |
+|---|---|---|---|---|
+| `signup` | `POST /auth/signup` | `SignupRequest -> SignupInput -> AuthService.signup -> AuthResponse` | 201 | Validation -> 400 |
+| `login` | `POST /auth/login` | `LoginRequest -> LoginInput -> AuthService.login -> AuthResponse` | 200 | Validation -> 401 |
 
-Why value object?
+Route ka kaam:
 
-Har valid `TodoItem` ke paas valid title guarantee hoti hai.
+1. HTTP request receive.
+2. Presentation log.
+3. Request schema ko application DTO mein map.
+4. Service call.
+5. Application output ko response schema mein map.
+6. Known error ko HTTP exception mein map.
 
-#### `TodoItem`
+### 6.4 `presentation/routers/todos.py`
 
-Main entity fields:
+Path: [`backend/DDD/app/presentation/routers/todos.py`](../backend/DDD/app/presentation/routers/todos.py)
+
+Router:
+
+```python
+APIRouter(prefix="/todos", tags=["Todos"])
+```
+
+Functions:
+
+| Function | HTTP | Service call | Success/error |
+|---|---|---|---|
+| `list_todos` | `GET /todos` | `todo_service.list(user.uid)` | 200 list |
+| `create_todo` | `POST /todos` | `todo_service.create(CreateTodoInput(...))` | 201; domain error 400 |
+| `complete_todo` | `PATCH /todos/{id}/complete` | `todo_service.complete(TodoActionInput(...))` | 200; missing 404; rule error 400 |
+| `delete_todo` | `DELETE /todos/{id}` | `todo_service.delete(TodoActionInput(...))` | 204; missing 404 |
+
+Important mapping:
 
 ```text
-id
-title: TaskTitle
-priority: Priority
-is_completed
-created_at
-owner_uid
-completed_at
+todo_id    <- URL path
+owner_uid  <- verified CurrentUser
+title      <- validated request body
+priority   <- validated request body
 ```
-
-Methods:
-
-| Method | Input | Work | Return/error |
-|---|---|---|---|
-| `create(title, priority, owner_uid)` | Plain values | UUID, title validation, uppercase priority, UTC time, incomplete state | New `TodoItem` |
-| `complete()` | Existing entity | Already-complete check; status true; UTC completion time | `None` or `TaskAlreadyCompletedError` |
-
-Business rule entity ke andar kyun?
-
-Route, service ya database change ho tab bhi completion rule same rehta hai.
-
-#### `TodoRepository(ABC)`
-
-| Method | Parameters | Return |
-|---|---|---|
-| `save` | `TodoItem` | `None` |
-| `get_by_id` | todo ID + owner UID | `TodoItem | None` |
-| `get_by_owner` | owner UID | `list[TodoItem]` |
-| `delete` | todo ID + owner UID | `None` |
-
-Owner UID contract ka part hai, isliye infrastructure queries ownership ko
-database operation tak carry karti hain.
 
 ---
 
@@ -647,133 +659,122 @@ hota.
 
 ---
 
-## 8. Presentation files
+## 8. Domain files
 
-Presentation layer FastAPI-specific HTTP boundary hai.
+Domain layer framework aur database se independent hai.
 
-### 8.1 `presentation/schemas.py`
+### 8.1 `domain/auth.py`
 
-Path: [`backend/DDD/app/presentation/schemas.py`](../backend/DDD/app/presentation/schemas.py)
+Path: [`backend/DDD/app/domain/auth.py`](../backend/DDD/app/domain/auth.py)
 
-| Pydantic class | Fields/rules | Used by |
-|---|---|---|
-| `SignupRequest` | Valid email, password min 6, display name default User | Signup route input |
-| `LoginRequest` | Valid email, password min 6 | Login route input |
-| `AuthResponse` | uid, email, token, message | Signup/login output |
-| `CreateTodoRequest` | Title 3–120; six upper/lower priority literals; default MEDIUM | Create route input |
-| `TodoResponse` | Complete public todo shape | Todo route output |
+#### `ValidationException`
 
-Important:
+Safe authentication/input error. Infrastructure is exception ko raise kar sakti
+hai aur presentation usay HTTP 400/401 mein map karti hai.
 
-```text
-Pydantic validates HTTP.
-Domain validates business invariants.
-```
+#### `UserData`
 
-### 8.2 `presentation/dependencies.py`
-
-Path: [`backend/DDD/app/presentation/dependencies.py`](../backend/DDD/app/presentation/dependencies.py)
-
-#### `CurrentUser`
-
-Frozen dataclass with `uid` and `email`. Protected routes ko verified identity
-deti hai.
-
-#### `bearer = HTTPBearer()`
-
-`Authorization: Bearer <token>` header parse karta hai.
-
-#### Service provider functions
-
-| Function | Reads | Return |
-|---|---|---|
-| `get_auth_service(request)` | `request.app.state.auth_service` | `AuthService` |
-| `get_todo_service(request)` | `request.app.state.todo_service` | `TodoService` |
-
-#### Dependency aliases
+Frozen dataclass:
 
 ```text
-AuthServiceDep
-TodoServiceDep
-CredentialsDep
-CurrentUserDep
+uid + email + token
 ```
 
-Aliases `Annotated + Depends` use karke route signatures short rakhti hain.
+Repository se application service ko database-independent auth result deti hai.
 
-#### `current_user(credentials, auth_service)`
+#### `AuthRepository(ABC)`
 
-Flow:
+Authentication contract:
 
-```text
-Bearer credentials
- -> AuthService.authenticate
- -> selected AuthRepository.authenticate
- -> CurrentUser(uid, email)
-```
-
-Error mapping:
-
-- Expected `ValidationException` -> HTTP 401.
-- Unexpected error -> safe generic HTTP 401; technical detail log mein.
-
-Security point:
-
-Owner UID request body se trust nahi hoti. Verified token se aati hai.
-
-### 8.3 `presentation/routers/auth.py`
-
-Path: [`backend/DDD/app/presentation/routers/auth.py`](../backend/DDD/app/presentation/routers/auth.py)
-
-Router:
-
-```python
-APIRouter(prefix="/auth", tags=["Auth"])
-```
-
-Functions:
-
-| Route function | HTTP | Mapping | Success | Error |
-|---|---|---|---|---|
-| `signup` | `POST /auth/signup` | `SignupRequest -> SignupInput -> AuthService.signup -> AuthResponse` | 201 | Validation -> 400 |
-| `login` | `POST /auth/login` | `LoginRequest -> LoginInput -> AuthService.login -> AuthResponse` | 200 | Validation -> 401 |
-
-Route ka kaam:
-
-1. HTTP request receive.
-2. Presentation log.
-3. Request schema ko application DTO mein map.
-4. Service call.
-5. Application output ko response schema mein map.
-6. Known error ko HTTP exception mein map.
-
-### 8.4 `presentation/routers/todos.py`
-
-Path: [`backend/DDD/app/presentation/routers/todos.py`](../backend/DDD/app/presentation/routers/todos.py)
-
-Router:
-
-```python
-APIRouter(prefix="/todos", tags=["Todos"])
-```
-
-Functions:
-
-| Function | HTTP | Service call | Success/error |
+| Method | Parameters | Return | Required behavior |
 |---|---|---|---|
-| `list_todos` | `GET /todos` | `todo_service.list(user.uid)` | 200 list |
-| `create_todo` | `POST /todos` | `todo_service.create(CreateTodoInput(...))` | 201; domain error 400 |
-| `complete_todo` | `PATCH /todos/{id}/complete` | `todo_service.complete(TodoActionInput(...))` | 200; missing 404; rule error 400 |
-| `delete_todo` | `DELETE /todos/{id}` | `todo_service.delete(TodoActionInput(...))` | 204; missing 404 |
+| `signup` | email, password, name | `UserData` | Selected DB mein account create |
+| `login` | email, password | `UserData` | Credentials verify |
+| `authenticate` | token | `UserData` | Token and live DB user verify |
 
-Important mapping:
+ABC ka purpose:
+
+- Application ko Firestore/Mongo/SQL ka pata nahi hota.
+- Three concrete auth repositories same methods implement karti hain.
+
+### 8.2 `domain/todo.py`
+
+Path: [`backend/DDD/app/domain/todo.py`](../backend/DDD/app/domain/todo.py)
+
+#### Domain errors
+
+| Class | Kab raise hoti hai? |
+|---|---|
+| `DomainError` | Parent business error |
+| `InvalidTaskTitleError` | Title length 3–120 ke bahar |
+| `TaskAlreadyCompletedError` | Completed todo dobara complete ho |
+| `TodoNotFoundError` | Current owner ka todo na mile |
+
+#### `Priority(str, Enum)`
+
+Allowed values:
 
 ```text
-todo_id    <- URL path
-owner_uid  <- verified CurrentUser
-title      <- validated request body
-priority   <- validated request body
+LOW, MEDIUM, HIGH
 ```
+
+#### `TaskTitle`
+
+Frozen value object with one field: `value`.
+
+Method:
+
+```python
+__post_init__() -> None
+```
+
+Work:
+
+1. Title trim.
+2. Minimum 3 characters.
+3. Maximum 120 characters.
+4. Clean value object mein store.
+
+Why value object?
+
+Har valid `TodoItem` ke paas valid title guarantee hoti hai.
+
+#### `TodoItem`
+
+Main entity fields:
+
+```text
+id
+title: TaskTitle
+priority: Priority
+is_completed
+created_at
+owner_uid
+completed_at
+```
+
+Methods:
+
+| Method | Input | Work | Return/error |
+|---|---|---|---|
+| `create(title, priority, owner_uid)` | Plain values | UUID, title validation, uppercase priority, UTC time, incomplete state | New `TodoItem` |
+| `complete()` | Existing entity | Already-complete check; status true; UTC completion time | `None` or `TaskAlreadyCompletedError` |
+
+Business rule entity ke andar kyun?
+
+Route, service ya database change ho tab bhi completion rule same rehta hai.
+
+#### `TodoRepository(ABC)`
+
+| Method | Parameters | Return |
+|---|---|---|
+| `save` | `TodoItem` | `None` |
+| `get_by_id` | todo ID + owner UID | `TodoItem | None` |
+| `get_by_owner` | owner UID | `list[TodoItem]` |
+| `delete` | todo ID + owner UID | `None` |
+
+Owner UID contract ka part hai, isliye infrastructure queries ownership ko
+database operation tak carry karti hain.
 
 ---
 

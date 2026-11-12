@@ -5,7 +5,15 @@ import uuid
 import psycopg
 from psycopg.rows import dict_row
 
-from app.domain.auth import AuthRepository, UserData, ValidationException
+from app.domain.auth import (
+    AuthRepository,
+    DisplayName,
+    EmailAddress,
+    GoogleAccountPolicy,
+    PasswordPolicy,
+    UserData,
+    ValidationException,
+)
 from app.infrastructure.security import AuthSecurity
 from app.logging import log_error, log_step
 
@@ -25,7 +33,9 @@ class PostgreSQLAuthRepository(AuthRepository):
 
     def signup(self, email: str, password: str, name: str) -> UserData:
         """Create a PostgreSQL-only account and return its token."""
-        clean_email = self.security.normalize_email(email)
+        clean_email = EmailAddress(email).value
+        PasswordPolicy.validate_for_signup(password)
+        clean_name = DisplayName(name).value
         uid = str(uuid.uuid4())
         query = """
             INSERT INTO users (id, email, display_name, password_hash)
@@ -35,7 +45,7 @@ class PostgreSQLAuthRepository(AuthRepository):
         values = (
             uid,
             clean_email,
-            name.strip() or "User",
+            clean_name,
             self.security.hash_password(password),
         )
         try:
@@ -60,7 +70,7 @@ class PostgreSQLAuthRepository(AuthRepository):
 
     def login(self, email: str, password: str) -> UserData:
         """Verify credentials using only PostgreSQL user data."""
-        clean_email = self.security.normalize_email(email)
+        clean_email = EmailAddress(email).value
         query = """
             SELECT id, email, password_hash
             FROM users
@@ -107,7 +117,7 @@ class PostgreSQLAuthRepository(AuthRepository):
                 if user is None:
                     user = connection.execute(
                         "SELECT id, email, google_sub FROM users WHERE email = %s",
-                        (profile.email,),
+                        (profile.email.value,),
                     ).fetchone()
 
                 if user is None:
@@ -120,27 +130,23 @@ class PostgreSQLAuthRepository(AuthRepository):
                         """,
                         (
                             uid,
-                            profile.email,
-                            profile.display_name,
+                            profile.email.value,
+                            profile.display_name.value,
                             profile.subject,
                         ),
                     )
                     user = {
                         "id": uid,
-                        "email": profile.email,
+                        "email": profile.email.value,
                         "google_sub": profile.subject,
                     }
                 else:
                     saved_subject = user.get("google_sub")
-                    if saved_subject and saved_subject != profile.subject:
-                        raise ValidationException(
-                            "This PostgreSQL email belongs to another Google account."
-                        )
-                    if not saved_subject and not profile.can_link_existing_email:
-                        raise ValidationException(
-                            "Use your PostgreSQL password for this non-Gmail account."
-                        )
-                    if not saved_subject:
+                    should_link = GoogleAccountPolicy.should_link(
+                        saved_subject,
+                        profile,
+                    )
+                    if should_link:
                         connection.execute(
                             "UPDATE users SET google_sub = %s WHERE id = %s",
                             (profile.subject, user["id"]),

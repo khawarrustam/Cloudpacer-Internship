@@ -104,7 +104,7 @@ Schema -> Router -> DTO -> Service -> Repository -> Security/Database
 | `presentation/routers/auth.py` | `login_with_google()` | `/auth/google` request receive aur response return karta hai |
 | `application/dto.py` | `GoogleLoginInput` | Credential ko next layer tak carry karta hai |
 | `application/auth_service.py` | `login_with_google()` | Use case ko coordinate karta hai |
-| `domain/auth.py` | `AuthRepository` | Har database auth adapter ka common contract hai |
+| `domain/auth.py` | `GoogleIdentity`, `GoogleAccountPolicy` | Clean Google identity aur safe account-linking rules enforce karta hai |
 | `infrastructure/repository_factory.py` | `create_repositories()` | Selected database ke matching auth + todo repositories banata hai |
 | `infrastructure/security.py` | `verify_google_credential()` | Google token verify karta hai |
 | `infrastructure/security.py` | `create_token()` | TodoFlow JWT banata hai |

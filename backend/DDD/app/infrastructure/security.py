@@ -1,6 +1,5 @@
 """Shared password hashing and standard JWT implementation."""
 
-from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 import hashlib
 import hmac
@@ -11,17 +10,7 @@ from google.oauth2 import id_token as google_id_token
 import jwt
 from jwt import ExpiredSignatureError, InvalidTokenError
 
-from app.domain.auth import ValidationException
-
-
-@dataclass(frozen=True)
-class GoogleProfile:
-    """Verified Google identity values needed by database repositories."""
-
-    subject: str
-    email: str
-    display_name: str
-    can_link_existing_email: bool
+from app.domain.auth import GoogleIdentity, ValidationException
 
 
 class AuthSecurity:
@@ -50,11 +39,6 @@ class AuthSecurity:
         # Reusing one transport object keeps the verification call easy to test.
         self.google_request = GoogleRequest()
 
-    @staticmethod
-    def normalize_email(email: str) -> str:
-        """Normalize email before storage and comparison."""
-        return email.strip().lower()
-
     def hash_password(self, password: str) -> str:
         """Create a random-salt password hash; never store plain passwords."""
         # Har signup ka random salt same passwords ke hashes bhi different banata hai.
@@ -75,7 +59,7 @@ class AuthSecurity:
         # compare_digest normal == ke timing differences ko avoid karta hai.
         return hmac.compare_digest(actual_hash, expected_hash)
 
-    def verify_google_credential(self, credential: str) -> GoogleProfile:
+    def verify_google_credential(self, credential: str) -> GoogleIdentity:
         """Verify one Google ID token and return its trusted basic profile."""
         if (
             not self.google_client_id
@@ -113,18 +97,13 @@ class AuthSecurity:
         ):
             raise ValidationException("Google account email is not verified.")
 
-        clean_email = self.normalize_email(email)
-        display_name = str(claims.get("name") or clean_email.split("@", 1)[0])
-        # Gmail/Workspace email par Google authoritative hota hai; sirf in cases
-        # mein an existing password account ko automatically link karte hain.
-        can_link_existing_email = (
-            clean_email.endswith("@gmail.com") or bool(claims.get("hd"))
-        )
-        return GoogleProfile(
+        # Infrastructure cryptographic claims verify karti hai; clean identity
+        # aur account-linking values domain object enforce karta hai.
+        return GoogleIdentity.create(
             subject=subject,
-            email=clean_email,
-            display_name=display_name,
-            can_link_existing_email=can_link_existing_email,
+            email=email,
+            display_name=str(claims.get("name") or ""),
+            has_google_hosted_domain=bool(claims.get("hd")),
         )
 
     def create_token(self, uid: str, email: str) -> str:

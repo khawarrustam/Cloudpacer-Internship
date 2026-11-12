@@ -778,6 +778,8 @@ Path: [`backend/DDD/app/domain/auth.py`](../backend/DDD/app/domain/auth.py)
 
 Purpose:
 
+- Email, password aur Google account-linking ke shared business rules rakhna.
+- Authentication value objects aur safe domain errors define karna.
 - Authentication ka database-independent repository contract define karna.
 - Auth result (`UserData`) aur expected validation error ka common domain shape dena.
 
@@ -785,6 +787,21 @@ Purpose:
 
 Safe authentication/input error. Infrastructure is exception ko raise kar sakti
 hai aur presentation usay HTTP 400/401 mein map karti hai.
+
+#### Auth value objects aur policies
+
+| Class | Business rule |
+|---|---|
+| `EmailAddress` | Email trim/lowercase karti aur basic valid identity enforce karti hai |
+| `DisplayName` | Name clean karti; empty ho to `User` use karti hai |
+| `PasswordPolicy` | Signup password minimum 6 characters enforce karti hai |
+| `GoogleIdentity` | Verified Google values ko clean domain shape deti hai |
+| `GoogleAccountPolicy` | Subject conflict reject aur safe Gmail/Workspace auto-link decide karti hai |
+
+Domain errors `InvalidEmailError`, `WeakPasswordError`,
+`GoogleAccountConflictError` aur `PasswordLoginRequiredError` batati hain ke
+kaunsa auth business rule fail hua. Hashing, Google signature verification aur
+JWT domain mein nahi; woh technical kaam `infrastructure/security.py` mein hain.
 
 #### `UserData`
 
@@ -929,10 +946,9 @@ Methods:
 
 | Method | Input | Work | Return |
 |---|---|---|---|
-| `normalize_email` | Email | Trim + lowercase | Clean email |
 | `hash_password` | Password | Random salt + PBKDF2-HMAC-SHA256 | `salt:hash` |
 | `password_matches` | Password + saved hash | Derive again + `compare_digest` | Boolean |
-| `verify_google_credential` | Google ID token | Verify signature, audience, issuer, expiry and email | `GoogleProfile` |
+| `verify_google_credential` | Google ID token | Verify signature, audience, issuer, expiry and email | Domain `GoogleIdentity` |
 | `create_token` | UID + email | PyJWT `encode` with HS256 and standard claims | JWT string |
 | `read_token` | JWT | PyJWT `decode`; signature, claims, DB and expiry check | `(uid, email)` |
 | `_derive_password_hash` | Password + salt | 120,000 PBKDF2 rounds | Hex hash |
@@ -1275,7 +1291,7 @@ POST /auth/signup
  -> auth.signup route creates SignupInput
  -> AuthService.signup
  -> selected AuthRepository.signup
- -> normalize email
+ -> EmailAddress + PasswordPolicy + DisplayName domain rules
  -> hash password
  -> selected database user record
  -> create database-bound token
@@ -1308,7 +1324,8 @@ Google button returns credential (Google ID token)
  -> selected AuthRepository.login_with_google
  -> AuthSecurity.verify_google_credential
  -> verify signature + audience + issuer + expiry
- -> use stable Google sub
+ -> GoogleIdentity creates clean domain values
+ -> GoogleAccountPolicy validates existing-account linking
  -> find/link/create user only in selected database
  -> create database-bound TodoFlow JWT
  -> AuthResponse
@@ -1475,6 +1492,11 @@ Middleware -> request start/end/status/time
 
 | Function/method | File | One-line job |
 |---|---|---|
+| `EmailAddress.__post_init__` | `domain/auth.py` | Normalize and validate account email |
+| `DisplayName.__post_init__` | `domain/auth.py` | Clean name with safe fallback |
+| `PasswordPolicy.validate_for_signup` | `domain/auth.py` | Minimum signup password rule |
+| `GoogleIdentity.create` | `domain/auth.py` | Trusted Google values -> domain identity |
+| `GoogleAccountPolicy.should_link` | `domain/auth.py` | Subject conflict and safe link decision |
 | `TaskTitle.__post_init__` | `domain/todo.py` | Title invariant |
 | `TodoItem.create` | `domain/todo.py` | New valid todo |
 | `TodoItem.complete` | `domain/todo.py` | One-time completion |
@@ -1509,7 +1531,6 @@ Middleware -> request start/end/status/time
 
 | Function/method | File | One-line job |
 |---|---|---|
-| `normalize_email` | `security.py` | Canonical email |
 | `hash_password` | `security.py` | Salted PBKDF2 hash |
 | `password_matches` | `security.py` | Safe password compare |
 | `verify_google_credential` | `security.py` | Verify Google ID token/profile |

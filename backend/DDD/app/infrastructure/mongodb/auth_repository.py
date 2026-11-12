@@ -5,7 +5,15 @@ import uuid
 from pymongo.collection import Collection
 from pymongo.errors import DuplicateKeyError
 
-from app.domain.auth import AuthRepository, UserData, ValidationException
+from app.domain.auth import (
+    AuthRepository,
+    DisplayName,
+    EmailAddress,
+    GoogleAccountPolicy,
+    PasswordPolicy,
+    UserData,
+    ValidationException,
+)
 from app.infrastructure.security import AuthSecurity
 from app.logging import log_error, log_step
 
@@ -31,13 +39,15 @@ class MongoAuthRepository(AuthRepository):
 
     def signup(self, email: str, password: str, name: str) -> UserData:
         """Create a MongoDB-only account and return its token."""
-        clean_email = self.security.normalize_email(email)
+        clean_email = EmailAddress(email).value
+        PasswordPolicy.validate_for_signup(password)
+        clean_name = DisplayName(name).value
         uid = str(uuid.uuid4())
         # Application UUID ko Mongo _id banane se identity three DBs mein same format rakhti hai.
         user = {
             "_id": uid,
             "email": clean_email,
-            "display_name": name.strip() or "User",
+            "display_name": clean_name,
             "password_hash": self.security.hash_password(password),
         }
         try:
@@ -60,7 +70,7 @@ class MongoAuthRepository(AuthRepository):
 
     def login(self, email: str, password: str) -> UserData:
         """Verify credentials using only MongoDB user data."""
-        clean_email = self.security.normalize_email(email)
+        clean_email = EmailAddress(email).value
         user = self.collection.find_one({"email": clean_email})
         if user is None or not self.security.password_matches(
             password,
@@ -84,27 +94,23 @@ class MongoAuthRepository(AuthRepository):
             # Stable Google subject first; email fallback existing password account links.
             user = self.collection.find_one({"google_sub": profile.subject})
             if user is None:
-                user = self.collection.find_one({"email": profile.email})
+                user = self.collection.find_one({"email": profile.email.value})
 
             if user is None:
                 user = {
                     "_id": str(uuid.uuid4()),
-                    "email": profile.email,
-                    "display_name": profile.display_name,
+                    "email": profile.email.value,
+                    "display_name": profile.display_name.value,
                     "google_sub": profile.subject,
                 }
                 self.collection.insert_one(user)
             else:
                 saved_subject = user.get("google_sub")
-                if saved_subject and saved_subject != profile.subject:
-                    raise ValidationException(
-                        "This MongoDB email belongs to another Google account."
-                    )
-                if not saved_subject and not profile.can_link_existing_email:
-                    raise ValidationException(
-                        "Use your MongoDB password for this non-Gmail account."
-                    )
-                if not saved_subject:
+                should_link = GoogleAccountPolicy.should_link(
+                    saved_subject,
+                    profile,
+                )
+                if should_link:
                     self.collection.update_one(
                         {"_id": user["_id"]},
                         {"$set": {"google_sub": profile.subject}},

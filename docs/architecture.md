@@ -155,8 +155,9 @@ Dono projects mein concepts ka practical mapping:
 | Architectural Concept | Asal Maqsad | DDD Implementation ([`backend/DDD/`](../backend/DDD/)) | MVC Implementation ([`backend/MVC/`](../backend/MVC/)) |
 |---|---|---|---|
 | **Entity (Aggregate Root)** | Unique ID aur business rules wali rich object | `TodoItem` in [`app/domain/todo.py`](../backend/DDD/app/domain/todo.py) | Plain Python dictionary in [`src_mvc/models/todo_model.py`](../backend/MVC/src_mvc/models/todo_model.py) |
-| **Value Object** | Immutable validated types | `TaskTitle`, `Priority` in [`app/domain/todo.py`](../backend/DDD/app/domain/todo.py) | String + Pydantic validation checks |
-| **Domain Exceptions** | Business invariants violate hone par aane wale errors | `DomainError`, `InvalidTaskTitleError`, `TaskAlreadyCompletedError` | Custom exceptions in [`src_mvc/models/todo_model.py`](../backend/MVC/src_mvc/models/todo_model.py) |
+| **Value Object** | Immutable validated types | `TaskTitle`, `Priority`, `EmailAddress`, `DisplayName` | String + Pydantic validation checks |
+| **Domain Policy** | Multiple values par shared business decision | `PasswordPolicy`, `GoogleAccountPolicy` in [`app/domain/auth.py`](../backend/DDD/app/domain/auth.py) | Controller/infrastructure mein mixed checks |
+| **Domain Exceptions** | Business invariants violate hone par aane wale errors | Todo errors plus auth email/password/Google-linking errors | Custom exceptions in [`src_mvc/models/todo_model.py`](../backend/MVC/src_mvc/models/todo_model.py) |
 | **Repository Port (Interface)** | Data storage ka contract (abstraction) | `TodoRepository(ABC)`, `AuthRepository(ABC)` | **Koi interface nahi.** Controller direct Firestore se baat karta hai |
 | **Repository Adapter** | Concrete storage engine | Har DB ka `TodoRepository` + `AuthRepository` adapter | Direct Firestore SDK queries in `todo_controller.py` + `firebase.py` |
 | **Use Case (Service)** | Workflow coordinator | `TodoService`, `AuthService` in [`app/application/`](../backend/DDD/app/application/) | Direct controller methods in `todo_controller.py` & `auth_controller.py` |
@@ -223,7 +224,23 @@ class TodoItem:
 > **Kyun zaroori hai?**  
 > Business rule *"Jo task pehle se completed ho, wo dobara complete nahi ho sakta"* kisi controller ya database mein nahi, balki entity ke andar band hai. Agar koi developer controller mein check bhool bhi jaye, entity invariant ko violate nahi hone degi.
 
-#### 3. Storage Contract: `TodoRepository(ABC)`
+#### 3. Auth Value Objects aur Policies
+
+[`domain/auth.py`](../backend/DDD/app/domain/auth.py) authentication ke shared
+rules ko database se independent rakhti hai:
+
+| Rule | Domain object |
+|---|---|
+| Email trim, lowercase aur valid identity ho | `EmailAddress` |
+| Display name clean ho aur empty par `User` ho | `DisplayName` |
+| Signup password kam az kam 6 characters ho | `PasswordPolicy` |
+| Google subject conflict reject ho | `GoogleAccountPolicy` |
+| Sirf Google-managed email existing password account se auto-link ho | `GoogleAccountPolicy` |
+
+Hashing, Google signature verification aur JWT ab bhi infrastructure mein hain,
+kyun ke woh business decisions nahi balki technical security operations hain.
+
+#### 4. Storage Contract: `TodoRepository(ABC)`
 ```python
 class TodoRepository(ABC):
     """Storage contract implemented by memory and Firestore repositories."""

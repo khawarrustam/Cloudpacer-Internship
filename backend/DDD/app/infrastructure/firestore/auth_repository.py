@@ -6,7 +6,15 @@ from urllib.parse import unquote
 
 from google.auth.transport.requests import AuthorizedSession
 
-from app.domain.auth import AuthRepository, UserData, ValidationException
+from app.domain.auth import (
+    AuthRepository,
+    DisplayName,
+    EmailAddress,
+    GoogleAccountPolicy,
+    PasswordPolicy,
+    UserData,
+    ValidationException,
+)
 from app.infrastructure.security import AuthSecurity
 from app.logging import log_error, log_step
 
@@ -34,8 +42,10 @@ class FirestoreAuthRepository(AuthRepository):
 
     def signup(self, email: str, password: str, name: str) -> UserData:
         """Create a Firestore-only account and return its token."""
-        # Email normalize karne se uppercase/spaces duplicate account bypass nahi karte.
-        clean_email = self.security.normalize_email(email)
+        # Domain values har database mein same email/password/name rules lagati hain.
+        clean_email = EmailAddress(email).value
+        PasswordPolicy.validate_for_signup(password)
+        clean_name = DisplayName(name).value
         try:
             if self._find_user(clean_email) is not None:
                 raise ValidationException(
@@ -46,7 +56,7 @@ class FirestoreAuthRepository(AuthRepository):
             user = {
                 "uid": uid,
                 "email": clean_email,
-                "display_name": name.strip() or "User",
+                "display_name": clean_name,
                 "password_hash": self.security.hash_password(password),
             }
             response = self.session.patch(
@@ -70,7 +80,7 @@ class FirestoreAuthRepository(AuthRepository):
 
     def login(self, email: str, password: str) -> UserData:
         """Verify credentials using only Firestore user data."""
-        clean_email = self.security.normalize_email(email)
+        clean_email = EmailAddress(email).value
         try:
             user = self._find_user(clean_email)
         except Exception as error:
@@ -102,27 +112,24 @@ class FirestoreAuthRepository(AuthRepository):
             # Stable Google subject first; email may change during account lifetime.
             user = self._find_google_user(profile.subject)
             if user is None:
-                user = self._find_user(profile.email)
+                user = self._find_user(profile.email.value)
 
             if user is None:
                 user = {
                     "uid": str(uuid.uuid4()),
-                    "email": profile.email,
-                    "display_name": profile.display_name,
+                    "email": profile.email.value,
+                    "display_name": profile.display_name.value,
                     "google_sub": profile.subject,
                 }
             else:
                 saved_subject = user.get("google_sub")
-                if saved_subject and saved_subject != profile.subject:
-                    raise ValidationException(
-                        "This Firestore email belongs to another Google account."
-                    )
-                if not saved_subject and not profile.can_link_existing_email:
-                    raise ValidationException(
-                        "Use your Firestore password for this non-Gmail account."
-                    )
-                # Existing password account same selected DB mein Google se link hota hai.
-                user["google_sub"] = profile.subject
+                should_link = GoogleAccountPolicy.should_link(
+                    saved_subject,
+                    profile,
+                )
+                # Policy allow kare to existing password account Google se link hota hai.
+                if should_link:
+                    user["google_sub"] = profile.subject
 
             response = self.session.patch(
                 self._user_url(user["email"]),

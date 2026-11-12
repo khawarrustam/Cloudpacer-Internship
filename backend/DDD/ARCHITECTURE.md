@@ -32,9 +32,9 @@ must not be moved between layers unless the placement rules below support it.
 
 | Layer/module | What belongs here | What must not be here |
 |---|---|---|
-| `domain/` | Todo entity, value objects, business errors, repository contracts, auth user contract | FastAPI, Pydantic HTTP schemas, MongoDB, PostgreSQL, Firestore, environment variables |
+| `domain/` | Todo entity/rules, auth email/password/Google-linking rules, value objects, business errors, repository contracts | FastAPI, Pydantic HTTP schemas, hashing/JWT SDKs, MongoDB, PostgreSQL, Firestore, environment variables |
 | `application/` | Input/output DTOs and use cases that coordinate domain objects/repositories | HTTP status codes, database queries, SDK clients, environment reads |
-| `infrastructure/` | Concrete repository adapters, password hashing, Google ID-token/JWT handling, SDK/driver calls, repository factory | FastAPI routes, UI response models, todo business rules |
+| `infrastructure/` | Concrete repository adapters, password hashing, Google ID-token/JWT verification, SDK/driver calls, repository factory | FastAPI routes, UI response models, todo or auth business decisions |
 | `presentation/` | Pydantic request/response schemas, FastAPI dependencies, auth/todo routers, HTTP error mapping | SQL, PyMongo queries, Firestore URLs, password hashing |
 | `config.py` | Typed environment settings and selected-database normalization | Repository creation, API routes, business rules |
 | `logging.py` | Existing request and bilingual step logging | Domain decisions or persistence logic |

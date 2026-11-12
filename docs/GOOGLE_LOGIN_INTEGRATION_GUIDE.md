@@ -1,73 +1,152 @@
-# TodoFlow Google Login — Complete Roman Urdu Guide
+# TodoFlow Google Login — Easy Roman Urdu Guide
 
-Yeh guide Google login ki poori integration ko easy Roman Urdu mein explain
-karti hai. Isay parh kar presentation ke waqt har code file kholne ki zaroorat
-nahi paray gi.
+Yeh guide Google Login ka complete lekin short explanation hai. Isay parh kar
+aap presentation mein code kholay baghair flow explain kar saktay hain.
 
-## 1. Hum ne kya integrate kiya hai?
+## 1. Google Login ka short answer
 
-TodoFlow mein ab login ke do tareeqay hain:
-
-1. Email aur password.
-2. Continue with Google.
-
-Google sirf user ki identity verify karta hai. Actual TodoFlow user aur uske
-todos hamesha terminal se select ki gayi database mein save hotay hain:
+User **Continue with Google** press karta hai. Google user ko verify karke aik
+**Google ID token** deta hai. Frontend token backend ko bhejta hai. Backend token
+verify karta hai, selected database mein user find/create karta hai aur apni
+**TodoFlow JWT** return karta hai. Isi JWT se user apne tasks access karta hai.
 
 ```text
-DATABASE=firestore   -> user + todos Firestore mein
-DATABASE=mongodb     -> user + todos MongoDB mein
-DATABASE=postgresql  -> user + todos PostgreSQL mein
+Google         -> identity verify karta hai
+Selected DB    -> user aur tasks save karti hai
+TodoFlow JWT   -> application access deti hai
 ```
 
-Is integration mein Firebase Authentication use nahi ho rahi.
+Firebase Authentication use nahi ho rahi. Auth user usi database mein save hota
+hai jahan uske tasks save hotay hain.
 
-## 2. Sab se important concept: do alag tokens
+## 2. Important terms
 
-Google login mein do tokens alag alag kaam kartay hain:
+| Term | Asaan matlab |
+|---|---|
+| Google ID token | Google ka proof ke user verify ho chuka hai |
+| `credential` | Frontend mein Google ID token ka field name |
+| `google_sub` | Google account ki stable aur unique ID |
+| Local UID | Selected database mein TodoFlow user ki ID |
+| TodoFlow JWT | Backend ka banaya hua session token |
+| Repository | Database se data read/write karne wali class |
 
-| Token | Kon banata hai? | Kya kaam hai? |
+### Google token aur TodoFlow JWT different kyun hain?
+
+```text
+Google ID token = identity proof
+TodoFlow JWT    = TodoFlow ka access card
+```
+
+Google token sirf login ke waqt verify hota hai. Tasks ki protected requests
+TodoFlow JWT ke sath chalti hain.
+
+## 3. Complete login flow
+
+```text
+1. User Google button press karta hai
+2. Google account chooser open hota hai
+3. Google frontend ko ID token deta hai
+4. Frontend POST /auth/google request bhejta hai
+5. Backend Google token verify karta hai
+6. Selected database mein user find/create hota hai
+7. Backend TodoFlow JWT banata hai
+8. Frontend JWT ko memory mein rakhta hai
+9. JWT ke sath user apne tasks access karta hai
+```
+
+Backend `google-auth` library se token ki signature, Client ID, issuer, expiry
+aur verified email check karta hai. Verification fail ho to login reject hota
+hai. Google password hamari application ko kabhi nahi milta.
+
+## 4. Same Google email, different database users
+
+Example email: `rajputkhawarali@gmail.com`
+
+| Database | Local account |
+|---|---|
+| Firestore | `UID-A` + Firestore tasks |
+| MongoDB | `UID-B` + MongoDB tasks |
+| PostgreSQL | `UID-C` + PostgreSQL tasks |
+
+Email aur `google_sub` same ho saktay hain, lekin local UIDs different hoti
+hain. Har repository sirf apni database check karti hai; koi shared users table
+nahi hai.
+
+TodoFlow JWT mein database ka naam bhi hota hai. Isliye MongoDB ki JWT
+PostgreSQL par accept nahi hoti. Database switch ke baad dobara login karna
+security requirement hai.
+
+## 5. Frontend files ka role
+
+| File | Important function | Kya kaam hai? |
 |---|---|---|
-| Google ID token | Google | Prove karta hai ke Google ne user verify kiya |
-| TodoFlow JWT | Hamara backend | Baad ki protected todo requests authenticate karti hai |
+| `GoogleSignInButton.jsx` | `setupGoogleButton()` | Google script aur button load karke credential leta hai |
+| `AuthForm.jsx` | `handleGoogleLogin()` | Credential ko login flow mein bhejta aur message show karta hai |
+| `App.jsx` | `googleLogin()` | UI ko Redux action se connect karta hai |
+| `authSlice.js` | `googleLoginUser` | Async login, loading, success aur failure handle karta hai |
+| `authApi.js` | `loginWithGoogle()` | `POST /auth/google` request bhejta hai |
+| `authSession.js` | `saveSession()` | TodoFlow JWT ko JavaScript memory mein rakhta hai |
 
-Easy explanation:
+Frontend Google token ko khud verify nahi karta. Security decision backend leta
+hai. `localStorage` use nahi hoti, isliye refresh par dobara login hota hai.
+
+## 6. Backend files ka role
+
+Backend request is order mein move karti hai:
 
 ```text
-Google ID token: “Google ne is person ko verify kiya hai.”
-TodoFlow JWT:    “Yeh local database user apne todos access kar sakta hai.”
+Schema -> Router -> DTO -> Service -> Repository -> Security/Database
 ```
 
-Google ID token sirf aik dafa `/auth/google` endpoint ko bheja jata hai. Backend
-verification ke baad apni TodoFlow JWT return karta hai. Frontend Google token
-ko application session samajh kar use nahi karta.
+| File | Class/function | Kya kaam hai? |
+|---|---|---|
+| `presentation/schemas.py` | `GoogleLoginRequest` | Request mein credential validate karta hai |
+| `presentation/routers/auth.py` | `login_with_google()` | `/auth/google` request receive aur response return karta hai |
+| `application/dto.py` | `GoogleLoginInput` | Credential ko next layer tak carry karta hai |
+| `application/auth_service.py` | `login_with_google()` | Use case ko coordinate karta hai |
+| `domain/auth.py` | `AuthRepository` | Har database auth adapter ka common contract hai |
+| `infrastructure/repository_factory.py` | `create_repositories()` | Selected database ke matching auth + todo repositories banata hai |
+| `infrastructure/security.py` | `verify_google_credential()` | Google token verify karta hai |
+| `infrastructure/security.py` | `create_token()` | TodoFlow JWT banata hai |
+| Database `auth_repository.py` | `login_with_google()` | User ko apni database mein find/create karta hai |
 
-## 3. Google Cloud par kya setup chahiye?
+Service ko SQL, MongoDB ya Firestore syntax ka pata nahi. Repository apni
+database ki technology handle karti hai, isliye main flow simple rehta hai.
 
-Google Auth Platform mein:
+## 7. Database mein kya save hota hai?
 
-1. **Branding** mein app name aur support email set karein.
-2. Personal Gmail/testing ke liye **External** audience select karein.
-3. **Web application** type ka OAuth client banayein.
-4. Yeh Authorized JavaScript origins add karein:
+Teenon databases mein basic user data same hai:
+
+```text
+local UID
+email
+display_name
+google_sub
+password_hash (sirf password account/link ho to)
+```
+
+- Firestore: `auth_users` collection
+- MongoDB: `users` collection
+- PostgreSQL: `users` table
+
+Plain password kabhi save nahi hota. Google-only account ka `password_hash`
+empty ho sakta hai.
+
+## 8. Google Cloud aur `.env` setup
+
+Google Cloud mein:
+
+1. Personal Gmail/testing ke liye **External** audience select karein.
+2. Apna Gmail **Test users** mein add karein.
+3. **Web application** OAuth client banayein.
+4. Authorized JavaScript origins add karein:
 
 ```text
 http://localhost:5173
 http://127.0.0.1:5173
 ```
 
-5. Generated public Client ID copy karein.
-
-Is flow ke liye yeh cheezen required nahi hain:
-
-- Firebase Authentication;
-- frontend ya backend mein Google client secret;
-- authorized redirect URI;
-- downloaded client-secret JSON ko repository mein rakhna.
-
-## 4. `.env` configuration kaise hoti hai?
-
-Same public Client ID dono local `.env` files mein honi chahiye:
+Same public Client ID dono `.env` files mein honi chahiye:
 
 ```env
 # backend/DDD/.env
@@ -77,305 +156,12 @@ GOOGLE_CLIENT_ID=your-id.apps.googleusercontent.com
 VITE_GOOGLE_CLIENT_ID=your-id.apps.googleusercontent.com
 ```
 
-Dono jagah same Client ID kyun?
+Current flow client secret use nahi karta. Downloaded client-secret JSON ko
+GitHub, frontend ya backend mein add nahi karna.
 
-- Frontend ko official Google button render karne ke liye chahiye.
-- Backend ko Google token ka `aud` yani audience verify karne ke liye chahiye.
+## 9. Database kaise switch karein?
 
-Agar token kisi doosri application ki Client ID ke liye bana ho, hamara backend
-usay reject kar deta hai.
-
-## 5. Complete Google login flow
-
-```text
-User “Continue with Google” click karta hai
-        |
-        v
-Google Identity Services account chooser kholti hai
-        |
-        v
-Google `credential` mein ID token return karta hai
-        |
-        v
-Frontend `googleLoginUser` Redux thunk dispatch karta hai
-        |
-        v
-POST /auth/google  { credential }
-        |
-        v
-GoogleLoginRequest HTTP body validate karti hai
-        |
-        v
-GoogleLoginInput credential ko AuthService tak le jati hai
-        |
-        v
-AuthService.login_with_google
-        |
-        v
-Selected AuthRepository.login_with_google
-        |
-        v
-AuthSecurity.verify_google_credential
-  - Google signature check
-  - Client ID / audience check
-  - issuer check
-  - expiry check
-  - verified email check
-        |
-        v
-Selected database mein user find, link ya create hota hai
-        |
-        v
-Backend database-bound TodoFlow JWT banata hai
-        |
-        v
-Frontend JWT ko sirf JavaScript memory mein rakhta hai
-        |
-        v
-Todo requests ke sath JWT Bearer token jati hai
-```
-
-## 6. Frontend files kya kaam karti hain?
-
-### `frontend/src/components/GoogleSignInButton.jsx`
-
-Is file ka purpose:
-
-- Google ki official `gsi/client` browser library sirf aik dafa load karna.
-- `VITE_GOOGLE_CLIENT_ID` read karna.
-- Official Continue with Google button render karna.
-- Account select honay ke baad `response.credential` lena.
-- Credential ko normal Redux authentication flow mein bhejna.
-
-Yeh component Google credential ko khud decode ya trust nahi karta. Trust ka
-decision sirf backend verification ke baad hota hai.
-
-### `frontend/src/components/AuthForm.jsx`
-
-Is file ka purpose:
-
-- Google button aur email/password form aik screen par show karna.
-- Success ya error message display karna.
-- Temporary input values React local state mein rakhna.
-
-### `frontend/src/features/auth/authSlice.js`
-
-`googleLoginUser` async thunk ka flow:
-
-```text
-Google credential
- -> authApi.loginWithGoogle
- -> backend response
- -> saveSession(response)
- -> Redux user state update
-```
-
-### `frontend/src/api/authApi.js`
-
-Yeh file Google login request bhejti hai:
-
-```http
-POST /auth/google
-Content-Type: application/json
-
-{
-  "credential": "Google ID token"
-}
-```
-
-Component directly Axios call nahi karta. API ka kaam `authApi.js` mein rehta
-hai taa-ke UI simple rahe.
-
-### `frontend/src/features/auth/authSession.js`
-
-Sirf TodoFlow JWT ko JavaScript memory mein rakhti hai. `localStorage` use nahi
-hoti. Page refresh ke baad session clear hoti hai aur user dobara login karta
-hai.
-
-## 7. Backend files kya kaam karti hain?
-
-### `presentation/schemas.py`
-
-`GoogleLoginRequest` check karti hai ke HTTP request mein Google credential
-maujood ho.
-
-### `presentation/routers/auth.py`
-
-`POST /auth/google` ka kaam:
-
-1. HTTP request receive karna.
-2. `GoogleLoginInput` banana.
-3. `AuthService.login_with_google` call karna.
-4. Success par `AuthResponse` return karna.
-5. Invalid Google login ko HTTP 401 mein map karna.
-
-### `application/dto.py`
-
-`GoogleLoginInput` presentation se application layer tak credential carry
-karti hai. Application layer FastAPI ya Pydantic import nahi karti.
-
-### `application/auth_service.py`
-
-`login_with_google` complete use case coordinate karta hai. Is file mein Google
-SDK, Mongo query, Firestore URL ya SQL nahi hoti.
-
-### `domain/auth.py`
-
-`AuthRepository.login_with_google` aik common contract hai. Firestore, MongoDB
-aur PostgreSQL ke adapters isi method ko apni technology ke mutabiq implement
-kartay hain.
-
-### `infrastructure/security.py`
-
-`verify_google_credential` official `google-auth` library use karta hai.
-Successful verification ke baad `GoogleProfile` milti hai:
-
-```text
-subject       = stable Google `sub`
-email         = normalized verified email
-display_name  = Google name ya email prefix
-can_link_existing_email = safe auto-link decision
-```
-
-Google `sub` kyun use hota hai?
-
-Email future mein change ho sakti hai, lekin Google `sub` stable account ID hai.
-Isliye databases `google_sub` save karti hain.
-
-### Database auth repositories
-
-Teenon repositories same contract ko apni storage language mein implement
-karti hain:
-
-| Database | Google user kaise find/save hota hai? |
-|---|---|
-| Firestore | `runQuery` se `google_sub`, phir document PATCH |
-| MongoDB | `find_one` se `google_sub`, phir insert/update |
-| PostgreSQL | `SELECT` se `google_sub`, phir INSERT/UPDATE |
-
-## 8. Har database mein kya save hota hai?
-
-### Firestore `auth_users` document
-
-```text
-uid
-email
-display_name
-google_sub
-password_hash  (sirf jab password account/link ho)
-```
-
-### MongoDB `users` document
-
-```text
-_id             = local TodoFlow UUID
-email
-display_name
-google_sub
-password_hash   = optional
-```
-
-MongoDB `email` aur sparse `google_sub` ke unique indexes banati hai.
-
-### PostgreSQL `users` row
-
-```text
-id              = local TodoFlow UUID
-email
-display_name
-password_hash   = nullable
-google_sub      = nullable; value ho to unique
-```
-
-Repository existing password-only `users` table ko data delete kiye baghair
-safely extend karti hai.
-
-## 9. Same email teen databases mein alag user kaise banti hai?
-
-Example Google account:
-
-```text
-student@gmail.com
-```
-
-Har database mein first Google login:
-
-| Selected database | Local UID | Account |
-|---|---|---|
-| Firestore | UUID-A | Sirf Firestore ka local user |
-| MongoDB | UUID-B | Sirf MongoDB ka local user |
-| PostgreSQL | UUID-C | Sirf PostgreSQL ka local user |
-
-`UUID-A`, `UUID-B` aur `UUID-C` different hain, chahe Google `sub` aur email
-same hon.
-
-Reason:
-
-Har selected repository sirf apni database read/write karti hai. Koi shared
-global users table nahi hai.
-
-TodoFlow JWT ke payload mein yeh claim bhi hoti hai:
-
-```text
-database = firestore | mongodb | postgresql
-```
-
-Isi liye MongoDB ki JWT PostgreSQL select karne ke baad reject ho jati hai.
-
-## 10. Existing password account ke sath kya hota hai?
-
-Aik selected database ke andar:
-
-- Existing Google `sub` mil jaye -> same local UID se login.
-- New Google `sub` aur unused email ho -> new local UID create.
-- Same Gmail/Google Workspace email ka password account ho -> Google usi local
-  account se safely link.
-- Same non-Gmail third-party email ka password account ho -> automatic link ke
-  bajaye password login required.
-
-Gmail/Workspace restriction ka reason security hai. In cases mein Google email
-ka authoritative provider hota hai.
-
-## 11. Request aur response ka shape
-
-Request:
-
-```http
-POST /auth/google
-Content-Type: application/json
-
-{
-  "credential": "eyJ...Google-ID-token..."
-}
-```
-
-Successful response:
-
-```json
-{
-  "uid": "local-database-uuid",
-  "email": "student@gmail.com",
-  "token": "TodoFlow.database-bound.JWT",
-  "message": "Google login successful"
-}
-```
-
-Google ID token response mein wapas nahi jata aur application session ke taur
-par store nahi hota.
-
-## 12. Terminal logs mein kya nazar aaye ga?
-
-```text
-Presentation   | Google login request received.
-Infrastructure | PostgreSQL/MongoDB/Firestore Google authentication succeeded.
-Application    | Google login completed.
-```
-
-Password ya token ki actual value logs mein print nahi hoti.
-
-## 13. Database switch karke kaise test karein?
-
-Backend stop karein, phir aik database select karein:
+Backend stop karke aik database select karein:
 
 ```powershell
 $env:DATABASE = "firestore"
@@ -388,88 +174,120 @@ $env:DATABASE = "postgresql"
 python -m uvicorn main:app --reload
 ```
 
-Har restart ke baad same Google account se login karein. Phir user yahan check
-karein:
+Aik waqt mein sirf aik command pair run karein. Factory selected database ke
+matching auth aur todo repositories banati hai.
 
-- Firestore Console -> `auth_users` collection;
-- MongoDB Compass -> `users` collection;
-- pgAdmin -> `users` table.
+## 10. Request, response aur logs
 
-Har database mein different local UID honi chahiye.
+Request:
 
-## 14. Security checklist
+```http
+POST /auth/google
+Content-Type: application/json
 
-- Google ID token backend par verify hota hai.
-- Expected Client ID/audience verify hoti hai.
-- Stable Google `sub` database mein save hota hai.
-- Verified email required hai.
-- Todo ownership local database UUID se hoti hai.
-- TodoFlow JWT selected database se bound hoti hai.
-- Client secret frontend/backend mein store nahi hota.
-- Downloaded client-secret JSON Git mein commit nahi hoti.
-- TodoFlow JWT `localStorage` ke bajaye memory mein rehti hai.
+{ "credential": "Google-ID-token" }
+```
 
-## 15. Common problems aur solutions
+Successful response:
 
-### Google button `setup pending` show kare
+```json
+{
+  "uid": "local-database-uid",
+  "email": "student@gmail.com",
+  "token": "TodoFlow-JWT",
+  "message": "Google login successful"
+}
+```
 
-Client ID dono `.env` files mein set karein aur backend/frontend restart karein.
+Logs:
 
-### `The given origin is not allowed`
+```text
+Presentation   | Google login request received.
+Infrastructure | Database Google authentication succeeded.
+Application    | Google login completed.
+```
 
-Google Cloud mein exact frontend URL Authorized JavaScript origins mein add
-karein. `localhost` aur `127.0.0.1` alag origins hain, isliye dono add karein.
+Password aur token ki actual values logs mein print nahi hotin.
 
-### `Invalid Google login`
+## 11. Presentation demo
 
-Confirm karein ke frontend aur backend mein exact same Web Client ID hai.
+1. `DATABASE=mongodb` select karke Google login karein.
+2. MongoDB Compass mein user aur tasks dikhayein.
+3. MongoDB local UID note karein.
+4. Backend restart karke `DATABASE=postgresql` select karein.
+5. Same Google account se login karein.
+6. pgAdmin mein user aur tasks dikhayein.
+7. Dono UIDs compare karein — woh different hongi.
 
-### Aik database mein account hai, doosri mein nahi
+Is se prove hota hai ke same Google identity ke bawajood har database ka account
+aur data independent hai.
 
-Yeh expected behavior hai. Har selected database ke sath aik dafa Google login
-karein.
+## 12. Common errors
 
-### Database switch ke baad purani JWT par 401 aaye
+| Error | Solution |
+|---|---|
+| `Google login setup pending` | Frontend `.env` mein `VITE_GOOGLE_CLIENT_ID` add karke restart karein |
+| `The given origin is not allowed` | Exact frontend URL Google Cloud origins mein add karein |
+| `Invalid Google login` | Frontend aur backend ki Client ID same check karein |
+| Google app access nahi deta | Gmail ko Google Cloud Test users mein add karein |
+| Database switch ke baad `401` | New database mein dobara login karein |
+| Refresh par logout | Expected hai; token sirf memory mein hai |
 
-Yeh expected security behavior hai. New selected database mein dobara login
-karein.
+## 13. Short viva answers
 
-## 16. Implementation ke waqt kya verify kiya gaya?
+### Firebase Authentication use ho rahi hai?
 
-Yeh checks successfully run huay:
+Nahi. Google identity verify karta hai; user selected database mein save hota
+hai.
 
-- Google claims mapping aur invalid-token rejection;
-- Google-only account par password rejection;
-- real Firestore, MongoDB aur PostgreSQL mein password + Google linking;
-- same database mein repeat Google login par same UID;
-- teen databases mein same identity ke different local UIDs;
-- cross-database JWT rejection;
-- `/auth/google` HTTP aur OpenAPI contract;
-- backend compile aur dependency health;
-- frontend lint aur production build.
+### `google_sub` kyun save hota hai?
 
-Temporary verification users tests ke baad delete kar diye gaye.
+Yeh Google account ki stable unique ID hai. Email change ho sakti hai.
 
-## 17. Presentation mein ready answer
+### Do tokens kyun hain?
+
+Google token identity proof hai. TodoFlow JWT hamari APIs ka access token hai.
+
+### Same Gmail har database mein different user kyun hai?
+
+Har database ka apna users store aur apni local UID hai.
+
+### Repository pattern ka faida?
+
+Application flow same rehta hai aur sirf database implementation change hoti
+hai.
+
+### Client secret kyun use nahi ho raha?
+
+Current Google ID-token flow ko Web Client ID chahiye; client secret required
+nahi hai.
+
+## 14. One-minute presentation answer
 
 > “Frontend Google Identity Services se Google ID token leta hai aur usay
 > `POST /auth/google` par bhejta hai. Backend official `google-auth` library se
-> token verify karta hai aur Google ka stable `sub` identifier use karta hai.
-> Current selected repository sirf apni database mein local user find ya create
-> karti hai. Isi liye same Google account ko Firestore, MongoDB aur PostgreSQL
-> mein different local UIDs milti hain. Aakhir mein TodoFlow apni database-bound
-> JWT issue karta hai jo protected todo requests mein use hoti hai. Google
-> identity prove karta hai, lekin actual application account aur tasks selected
-> database own karti hai.”
+> token verify karta hai. Selected repository `google_sub` ke through user ko
+> apni database mein find ya create karti hai. Backend local UID aur database
+> name wali TodoFlow JWT return karta hai. Isi JWT se tasks access hotay hain.
+> Har database ka user store separate hai, isliye same Gmail ko Firestore,
+> MongoDB aur PostgreSQL mein different local UIDs milti hain.”
 
-## 18. Important code links
+## 15. Yaad rakhne wali line
+
+```text
+Google identity verify karta hai,
+selected database user aur tasks own karti hai,
+TodoFlow JWT access control karti hai.
+```
+
+## Important code links
 
 - [Google button](../frontend/src/components/GoogleSignInButton.jsx)
-- [Frontend authentication thunk](../frontend/src/features/auth/authSlice.js)
-- [Auth HTTP route](../backend/DDD/app/presentation/routers/auth.py)
-- [Auth application service](../backend/DDD/app/application/auth_service.py)
-- [Auth contract](../backend/DDD/app/domain/auth.py)
+- [Frontend auth flow](../frontend/src/features/auth/authSlice.js)
+- [Google login route](../backend/DDD/app/presentation/routers/auth.py)
+- [Auth service](../backend/DDD/app/application/auth_service.py)
+- [Repository factory](../backend/DDD/app/infrastructure/repository_factory.py)
 - [Google/JWT security](../backend/DDD/app/infrastructure/security.py)
-- [Firestore auth adapter](../backend/DDD/app/infrastructure/firestore/auth_repository.py)
-- [MongoDB auth adapter](../backend/DDD/app/infrastructure/mongodb/auth_repository.py)
-- [PostgreSQL auth adapter](../backend/DDD/app/infrastructure/postgresql/auth_repository.py)
+- [Firestore auth repository](../backend/DDD/app/infrastructure/firestore/auth_repository.py)
+- [MongoDB auth repository](../backend/DDD/app/infrastructure/mongodb/auth_repository.py)
+- [PostgreSQL auth repository](../backend/DDD/app/infrastructure/postgresql/auth_repository.py)

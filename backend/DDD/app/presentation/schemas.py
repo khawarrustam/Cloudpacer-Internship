@@ -1,5 +1,6 @@
 """HTTP request and response schemas used only by FastAPI routes."""
 
+from datetime import datetime
 from typing import Literal
 
 from pydantic import BaseModel, EmailStr, Field
@@ -45,6 +46,11 @@ class CreateTodoRequest(BaseModel):
     priority: Literal[
         "LOW", "MEDIUM", "HIGH", "low", "medium", "high"
     ] = "MEDIUM"
+    due_at: datetime | None = None
+    reminder_option: Literal[
+        "NONE", "1_MINUTE", "1_HOUR", "1_DAY", "3_DAYS", "CUSTOM"
+    ] = "NONE"
+    custom_reminder_at: datetime | None = None
 
 
 class TodoResponse(BaseModel):
@@ -57,3 +63,7 @@ class TodoResponse(BaseModel):
     created_at: str
     completed_at: str | None
     owner_uid: str
+    due_at: str | None
+    reminder_at: str | None
+    reminder_sent_at: str | None
+    reminder_option: str

@@ -37,3 +37,9 @@ pymongo>=4.6.0
 
 # PostgreSQL database driver (relational database storage adapter ke liye)
 psycopg[binary]>=3.1.0
+
+# Transactional todo reminder emails Resend API se bhejne ke liye
+resend>=2.53.2,<3.0.0
+
+# FastAPI ke sath background reminder scan chalane ke liye
+APScheduler>=3.11.0,<4.0.0

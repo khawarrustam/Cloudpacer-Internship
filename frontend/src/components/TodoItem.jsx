@@ -1,4 +1,12 @@
-import { Check, Loader2, Trash2 } from 'lucide-react';
+import { Bell, CalendarClock, Check, Loader2, Trash2 } from 'lucide-react';
+
+function formatDate(value) {
+  if (!value) return null;
+  return new Intl.DateTimeFormat(undefined, {
+    dateStyle: 'medium',
+    timeStyle: 'short',
+  }).format(new Date(value));
+}
 
 export default function TodoItem({ todo, onComplete, onDelete, isCompleting, isDeleting }) {
   // English: This presentation component receives data and sends user events to its parent.
@@ -24,6 +32,20 @@ export default function TodoItem({ todo, onComplete, onDelete, isCompleting, isD
         <span className="mt-1 inline-block text-xs capitalize text-[var(--text-muted)]">
           {priority} priority
         </span>
+        {todo.due_at && (
+          <p className="mt-1 flex items-center gap-1 text-xs text-[var(--text-secondary)]">
+            <CalendarClock className="h-3.5 w-3.5" />
+            Due {formatDate(todo.due_at)}
+          </p>
+        )}
+        {todo.reminder_at && (
+          <p className="mt-1 flex items-center gap-1 text-xs text-[var(--text-secondary)]">
+            <Bell className="h-3.5 w-3.5" />
+            {todo.reminder_sent_at
+              ? 'Reminder sent'
+              : `Remind ${formatDate(todo.reminder_at)}`}
+          </p>
+        )}
       </div>
 
       <button

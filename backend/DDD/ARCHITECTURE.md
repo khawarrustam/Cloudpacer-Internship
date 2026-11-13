@@ -27,15 +27,21 @@ must not be moved between layers unless the placement rules below support it.
    explains that `__init__.py` marks a regular package. TodoFlow keeps it only
    at the root `app` boundary; nested folders use Python 3 namespace-package
    behavior because they contain no package initialization or public exports.
+7. [APScheduler user guide](https://apscheduler.readthedocs.io/en/3.x/userguide.html)
+   documents `BackgroundScheduler` for work beside an existing application,
+   plus `max_instances`, coalescing, misfire handling and clean shutdown.
+8. [Resend idempotency keys](https://resend.com/changelog/idempotency-keys)
+   documents safe duplicate protection for retried email requests. TodoFlow
+   uses a stable key made from reminder event, todo ID, and reminder timestamp.
 
 ## 2. Placement rules
 
 | Layer/module | What belongs here | What must not be here |
 |---|---|---|
-| `domain/` | Todo entity/rules, auth email/password/Google-linking rules, value objects, business errors, repository contracts | FastAPI, Pydantic HTTP schemas, hashing/JWT SDKs, MongoDB, PostgreSQL, Firestore, environment variables |
-| `application/` | Input/output DTOs and use cases that coordinate domain objects/repositories | HTTP status codes, database queries, SDK clients, environment reads |
-| `infrastructure/` | Concrete repository adapters, password hashing, Google ID-token/JWT verification, SDK/driver calls, repository factory | FastAPI routes, UI response models, todo or auth business decisions |
-| `presentation/` | Pydantic request/response schemas, FastAPI dependencies, auth/todo routers, HTTP error mapping | SQL, PyMongo queries, Firestore URLs, password hashing |
+| `domain/` | Todo/auth/reminder rules, email/repository ports, value objects and business errors | FastAPI, Pydantic HTTP schemas, Resend/JWT SDKs, database drivers, environment variables |
+| `application/` | Input/output DTOs and auth/todo/reminder use cases | HTTP status codes, database queries, Resend SDK, environment reads |
+| `infrastructure/` | Repository adapters, schema/mappers, hashing, Google/JWT, Resend and scheduler adapters | HTTP routes, UI response models, business decisions |
+| `presentation/` | Pydantic schemas, dependencies, thin routes, controllers and HTTP error mapping | SQL, PyMongo, Firestore URLs, hashing, email provider calls |
 | `config.py` | Typed environment settings and selected-database normalization | Repository creation, API routes, business rules |
 | `logging.py` | Existing request and bilingual step logging | Domain decisions or persistence logic |
 | `app/main.py` | Composition root: create FastAPI, wire repositories/services, middleware, routers, health endpoint | Database CRUD implementation or business rules |
@@ -69,30 +75,40 @@ backend/DDD/
 |   |-- config.py                 # Typed .env settings
 |   |-- logging.py                # Existing bilingual request logs
 |   |-- domain/
-|   |   |-- auth.py               # Auth contracts/data
-|   |   `-- todo.py               # Todo rules/contracts
+|   |   |-- auth.py               # Auth rules/contracts
+|   |   |-- reminder.py           # Reminder date rules/value object
+|   |   |-- notification.py       # Email message + sender port
+|   |   `-- todo.py               # Todo entity/repository contract
 |   |-- application/
 |   |   |-- dto.py                # Use-case boundary data
 |   |   |-- auth_service.py       # Signup/password/Google/token use cases
-|   |   `-- todo_service.py       # Todo use cases
+|   |   |-- todo_service.py       # Todo use cases
+|   |   `-- reminder_service.py   # Due email reminder use case
 |   |-- infrastructure/
 |   |   |-- security.py           # Password + Google token + app JWT
 |   |   |-- repository_factory.py # Selected DB adapter wiring
+|   |   |-- resend_email_sender.py# EmailSender adapter
+|   |   |-- reminder_scheduler.py # APScheduler background adapter
 |   |   |-- firestore/
 |   |   |   |-- auth_repository.py
-|   |   |   `-- todo_repository.py
+|   |   |   |-- todo_repository.py
+|   |   |   `-- todo_mapper.py
 |   |   |-- mongodb/
 |   |   |   |-- auth_repository.py
 |   |   |   `-- todo_repository.py
 |   |   `-- postgresql/
 |   |       |-- auth_repository.py
-|   |       `-- todo_repository.py
-|   `-- presentation/
-|       |-- dependencies.py       # FastAPI service/current-user injection
-|       |-- schemas.py            # HTTP request/response shapes
-|       `-- routers/
-|           |-- auth.py
-|           `-- todos.py
+|   |       |-- todo_repository.py
+|   |       `-- todo_schema.py
+|   |-- presentation/
+|   |   |-- dependencies.py       # FastAPI service/current-user injection
+|   |   |-- schemas.py            # HTTP request/response shapes
+|   |   |-- controllers/          # Mapping/service calls/error translation
+|   |   |   |-- auth_controller.py
+|   |   |   `-- todo_controller.py
+|   |   `-- routers/              # URL/decorator/dependency declarations
+|   |       |-- auth.py
+|   |       `-- todos.py
 `-- requirements.txt
 ```
 
@@ -127,6 +143,6 @@ app/main.py   -> presentation + application + infrastructure
 domain        -> Python standard library only
 ```
 
-The composition root is the only place that chooses concrete database
-repositories. This keeps a database switch from changing domain, application,
-or route behavior.
+The API composition root wires the selected repository, application reminder
+service, Resend adapter and background scheduler. This keeps a database switch
+from changing domain, application, route, or reminder behavior.

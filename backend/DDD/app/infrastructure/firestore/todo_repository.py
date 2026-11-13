@@ -5,7 +5,11 @@ from urllib.parse import quote
 
 from google.auth.transport.requests import AuthorizedSession
 
-from app.domain.todo import Priority, TaskTitle, TodoItem, TodoRepository
+from app.domain.todo import TodoItem, TodoRepository
+from app.infrastructure.firestore.todo_mapper import (
+    document_to_todo,
+    todo_to_document,
+)
 from app.logging import log_step
 
 
@@ -29,13 +33,16 @@ class FirestoreTodoRepository(TodoRepository):
         self.user_collection = user_collection
         self.todo_collection = todo_collection
         self.page_size = page_size
+        # Collection-group query scheduler ko all users ke due reminders deti hai.
+        self.run_query_url = f"{documents_url}:runQuery"
+        self.use_indexed_reminder_query = True
 
     def save(self, todo: TodoItem) -> None:
         """Create or update one Firestore todo document."""
         # PATCH same URL par create ya latest entity state update dono handle karta hai.
         response = self.session.patch(
             self._document_url(todo.owner_uid, todo.id),
-            json=self._to_document(todo),
+            json=todo_to_document(todo),
         )
         response.raise_for_status()
         log_step(
@@ -61,7 +68,7 @@ class FirestoreTodoRepository(TodoRepository):
             "Firebase Firestore found the todo.",
             "Firebase Firestore ko todo mil gaya.",
         )
-        return self._to_entity(response.json())
+        return document_to_todo(response.json())
 
     def get_by_owner(self, owner_uid: str) -> list[TodoItem]:
         """Read all Firestore todos for one user, including every page."""
@@ -88,7 +95,65 @@ class FirestoreTodoRepository(TodoRepository):
             f"Firestore returned {len(documents)} todo(s).",
             f"Firestore ne {len(documents)} todo diye.",
         )
-        return [self._to_entity(document) for document in documents]
+        return [document_to_todo(document) for document in documents]
+
+    def get_due_reminders(
+        self,
+        now: datetime,
+        limit: int,
+    ) -> list[TodoItem]:
+        """Read due reminders across every user's todo subcollection."""
+        indexed_query = {
+            "structuredQuery": {
+                "from": [{
+                    "collectionId": self.todo_collection,
+                    "allDescendants": True,
+                }],
+                # One inequality avoids a custom composite index. Completed/sent
+                # filtering happens in Python for this beginner-sized project.
+                "where": {
+                    "fieldFilter": {
+                        "field": {"fieldPath": "reminder_at"},
+                        "op": "LESS_THAN_OR_EQUAL",
+                        "value": {"stringValue": now.isoformat()},
+                    }
+                },
+            }
+        }
+        scan_query = {
+            "structuredQuery": {
+                "from": [{
+                    "collectionId": self.todo_collection,
+                    "allDescendants": True,
+                }]
+            }
+        }
+        query = indexed_query if self.use_indexed_reminder_query else scan_query
+        response = self.session.post(self.run_query_url, json=query)
+        if (
+            response.status_code == 400
+            and "COLLECTION_GROUP_ASC" in response.text
+        ):
+            # New Firestore projects may not have the collection-group field
+            # index yet. Small demo data can still work through one full scan.
+            self.use_indexed_reminder_query = False
+            log_step(
+                "Infrastructure",
+                "Firestore reminder index missing; using collection scan.",
+                "Firestore reminder index nahi; collection scan use ho raha hai.",
+            )
+            response = self.session.post(self.run_query_url, json=scan_query)
+        response.raise_for_status()
+        due_todos = []
+        for result in response.json():
+            document = result.get("document")
+            if not document:
+                continue
+            todo = document_to_todo(document)
+            if todo.reminder_is_due(now):
+                due_todos.append(todo)
+        due_todos.sort(key=lambda todo: todo.reminder.reminder_at)
+        return due_todos[:limit]
 
     def delete(self, todo_id: str, owner_uid: str) -> None:
         """Delete one user's todo document from Firestore."""
@@ -111,60 +176,3 @@ class FirestoreTodoRepository(TodoRepository):
     def _document_url(self, owner_uid: str, todo_id: str) -> str:
         """Build the URL for one todo document."""
         return f"{self._collection_url(owner_uid)}/{quote(todo_id, safe='')}"
-
-    @staticmethod
-    def _to_document(todo: TodoItem) -> dict:
-        """Convert TodoItem into Firestore REST fields."""
-        # Firestore REST normal JSON ke bajaye typed value wrappers expect karti hai.
-        values = {
-            "id": todo.id,
-            "title": todo.title.value,
-            "priority": todo.priority.value,
-            "is_completed": todo.is_completed,
-            "created_at": todo.created_at.isoformat(),
-            "completed_at": (
-                todo.completed_at.isoformat() if todo.completed_at else None
-            ),
-            "owner_uid": todo.owner_uid,
-        }
-        fields = {key: _encode(value) for key, value in values.items()}
-        return {"fields": fields}
-
-    @staticmethod
-    def _to_entity(document: dict) -> TodoItem:
-        """Convert Firestore REST fields back into TodoItem."""
-        values = {
-            key: _decode(value)
-            for key, value in document.get("fields", {}).items()
-        }
-        completed_at = None
-        if values.get("completed_at"):
-            completed_at = datetime.fromisoformat(values["completed_at"])
-        return TodoItem(
-            id=values["id"],
-            title=TaskTitle(values["title"]),
-            priority=Priority(values["priority"]),
-            is_completed=values["is_completed"],
-            created_at=datetime.fromisoformat(values["created_at"]),
-            completed_at=completed_at,
-            owner_uid=values["owner_uid"],
-        )
-
-
-def _encode(value) -> dict:
-    """Convert one Python value into Firestore REST format."""
-    # Type order important hai because Python bool int ka subclass bhi hota hai.
-    if value is None:
-        return {"nullValue": None}
-    if isinstance(value, bool):
-        return {"booleanValue": value}
-    return {"stringValue": str(value)}
-
-
-def _decode(value: dict):
-    """Convert one Firestore REST value into a Python value."""
-    if "nullValue" in value:
-        return None
-    if "booleanValue" in value:
-        return value["booleanValue"]
-    return value.get("stringValue", "")

@@ -1,6 +1,7 @@
 """Application input and output DTOs used by the use cases."""
 
 from dataclasses import dataclass
+from datetime import datetime
 
 
 # Input DTOs presentation se use case tak simple data le jati hain. Output DTOs
@@ -14,6 +15,10 @@ class CreateTodoInput:
     title: str
     priority: str
     owner_uid: str
+    owner_email: str
+    due_at: datetime | None
+    reminder_option: str
+    custom_reminder_at: datetime | None
 
 
 @dataclass(frozen=True)
@@ -59,6 +64,10 @@ class TodoOutput:
     created_at: str
     completed_at: str | None
     owner_uid: str
+    due_at: str | None
+    reminder_at: str | None
+    reminder_sent_at: str | None
+    reminder_option: str
 
 
 @dataclass(frozen=True)

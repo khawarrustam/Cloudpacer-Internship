@@ -3,6 +3,7 @@
 from functools import lru_cache
 from pathlib import Path
 
+from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -33,6 +34,12 @@ class Settings(BaseSettings):
     auth_token_secret: str
     auth_token_expire_minutes: int
     google_client_id: str
+
+    # Reminder scheduler aur Resend ki har runtime value environment se aati hai.
+    resend_api_key: str
+    reminder_email_from: str
+    reminder_scan_interval_seconds: int = Field(gt=0)
+    reminder_batch_size: int = Field(gt=0)
 
     # Har database group sirf tab use hota hai jab DATABASE us driver ko select kare.
     mongodb_uri: str

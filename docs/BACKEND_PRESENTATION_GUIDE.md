@@ -21,7 +21,7 @@
 6. [Presentation files](#6-presentation-files)
 7. [Application files](#7-application-files)
 8. [Domain files](#8-domain-files)
-9. [Shared infrastructure files](#9-shared-infrastructure-files)
+9. [Shared infrastructure and scheduler files](#9-shared-infrastructure-and-scheduler-files)
 10. [Firestore files](#10-firestore-files)
 11. [MongoDB files](#11-mongodb-files)
 12. [PostgreSQL files](#12-postgresql-files)
@@ -41,12 +41,11 @@ Presentation mein yeh bol sakte hain:
 > Backend ka root package `app` hai. Is ke andar Domain, Application,
 > Presentation aur Infrastructure folders hain.
 >
-> Domain folder business entities, validation rules aur repository contracts
-> rakhta hai. Application folder signup, password/Google login aur todo workflows coordinate
-> karta hai. Presentation folder HTTP request/response schemas, authentication
-> dependencies aur API routes rakhta hai. Infrastructure folder password/token
-> security aur Firestore, MongoDB, PostgreSQL ki concrete repository
-> implementations rakhta hai.
+> Domain folder business entities, reminder rules aur repository/email contracts
+> rakhta hai. Application folder auth, todo aur reminder workflows coordinate
+> karta hai. Presentation folder HTTP schemas, authentication dependencies,
+> thin routes aur controllers rakhta hai. Infrastructure folder password/token
+> security, Resend aur three databases ki concrete implementations rakhta hai.
 >
 > `app/main.py` composition root hai. Yeh configuration read karta hai,
 > selected database ke auth aur todo repositories banata hai, un repositories
@@ -86,16 +85,22 @@ backend/DDD/
     |
     |-- domain/
     |   |-- auth.py
-    |   `-- todo.py
+    |   |-- todo.py
+    |   |-- reminder.py
+    |   `-- notification.py
     |
     |-- application/
     |   |-- dto.py
     |   |-- auth_service.py
-    |   `-- todo_service.py
+    |   |-- todo_service.py
+    |   `-- reminder_service.py
     |
     |-- presentation/
     |   |-- schemas.py
     |   |-- dependencies.py
+    |   |-- controllers/
+    |   |   |-- auth_controller.py
+    |   |   `-- todo_controller.py
     |   `-- routers/
     |       |-- auth.py
     |       `-- todos.py
@@ -103,10 +108,13 @@ backend/DDD/
     `-- infrastructure/
         |-- security.py
         |-- repository_factory.py
+        |-- resend_email_sender.py
+        |-- reminder_scheduler.py
         |
         |-- firestore/
         |   |-- auth_repository.py
-        |   `-- todo_repository.py
+        |   |-- todo_repository.py
+        |   `-- todo_mapper.py
         |
         |-- mongodb/
         |   |-- auth_repository.py
@@ -114,7 +122,8 @@ backend/DDD/
         |
         `-- postgresql/
             |-- auth_repository.py
-            `-- todo_repository.py
+            |-- todo_repository.py
+            `-- todo_schema.py
 ```
 
 ### Folder names ka simple meaning
@@ -124,6 +133,7 @@ backend/DDD/
 | `domain` | Business ka heart | Entity, value object, business errors, repository contracts |
 | `application` | Workflow coordinator | Input/output DTOs and use-case services |
 | `presentation` | HTTP boundary | Pydantic schemas, dependencies and routes |
+| `controllers` | HTTP workflow adapter | Request mapping, service call, HTTP error translation |
 | `infrastructure` | Technical implementation | Security, database factory and DB adapters |
 | `routers` | Endpoint grouping | Auth endpoints and todo endpoints separate files |
 | `firestore` | Firestore adapter | Firestore auth and todo persistence |
@@ -166,6 +176,7 @@ More exact diagram:
 
 ```text
 auth.py route
+    -> auth_controller.py
     -> AuthService
         -> AuthRepository contract
             <- FirestoreAuthRepository
@@ -173,6 +184,7 @@ auth.py route
             <- PostgreSQLAuthRepository
 
 todos.py route
+    -> todo_controller.py
     -> TodoService
         -> TodoItem business rules
         -> TodoRepository contract
@@ -219,10 +231,11 @@ Exact flow:
 8. repository_factory active DATABASE read karti hai
 9. matching todo + auth repositories create hoti hain
 10. repositories TodoService and AuthService mein inject hoti hain
-11. services app.state par store hoti hain
-12. auth_router and todo_router include hote hain
-13. health_check route register hota hai
-14. server requests ke liye ready hota hai
+11. ReminderService, Resend adapter aur ReminderScheduler wire hote hain
+12. services app.state par store hoti hain
+13. auth_router and todo_router include hote hain
+14. API lifespan background scheduler start karta hai
+15. server requests aur reminder scans ke liye ready hota hai
 ```
 
 Important line:
@@ -279,7 +292,7 @@ Path: [`backend/DDD/app/main.py`](../backend/DDD/app/main.py)
 Purpose:
 
 - Complete FastAPI application assemble karna.
-- Configuration, repositories, services, middleware aur routes ko aik jagah wire karna.
+- Repositories, services, reminder scheduler, middleware aur routes wire karna.
 - Business logic likhe baghair application startup control karna.
 
 Main function:
@@ -293,13 +306,13 @@ Function ka complete work:
 | Order | Statement/operation | Reason |
 |---|---|---|
 | 1 | `settings or get_settings()` | Explicit settings ya cached `.env` settings |
-| 2 | `FastAPI(title=settings.app_name)` | Application object create |
-| 3 | `CORSMiddleware` | Frontend origins allow |
-| 4 | `install_request_logging(app)` | Request ID and timing logs |
-| 5 | `create_repositories(settings)` | Selected database adapters |
-| 6 | `TodoService(todo_repository)` | Todo dependency injection |
-| 7 | `AuthService(auth_repository)` | Auth dependency injection |
-| 8 | services on `app.state` | Request dependencies ko shared instances |
+| 2 | `create_repositories(settings)` | Selected database adapters |
+| 3 | Auth/Todo/Reminder services | Use-case dependency injection |
+| 4 | Resend + `ReminderScheduler` | Email and recurring scan adapters |
+| 5 | nested `lifespan()` | API ke sath scheduler start/stop |
+| 6 | `FastAPI(..., lifespan=lifespan)` | Application object create |
+| 7 | CORS + request logging | Browser access and trace logs |
+| 8 | services/scheduler on `app.state` | Configured shared instances |
 | 9 | `include_router(...)` | Auth/todo endpoints mount |
 | 10 | nested `health_check()` | API and selected DB status |
 | 11 | `return app` | Fully configured application |
@@ -359,6 +372,7 @@ Settings groups:
 | Logs | `log_level` |
 | Database selection | `database` |
 | Auth | `auth_token_secret`, `auth_token_expire_minutes`, `google_client_id` |
+| Reminder email | Resend key/sender, scan interval and batch size |
 | MongoDB | URI, database, todo/user collection names |
 | PostgreSQL | `postgresql_url` |
 | Firestore | credential path, API URL, database and collection names, page size |
@@ -522,8 +536,8 @@ Purpose:
 | `LoginRequest` | Valid email, password min 6 | Login route input |
 | `GoogleLoginRequest` | Google ID-token credential min 20 chars | Google route input |
 | `AuthResponse` | uid, email, token, message | Signup/login/Google output |
-| `CreateTodoRequest` | Title 3–120; six upper/lower priority literals; default MEDIUM | Create route input |
-| `TodoResponse` | Complete public todo shape | Todo route output |
+| `CreateTodoRequest` | Title/priority plus optional due date, reminder option and custom time | Create route input |
+| `TodoResponse` | Todo plus due/reminder/sent timestamps | Todo route output |
 
 Important:
 
@@ -589,15 +603,33 @@ Security point:
 
 Owner UID request body se trust nahi hoti. Verified token se aati hai.
 
-### 6.3 `presentation/routers/auth.py`
+### 6.3 `presentation/controllers/`
+
+Paths:
+
+- [`auth_controller.py`](../backend/DDD/app/presentation/controllers/auth_controller.py)
+- [`todo_controller.py`](../backend/DDD/app/presentation/controllers/todo_controller.py)
+
+Controllers routes se HTTP workflow logic separate rakhtay hain. Yeh request
+schema ko application DTO mein map, service call, output response aur known
+domain error ko HTTP status mein translate kartay hain. Controllers mein
+business rule ya database query nahi hoti.
+
+```text
+Thin route -> controller -> application service -> domain/repository
+```
+
+`todo_controller.add_todo` owner UID aur email UI body se nahi leta; verified
+`CurrentUser` se milnay wali values use karta hai.
+
+### 6.4 `presentation/routers/auth.py`
 
 Path: [`backend/DDD/app/presentation/routers/auth.py`](../backend/DDD/app/presentation/routers/auth.py)
 
 Purpose:
 
 - Signup, password login aur Google login HTTP endpoints expose karna.
-- Request schemas ko application DTOs aur service outputs ko HTTP responses mein map karna.
-- Authentication errors ko correct HTTP status codes dena.
+- Validated request aur injected service ko auth controller tak delegate karna.
 
 Router:
 
@@ -607,30 +639,23 @@ APIRouter(prefix="/auth", tags=["Auth"])
 
 Functions:
 
-| Route function | HTTP | Mapping | Success | Error |
-|---|---|---|---|---|
-| `signup` | `POST /auth/signup` | `SignupRequest -> SignupInput -> AuthService.signup -> AuthResponse` | 201 | Validation -> 400 |
-| `login` | `POST /auth/login` | `LoginRequest -> LoginInput -> AuthService.login -> AuthResponse` | 200 | Validation -> 401 |
-| `login_with_google` | `POST /auth/google` | `GoogleLoginRequest -> GoogleLoginInput -> AuthService.login_with_google -> AuthResponse` | 200 | Invalid Google token -> 401 |
+| Route function | HTTP | Controller |
+|---|---|---|
+| `signup` | `POST /auth/signup` | `signup_user` |
+| `login` | `POST /auth/login` | `login_user` |
+| `login_with_google` | `POST /auth/google` | `google_login_user` |
 
-Route ka kaam:
+Route ka kaam sirf URL, method, response model aur dependency declare karke
+controller call karna hai. Mapping/error logic `auth_controller.py` mein hai.
 
-1. HTTP request receive.
-2. Presentation log.
-3. Request schema ko application DTO mein map.
-4. Service call.
-5. Application output ko response schema mein map.
-6. Known error ko HTTP exception mein map.
-
-### 6.4 `presentation/routers/todos.py`
+### 6.5 `presentation/routers/todos.py`
 
 Path: [`backend/DDD/app/presentation/routers/todos.py`](../backend/DDD/app/presentation/routers/todos.py)
 
 Purpose:
 
 - Todo list, create, complete aur delete endpoints expose karna.
-- Verified user UID ko todo use cases tak safely pass karna.
-- Domain/application results aur errors ko HTTP responses mein translate karna.
+- Verified identity aur request ko todo controller tak delegate karna.
 
 Router:
 
@@ -640,12 +665,12 @@ APIRouter(prefix="/todos", tags=["Todos"])
 
 Functions:
 
-| Function | HTTP | Service call | Success/error |
-|---|---|---|---|
-| `list_todos` | `GET /todos` | `todo_service.list(user.uid)` | 200 list |
-| `create_todo` | `POST /todos` | `todo_service.create(CreateTodoInput(...))` | 201; domain error 400 |
-| `complete_todo` | `PATCH /todos/{id}/complete` | `todo_service.complete(TodoActionInput(...))` | 200; missing 404; rule error 400 |
-| `delete_todo` | `DELETE /todos/{id}` | `todo_service.delete(TodoActionInput(...))` | 204; missing 404 |
+| Function | HTTP | Controller |
+|---|---|---|
+| `list_todos` | `GET /todos` | `get_todos` |
+| `create_todo` | `POST /todos` | `add_todo` |
+| `complete_todo` | `PATCH /todos/{id}/complete` | `finish_todo` |
+| `delete_todo` | `DELETE /todos/{id}` | `remove_todo` |
 
 Important mapping:
 
@@ -765,6 +790,21 @@ Purpose:
 
 Complete aur delete dono mein same ID + owner existence check duplicate nahi
 hota.
+
+### 7.4 `application/reminder_service.py`
+
+Path: [`backend/DDD/app/application/reminder_service.py`](../backend/DDD/app/application/reminder_service.py)
+
+`ReminderService.process_due()` selected repository se due reminders leta hai,
+`EmailSender` port ke through email bhejta hai aur provider success ke baad
+`reminder_sent_at` save karta hai. Failure par sent state nahi lagti, isliye next
+scheduler scan retry kar sakta hai. Stable idempotency key duplicate Resend email
+ko guard karti hai.
+
+`_build_message()` branded TodoFlow HTML email aur plain-text fallback banata
+hai. Email mein safe escaped task title, readable due date aur priority badge
+hota hai. Inline styles different email clients mein reliable rendering deti
+hain; Resend-specific code phir bhi infrastructure adapter mein rehta hai.
 
 ---
 
@@ -895,8 +935,10 @@ Methods:
 
 | Method | Input | Work | Return/error |
 |---|---|---|---|
-| `create(title, priority, owner_uid)` | Plain values | UUID, title validation, uppercase priority, UTC time, incomplete state | New `TodoItem` |
+| `create(...)` | Title, priority, trusted owner/email and reminder input | UUID, title/reminder validation, UTC time, incomplete state | New `TodoItem` |
 | `complete()` | Existing entity | Already-complete check; status true; UTC completion time | `None` or `TaskAlreadyCompletedError` |
+| `reminder_is_due(now)` | Current UTC time | Incomplete plus unsent/due checks | Boolean |
+| `mark_reminder_sent(time)` | Provider success time | One-time sent state | `None` |
 
 Business rule entity ke andar kyun?
 
@@ -909,14 +951,30 @@ Route, service ya database change ho tab bhi completion rule same rehta hai.
 | `save` | `TodoItem` | `None` |
 | `get_by_id` | todo ID + owner UID | `TodoItem | None` |
 | `get_by_owner` | owner UID | `list[TodoItem]` |
+| `get_due_reminders` | current time + limit | `list[TodoItem]` |
 | `delete` | todo ID + owner UID | `None` |
 
 Owner UID contract ka part hai, isliye infrastructure queries ownership ko
 database operation tak carry karti hain.
 
+### 8.3 `domain/reminder.py` and `domain/notification.py`
+
+`ReminderSettings` due date, reminder time, recipient aur sent time ka value
+object hai. Rules:
+
+- due date future aur timezone-aware ho;
+- reminder ke liye due date required ho;
+- 1 minute/hour/day/3 days offset backend calculate kare;
+- custom reminder due date se pehle aur future mein ho;
+- sent reminder dobara mark na ho;
+- completed todo reminder due nahi maana jata.
+
+`EmailMessage` provider-independent message hai aur `EmailSender` outgoing port
+hai. Domain ko Resend SDK ka knowledge nahi hota.
+
 ---
 
-## 9. Shared infrastructure files
+## 9. Shared infrastructure and scheduler files
 
 ### 9.1 `infrastructure/security.py`
 
@@ -1006,6 +1064,30 @@ Matching pair kyun important hai?
 Selected database users aur todos dono own karti hai. Mixed Mongo auth +
 PostgreSQL todo wiring possible nahi hoti.
 
+### 9.3 `infrastructure/resend_email_sender.py`
+
+Path: [`backend/DDD/app/infrastructure/resend_email_sender.py`](../backend/DDD/app/infrastructure/resend_email_sender.py)
+
+`ResendEmailSender` domain ke `EmailSender` port ko implement karta hai. API key
+aur sender `.env` se milte hain. `send(message)` domain message ko Resend payload
+mein map karta hai, stable idempotency key options mein deta hai aur provider ka
+email ID return karta hai. Resend import domain/application mein nahi jata.
+
+### 9.4 `infrastructure/reminder_scheduler.py`
+
+Path: [`backend/DDD/app/infrastructure/reminder_scheduler.py`](../backend/DDD/app/infrastructure/reminder_scheduler.py)
+
+| Method | Work |
+|---|---|
+| `start` | Startup recovery scan aur APScheduler background thread start |
+| `shutdown` | API stop/reload par scheduler cleanly stop |
+| `_process_reminders` | One due batch application service se process |
+| `_log_result` | Non-empty scan ka bilingual summary log |
+
+`BackgroundScheduler.start()` foran return karta hai, isliye isi terminal mein
+FastAPI requests bhi handle hoti rehti hain. FastAPI lifespan scheduler ko API
+ke sath start aur stop karta hai.
+
 ---
 
 ## 10. Firestore files
@@ -1064,8 +1146,8 @@ Path: [`backend/DDD/app/infrastructure/firestore/todo_repository.py`](../backend
 Purpose:
 
 - `TodoRepository` contract ko Firestore REST operations se implement karna.
-- Domain entities aur Firestore typed documents ke darmiyan mapping karna.
 - Har owner's todos ko uski own subcollection mein isolate karna.
+- Collection-group query se all users ki due reminders scheduler ko dena.
 
 Class:
 
@@ -1086,13 +1168,10 @@ Methods:
 | `save` | Entity -> REST document -> PATCH/upsert |
 | `get_by_id` | Owner path + ID GET; 404 -> None; document -> entity |
 | `get_by_owner` | User subcollection pages loop; all documents -> entities |
+| `get_due_reminders` | Indexed collection-group query; small-data scan fallback |
 | `delete` | Owner path + ID DELETE; missing delete harmless |
 | `_collection_url` | URL-encode user collection, owner and todo collection |
 | `_document_url` | Collection URL + encoded todo ID |
-| `_to_document` | Entity fields -> typed REST fields |
-| `_to_entity` | REST fields -> `TaskTitle`, `Priority`, `TodoItem` |
-| `_encode` | Python None/bool/string -> Firestore typed wrapper |
-| `_decode` | Firestore typed wrapper -> Python value |
 
 Pagination loop:
 
@@ -1101,6 +1180,16 @@ GET page -> documents add -> nextPageToken?
     yes: next page
     no: return all
 ```
+
+### 10.3 `firestore/todo_mapper.py`
+
+Path: [`backend/DDD/app/infrastructure/firestore/todo_mapper.py`](../backend/DDD/app/infrastructure/firestore/todo_mapper.py)
+
+Repository HTTP/query kaam par focused rehti hai; mapper entity/document
+conversion separate rakhta hai. `todo_to_document` reminder fields samait
+Firestore typed fields banata hai. `document_to_todo` `TaskTitle`, `Priority`,
+`ReminderSettings` aur `TodoItem` restore karta hai. `_encode`/`_decode` REST
+value wrappers handle karte hain.
 
 ---
 
@@ -1162,7 +1251,7 @@ Class:
 MongoTodoRepository(TodoRepository)
 ```
 
-Constructor `owner_uid` index create karta hai.
+Constructor owner index aur due-reminder compound index create karta hai.
 
 Methods:
 
@@ -1171,6 +1260,7 @@ Methods:
 | `save` | `replace_one(..., upsert=True)` | Create or replace same ID |
 | `get_by_id` | `find_one({_id, owner_uid})` | ID + owner both required |
 | `get_by_owner` | `find({owner_uid})` | Only current user list |
+| `get_due_reminders` | Due/incomplete/unsent query + limit | Worker batch |
 | `delete` | `delete_one({_id, owner_uid})` | Cross-user delete blocked |
 | `_to_document` | Entity -> Mongo document | Datetimes ISO strings |
 | `_to_entity` | Mongo document -> entity | Domain types restore |
@@ -1185,6 +1275,11 @@ is_completed
 created_at
 completed_at
 owner_uid
+due_at
+reminder_at
+reminder_email
+reminder_sent_at
+reminder_option
 ```
 
 ---
@@ -1249,7 +1344,7 @@ Class:
 PostgreSQLTodoRepository(TodoRepository)
 ```
 
-Constructor URL store karke `_create_table()` call karta hai.
+Constructor URL store karke `ensure_todo_table()` call karta hai.
 
 Methods:
 
@@ -1258,8 +1353,8 @@ Methods:
 | `save` | `INSERT ... ON CONFLICT (id) DO UPDATE` |
 | `get_by_id` | `SELECT ... WHERE id=%s AND owner_uid=%s` |
 | `get_by_owner` | Owner SELECT + `ORDER BY created_at DESC` |
+| `get_due_reminders` | Due/incomplete/unsent SELECT + limit |
 | `delete` | `DELETE WHERE id=%s AND owner_uid=%s` |
-| `_create_table` | `CREATE TABLE IF NOT EXISTS todos` |
 | `_to_entity` | Named SQL row -> domain `TodoItem` |
 
 Todos table:
@@ -1272,7 +1367,21 @@ is_completed BOOLEAN NOT NULL
 created_at TIMESTAMPTZ NOT NULL
 completed_at TIMESTAMPTZ NULL
 owner_uid TEXT NOT NULL
+due_at TIMESTAMPTZ NULL
+reminder_at TIMESTAMPTZ NULL
+reminder_email TEXT NULL
+reminder_sent_at TIMESTAMPTZ NULL
+reminder_option TEXT NOT NULL
 ```
+
+### 12.3 `postgresql/todo_schema.py`
+
+Path: [`backend/DDD/app/infrastructure/postgresql/todo_schema.py`](../backend/DDD/app/infrastructure/postgresql/todo_schema.py)
+
+`ensure_todo_table` table create karta hai aur existing installation par
+`ADD COLUMN IF NOT EXISTS` se reminder columns safely add karta hai. Partial
+`reminder_at` index sirf incomplete/unsent rows ko due scan ke liye optimize
+karta hai. Schema migration separate hone se repository CRUD readable rehta hai.
 
 Parameterized `%s` values kyun?
 
@@ -1288,7 +1397,8 @@ hota hai.
 ```text
 POST /auth/signup
  -> SignupRequest validates JSON
- -> auth.signup route creates SignupInput
+ -> auth.signup thin route
+ -> auth_controller.signup_user creates SignupInput
  -> AuthService.signup
  -> selected AuthRepository.signup
  -> EmailAddress + PasswordPolicy + DisplayName domain rules
@@ -1305,7 +1415,8 @@ POST /auth/signup
 ```text
 POST /auth/login
  -> LoginRequest
- -> LoginInput
+ -> auth.login thin route
+ -> auth_controller.login_user creates LoginInput
  -> AuthService.login
  -> selected repository finds user
  -> password_matches
@@ -1319,7 +1430,7 @@ POST /auth/login
 Google button returns credential (Google ID token)
  -> POST /auth/google
  -> GoogleLoginRequest
- -> GoogleLoginInput
+ -> auth_controller.google_login_user creates GoogleLoginInput
  -> AuthService.login_with_google
  -> selected AuthRepository.login_with_google
  -> AuthSecurity.verify_google_credential
@@ -1362,10 +1473,13 @@ Authorization Bearer token
 POST /todos
  -> CreateTodoRequest
  -> CurrentUser dependency
- -> CreateTodoInput(title, priority, user.uid)
+ -> todos.create_todo thin route
+ -> todo_controller.add_todo
+ -> CreateTodoInput(title, priority, user.uid, user.email, reminder values)
  -> TodoService.create
  -> TodoItem.create
- -> domain validation + UUID + UTC time
+ -> TaskTitle + ReminderSettings domain validation
+ -> UUID + UTC time + calculated reminder_at
  -> selected TodoRepository.save
  -> TodoOutput
  -> TodoResponse
@@ -1376,6 +1490,7 @@ POST /todos
 ```text
 GET /todos
  -> verified user.uid
+ -> todo_controller.get_todos
  -> TodoService.list
  -> repository.get_by_owner(uid)
  -> list[TodoItem]
@@ -1388,6 +1503,7 @@ GET /todos
 ```text
 PATCH /todos/{id}/complete
  -> verified user.uid
+ -> todo_controller.finish_todo
  -> TodoActionInput(id, uid)
  -> TodoService._get_todo_or_fail
  -> repository.get_by_id(id, uid)
@@ -1401,11 +1517,33 @@ PATCH /todos/{id}/complete
 ```text
 DELETE /todos/{id}
  -> verified user.uid
+ -> todo_controller.remove_todo
  -> TodoActionInput(id, uid)
  -> TodoService._get_todo_or_fail
  -> repository.delete(id, uid)
  -> 204 No Content
 ```
+
+### 13.9 Reminder scheduler flow
+
+```text
+python -m uvicorn main:app --reload
+ -> app/main.py wires selected TodoRepository
+ -> ResendEmailSender is attached to ReminderService
+ -> FastAPI lifespan starts ReminderScheduler
+ -> BackgroundScheduler interval scan runs in a thread
+ -> repository.get_due_reminders(now, batch_size)
+ -> TodoItem.reminder_is_due checks domain state
+ -> ReminderService builds provider-independent EmailMessage
+ -> Resend adapter sends with stable idempotency key
+ -> provider success
+ -> TodoItem.mark_reminder_sent
+ -> repository.save persists reminder_sent_at
+```
+
+Database reminder ka source of truth hai. API restart ke baad due reminder
+dobara read ho sakti hai. Failed send par `reminder_sent_at` set nahi hota, so
+next scan retry karta hai. Completed/deleted todo email nahi hota.
 
 ---
 
@@ -1419,7 +1557,10 @@ main.py
  -> app/main.py
       -> application/auth_service.py
       -> application/todo_service.py
+      -> application/reminder_service.py
       -> infrastructure/repository_factory.py
+      -> infrastructure/resend_email_sender.py
+      -> infrastructure/reminder_scheduler.py
       -> logging.py
       -> presentation/routers/auth.py
       -> presentation/routers/todos.py
@@ -1431,6 +1572,7 @@ main.py
 presentation/routers/auth.py
  -> presentation/schemas.py
  -> presentation/dependencies.py
+ -> presentation/controllers/auth_controller.py
  -> application/dto.py
  -> application/auth_service.py
  -> domain/auth.py contract
@@ -1444,9 +1586,24 @@ presentation/routers/auth.py
 presentation/routers/todos.py
  -> presentation/schemas.py
  -> presentation/dependencies.py
+ -> presentation/controllers/todo_controller.py
  -> application/dto.py
  -> application/todo_service.py
  -> domain/todo.py entity + contract
+ -> domain/reminder.py value object/rules
+ -> selected infrastructure todo_repository.py
+```
+
+### Reminder dependencies
+
+```text
+app/main.py
+ -> config.py + repository_factory.py
+ -> application/reminder_service.py
+ -> domain/notification.py EmailSender contract
+ -> infrastructure/resend_email_sender.py implementation
+ -> infrastructure/reminder_scheduler.py
+ -> domain/todo.py + reminder.py
  -> selected infrastructure todo_repository.py
 ```
 
@@ -1500,6 +1657,10 @@ Middleware -> request start/end/status/time
 | `TaskTitle.__post_init__` | `domain/todo.py` | Title invariant |
 | `TodoItem.create` | `domain/todo.py` | New valid todo |
 | `TodoItem.complete` | `domain/todo.py` | One-time completion |
+| `TodoItem.reminder_is_due` | `domain/todo.py` | Completed-state plus reminder due rule |
+| `ReminderSettings.create` | `domain/reminder.py` | Validate/calculate reminder schedule |
+| `ReminderSettings.mark_sent` | `domain/reminder.py` | One-time sent state |
+| `EmailMessage.__post_init__` | `domain/notification.py` | Validate provider-independent email |
 | `AuthService.signup` | `auth_service.py` | Signup workflow |
 | `AuthService.login` | `auth_service.py` | Login workflow |
 | `AuthService.login_with_google` | `auth_service.py` | Google login workflow |
@@ -1511,6 +1672,7 @@ Middleware -> request start/end/status/time
 | `TodoService.complete` | `todo_service.py` | Complete workflow |
 | `TodoService.delete` | `todo_service.py` | Delete workflow |
 | `_get_todo_or_fail` | `todo_service.py` | Shared ownership lookup |
+| `ReminderService.process_due` | `reminder_service.py` | Send due batch and save success |
 
 ### Presentation
 
@@ -1519,6 +1681,13 @@ Middleware -> request start/end/status/time
 | `get_auth_service` | `dependencies.py` | App state -> AuthService |
 | `get_todo_service` | `dependencies.py` | App state -> TodoService |
 | `current_user` | `dependencies.py` | Bearer token -> verified user |
+| `signup_user` | `auth_controller.py` | Signup mapping/error translation |
+| `login_user` | `auth_controller.py` | Login mapping/error translation |
+| `google_login_user` | `auth_controller.py` | Google mapping/error translation |
+| `get_todos` | `todo_controller.py` | List use-case controller |
+| `add_todo` | `todo_controller.py` | Create input mapping/error translation |
+| `finish_todo` | `todo_controller.py` | Complete use-case controller |
+| `remove_todo` | `todo_controller.py` | Delete use-case controller |
 | `signup` | `routers/auth.py` | Signup HTTP endpoint |
 | `login` | `routers/auth.py` | Login HTTP endpoint |
 | `login_with_google` | `routers/auth.py` | Google login HTTP endpoint |
@@ -1541,6 +1710,10 @@ Middleware -> request start/end/status/time
 | `_create_firestore_repositories` | `repository_factory.py` | Firestore wiring |
 | `_create_mongodb_repositories` | `repository_factory.py` | Mongo wiring |
 | `_create_postgresql_repositories` | `repository_factory.py` | PostgreSQL wiring |
+| `ResendEmailSender.send` | `resend_email_sender.py` | Send one idempotent email |
+| `ensure_todo_table` | `todo_schema.py` | Create/migrate todo reminder columns |
+| `ReminderScheduler.start` | `reminder_scheduler.py` | Startup scan and background interval start |
+| `ReminderScheduler.shutdown` | `reminder_scheduler.py` | Stop scheduler with API |
 
 ### Repository contract methods
 
@@ -1549,7 +1722,7 @@ AuthRepository:
   signup, login, login_with_google, authenticate
 
 TodoRepository:
-  save, get_by_id, get_by_owner, delete
+  save, get_by_id, get_by_owner, get_due_reminders, delete
 ```
 
 Every database adapter in methods ko apni technology se implement karta hai.
@@ -1629,6 +1802,12 @@ save:
 ```
 
 #### Part 6 — Close (1 minute)
+
+Reminder ko short flow mein show karein:
+
+```text
+UI schedule -> selected DB -> API background scan -> Resend -> sent state in same DB
+```
 
 > “Routes and services same rehti hain. Factory sirf concrete database adapter
 > change karti hai. Isi liye structure maintainable and database-independent

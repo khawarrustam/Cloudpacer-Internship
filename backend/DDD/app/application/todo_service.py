@@ -1,5 +1,7 @@
 """Todo application use cases."""
 
+from datetime import datetime
+
 from app.application.dto import CreateTodoInput, TodoActionInput, TodoOutput
 from app.domain.todo import TodoItem, TodoNotFoundError, TodoRepository
 from app.logging import log_step
@@ -20,7 +22,16 @@ def to_output(todo: TodoItem) -> TodoOutput:
         created_at=todo.created_at.isoformat(),
         completed_at=completed_at,
         owner_uid=todo.owner_uid,
+        due_at=_optional_iso(todo.reminder.due_at),
+        reminder_at=_optional_iso(todo.reminder.reminder_at),
+        reminder_sent_at=_optional_iso(todo.reminder.sent_at),
+        reminder_option=todo.reminder.option.value,
     )
+
+
+def _optional_iso(value: datetime | None) -> str | None:
+    """Return an ISO datetime string while keeping missing values as None."""
+    return value.isoformat() if value else None
 
 
 class TodoService:
@@ -36,7 +47,15 @@ class TodoService:
     def create(self, data: CreateTodoInput) -> TodoOutput:
         """Validate a new todo through the domain, save it, and return it."""
         # Domain entity rule apply karti hai; repository sirf resulting state save karti hai.
-        todo = TodoItem.create(data.title, data.priority, data.owner_uid)
+        todo = TodoItem.create(
+            title=data.title,
+            priority=data.priority,
+            owner_uid=data.owner_uid,
+            owner_email=data.owner_email,
+            due_at=data.due_at,
+            reminder_option=data.reminder_option,
+            custom_reminder_at=data.custom_reminder_at,
+        )
         self.repository.save(todo)
         log_step(
             "Application",

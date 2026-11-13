@@ -1,10 +1,12 @@
 """Todo business rules, entity, value objects, and repository contract."""
 
 from abc import ABC, abstractmethod
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from enum import Enum
 import uuid
+
+from app.domain.reminder import ReminderSettings
 
 
 class DomainError(Exception):
@@ -63,9 +65,19 @@ class TodoItem:
     created_at: datetime
     owner_uid: str
     completed_at: datetime | None = None
+    reminder: ReminderSettings = field(default_factory=ReminderSettings)
 
     @classmethod
-    def create(cls, title: str, priority: str, owner_uid: str) -> "TodoItem":
+    def create(
+        cls,
+        title: str,
+        priority: str,
+        owner_uid: str,
+        owner_email: str,
+        due_at: datetime | None,
+        reminder_option: str,
+        custom_reminder_at: datetime | None,
+    ) -> "TodoItem":
         """Create a new valid, incomplete todo with a unique ID and UTC time."""
         # ID/time client se nahi lete; server consistent trusted values banata hai.
         return cls(
@@ -75,6 +87,12 @@ class TodoItem:
             is_completed=False,
             created_at=datetime.now(timezone.utc),
             owner_uid=owner_uid,
+            reminder=ReminderSettings.create(
+                due_at=due_at,
+                option=reminder_option,
+                custom_reminder_at=custom_reminder_at,
+                recipient_email=owner_email,
+            ),
         )
 
     def complete(self) -> None:
@@ -84,6 +102,14 @@ class TodoItem:
             raise TaskAlreadyCompletedError("Todo is already completed.")
         self.is_completed = True
         self.completed_at = datetime.now(timezone.utc)
+
+    def reminder_is_due(self, now: datetime) -> bool:
+        """Return true only when this incomplete todo needs an email now."""
+        return not self.is_completed and self.reminder.is_due(now)
+
+    def mark_reminder_sent(self, sent_at: datetime) -> None:
+        """Record successful reminder delivery inside the entity."""
+        self.reminder.mark_sent(sent_at)
 
 
 class TodoRepository(ABC):
@@ -108,6 +134,15 @@ class TodoRepository(ABC):
     @abstractmethod
     def get_by_owner(self, owner_uid: str) -> list[TodoItem]:
         """Return all todos belonging to one authenticated user."""
+        raise NotImplementedError
+
+    @abstractmethod
+    def get_due_reminders(
+        self,
+        now: datetime,
+        limit: int,
+    ) -> list[TodoItem]:
+        """Return incomplete, unsent reminders due at or before now."""
         raise NotImplementedError
 
     @abstractmethod

@@ -30,9 +30,9 @@ export const fetchTodos = createAsyncThunk(
 // Roman Urdu: Create thunk form data bhej kar saved todo wapas laata hai.
 export const createTodo = createAsyncThunk(
   'todos/createTodo',
-  async ({ title, priority }, { rejectWithValue }) => {
+  async (todoData, { rejectWithValue }) => {
     try {
-      return await todoApi.create({ title, priority });
+      return await todoApi.create(todoData);
     } catch (error) {
       return rejectWithValue(
         getTodoErrorMessage(error, 'Failed to add todo'),

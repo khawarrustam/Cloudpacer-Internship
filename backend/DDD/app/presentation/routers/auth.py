@@ -1,10 +1,12 @@
-"""HTTP routes for signup and login."""
+"""Thin HTTP routes for authentication endpoints."""
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter
 
-from app.application.dto import GoogleLoginInput, LoginInput, SignupInput
-from app.domain.auth import ValidationException
-from app.logging import log_step
+from app.presentation.controllers.auth_controller import (
+    google_login_user,
+    login_user,
+    signup_user,
+)
 from app.presentation.dependencies import AuthServiceDep
 from app.presentation.schemas import (
     AuthResponse,
@@ -18,55 +20,15 @@ router = APIRouter(prefix="/auth", tags=["Auth"])
 
 
 @router.post("/signup", response_model=AuthResponse, status_code=201)
-def signup(
-    request: SignupRequest,
-    auth_service: AuthServiceDep,
-) -> AuthResponse:
-    """What: Create an account in the selected database.
-
-    When: The client submits POST /auth/signup.
-    How: Validate HTTP data, call AuthService, and map errors to HTTP 400.
-    """
-    log_step("Presentation", "Signup request received.", "Signup request mil gayi.")
-    try:
-        # HTTP schema ko framework-independent application input DTO mein map karte hain.
-        result = auth_service.signup(SignupInput(
-            email=request.email,
-            password=request.password,
-            display_name=request.display_name,
-        ))
-        # Application output ko public HTTP response contract mein map karte hain.
-        return AuthResponse(
-            uid=result.uid,
-            email=result.email,
-            token=result.token,
-            message="User created successfully",
-        )
-    except ValidationException as error:
-        raise HTTPException(400, str(error)) from error
+def signup(request: SignupRequest, auth_service: AuthServiceDep) -> AuthResponse:
+    """Delegate the signup endpoint to its presentation controller."""
+    return signup_user(request, auth_service)
 
 
 @router.post("/login", response_model=AuthResponse)
-def login(
-    request: LoginRequest,
-    auth_service: AuthServiceDep,
-) -> AuthResponse:
-    """Authenticate from the selected database and return its token."""
-    log_step("Presentation", "Login request received.", "Login request mil gayi.")
-    try:
-        # Route credentials verify nahi karti; use case ko delegate karti hai.
-        result = auth_service.login(LoginInput(
-            email=request.email,
-            password=request.password,
-        ))
-        return AuthResponse(
-            uid=result.uid,
-            email=result.email,
-            token=result.token,
-            message="Login successful",
-        )
-    except ValidationException as error:
-        raise HTTPException(401, str(error)) from error
+def login(request: LoginRequest, auth_service: AuthServiceDep) -> AuthResponse:
+    """Delegate the password-login endpoint to its controller."""
+    return login_user(request, auth_service)
 
 
 @router.post("/google", response_model=AuthResponse)
@@ -74,25 +36,5 @@ def login_with_google(
     request: GoogleLoginRequest,
     auth_service: AuthServiceDep,
 ) -> AuthResponse:
-    """What: Sign up or log in with Google in the selected database.
-
-    When: Google Identity Services returns an ID-token credential.
-    How: Verify Google, find/create the database user, and return our JWT.
-    """
-    log_step(
-        "Presentation",
-        "Google login request received.",
-        "Google login request mil gayi.",
-    )
-    try:
-        result = auth_service.login_with_google(
-            GoogleLoginInput(credential=request.credential)
-        )
-        return AuthResponse(
-            uid=result.uid,
-            email=result.email,
-            token=result.token,
-            message="Google login successful",
-        )
-    except ValidationException as error:
-        raise HTTPException(401, str(error)) from error
+    """Delegate the Google-login endpoint to its controller."""
+    return google_login_user(request, auth_service)

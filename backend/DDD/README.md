@@ -10,6 +10,9 @@ For a complete file-by-file explanation, request flows, demo plan, limitations,
 and viva preparation, read
 [`BACKEND_PRESENTATION_GUIDE.md`](../../docs/BACKEND_PRESENTATION_GUIDE.md).
 
+Email reminder ka beginner-friendly complete flow:
+[`EMAIL_REMINDER_SERVICE_GUIDE.md`](../../docs/EMAIL_REMINDER_SERVICE_GUIDE.md).
+
 ## Structure
 
 ```text

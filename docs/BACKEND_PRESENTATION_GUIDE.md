@@ -63,6 +63,10 @@ Google login ka separate complete flow:
 
 - [`docs/GOOGLE_LOGIN_INTEGRATION_GUIDE.md`](GOOGLE_LOGIN_INTEGRATION_GUIDE.md)
 
+Email reminder service ka separate complete flow:
+
+- [`docs/EMAIL_REMINDER_SERVICE_GUIDE.md`](EMAIL_REMINDER_SERVICE_GUIDE.md)
+
 ---
 
 ## 2. Complete folder structure

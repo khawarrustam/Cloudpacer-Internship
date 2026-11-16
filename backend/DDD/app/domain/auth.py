@@ -20,6 +20,10 @@ class GoogleAccountConflictError(ValidationException):
     """Raised when an email is already linked to another Google account."""
 
 
+class GitHubAccountConflictError(ValidationException):
+    """Raised when an email is already linked to another GitHub account."""
+
+
 class PasswordLoginRequiredError(ValidationException):
     """Raised when a third-party email cannot be linked automatically."""
 
@@ -28,7 +32,7 @@ class PasswordLoginRequiredError(ValidationException):
 class EmailAddress:
     """What: Keep every authentication email normalized and valid.
 
-    When: Signup, login, or verified Google data enters the domain.
+    When: Signup, login, or verified provider data enters the domain.
     How: Remove outer spaces, lowercase the value, and require one valid @ split.
     """
 
@@ -144,6 +148,54 @@ class GoogleAccountPolicy:
 
 
 @dataclass(frozen=True)
+class GitHubIdentity:
+    """Verified GitHub identity expressed without OAuth/HTTP details."""
+
+    subject: str
+    email: EmailAddress
+    display_name: DisplayName
+
+    @classmethod
+    def create(
+        cls,
+        subject: str,
+        email: str,
+        display_name: str,
+    ) -> "GitHubIdentity":
+        """Build a valid identity after GitHub verifies account and email."""
+        clean_subject = (subject or "").strip()
+        if not clean_subject:
+            raise ValidationException("GitHub account identity is missing.")
+        clean_email = EmailAddress(email)
+        fallback_name = clean_email.value.split("@", 1)[0]
+        return cls(
+            subject=clean_subject,
+            email=clean_email,
+            display_name=DisplayName(display_name or fallback_name),
+        )
+
+
+class GitHubAccountPolicy:
+    """Protect an existing local account from a different GitHub identity."""
+
+    @staticmethod
+    def should_link(
+        saved_github_subject: str | None,
+        identity: GitHubIdentity,
+    ) -> bool:
+        """Return true only when a verified GitHub link must be added."""
+        if saved_github_subject:
+            if saved_github_subject != identity.subject:
+                raise GitHubAccountConflictError(
+                    "This email belongs to another GitHub account."
+                )
+            return False
+        # GitHub client sirf verified account email accept karta hai, isliye
+        # same selected database user ke sath provider safely link ho sakta hai.
+        return True
+
+
+@dataclass(frozen=True)
 class UserData:
     """Database-independent authenticated user returned by repositories."""
 
@@ -155,7 +207,7 @@ class UserData:
 class AuthRepository(ABC):
     """What: Define storage-independent authentication operations.
 
-    When: AuthService needs signup, password login, Google login, or token verification.
+    When: AuthService needs signup, password/provider login, or token verification.
     How: Each selected database provides its own concrete implementation.
     """
 
@@ -174,6 +226,11 @@ class AuthRepository(ABC):
     @abstractmethod
     def login_with_google(self, credential: str) -> UserData:
         """Verify Google and create or find a user in the selected database."""
+        raise NotImplementedError
+
+    @abstractmethod
+    def login_with_github(self, code: str) -> UserData:
+        """Verify GitHub and create or find a user in the selected database."""
         raise NotImplementedError
 
     @abstractmethod

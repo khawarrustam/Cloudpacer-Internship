@@ -12,6 +12,7 @@ from app.domain.auth import AuthRepository
 from app.domain.todo import TodoRepository
 from app.infrastructure.firestore.auth_repository import FirestoreAuthRepository
 from app.infrastructure.firestore.todo_repository import FirestoreTodoRepository
+from app.infrastructure.github_oauth import GitHubOAuthClient
 from app.infrastructure.mongodb.auth_repository import MongoAuthRepository
 from app.infrastructure.mongodb.todo_repository import MongoTodoRepository
 from app.infrastructure.postgresql.auth_repository import (
@@ -42,19 +43,25 @@ def create_repositories(
         token_expire_minutes=settings.auth_token_expire_minutes,
         google_client_id=settings.google_client_id,
     )
+    github_oauth = GitHubOAuthClient(
+        client_id=settings.github_client_id,
+        client_secret=settings.github_client_secret,
+        redirect_uri=settings.github_redirect_uri,
+    )
 
     # Har branch matching todo + auth pair return karti hai; mixed databases
     # accidentally wire nahi ho sakte.
     if database == "firestore":
-        return _create_firestore_repositories(settings, security)
+        return _create_firestore_repositories(settings, security, github_oauth)
     if database == "mongodb":
-        return _create_mongodb_repositories(settings, security)
-    return _create_postgresql_repositories(settings, security)
+        return _create_mongodb_repositories(settings, security, github_oauth)
+    return _create_postgresql_repositories(settings, security, github_oauth)
 
 
 def _create_firestore_repositories(
     settings: Settings,
     security: AuthSecurity,
+    github_oauth: GitHubOAuthClient,
 ) -> tuple[TodoRepository, AuthRepository]:
     """Connect Firestore once, then give both repositories one REST session."""
     # Firebase app process mein sirf once initialize hoti hai.
@@ -92,6 +99,7 @@ def _create_firestore_repositories(
         session=session,
         users_url=auth_users_url,
         security=security,
+        github_oauth=github_oauth,
     )
     return todo_repository, auth_repository
 
@@ -99,6 +107,7 @@ def _create_firestore_repositories(
 def _create_mongodb_repositories(
     settings: Settings,
     security: AuthSecurity,
+    github_oauth: GitHubOAuthClient,
 ) -> tuple[TodoRepository, AuthRepository]:
     """Connect MongoDB once and pass focused collections to repositories."""
     client = MongoClient(settings.mongodb_uri, serverSelectionTimeoutMS=5000)
@@ -111,6 +120,7 @@ def _create_mongodb_repositories(
     auth_repository = MongoAuthRepository(
         database[settings.mongodb_user_collection],
         security,
+        github_oauth,
     )
     return todo_repository, auth_repository
 
@@ -118,6 +128,7 @@ def _create_mongodb_repositories(
 def _create_postgresql_repositories(
     settings: Settings,
     security: AuthSecurity,
+    github_oauth: GitHubOAuthClient,
 ) -> tuple[TodoRepository, AuthRepository]:
     """Create both PostgreSQL repositories with the same connection URL."""
     # Empty URL par obscure driver error dene ke bajaye clear setup error dete hain.
@@ -125,5 +136,9 @@ def _create_postgresql_repositories(
         raise RuntimeError("Missing required setting: POSTGRESQL_URL")
     return (
         PostgreSQLTodoRepository(settings.postgresql_url),
-        PostgreSQLAuthRepository(settings.postgresql_url, security),
+        PostgreSQLAuthRepository(
+            settings.postgresql_url,
+            security,
+            github_oauth,
+        ),
     )

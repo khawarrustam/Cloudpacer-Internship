@@ -15,4 +15,8 @@ export const authApi = {
     const response = await apiClient.post('/auth/google', { credential });
     return response.data;
   },
+  async loginWithGitHub(code) {
+    const response = await apiClient.post('/auth/github', { code });
+    return response.data;
+  },
 };

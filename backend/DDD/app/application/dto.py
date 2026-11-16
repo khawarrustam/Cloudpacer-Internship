@@ -54,6 +54,13 @@ class GoogleLoginInput:
 
 
 @dataclass(frozen=True)
+class GitHubLoginInput:
+    """Short-lived GitHub OAuth code passed to the auth use case."""
+
+    code: str
+
+
+@dataclass(frozen=True)
 class TodoOutput:
     """Database-independent todo data returned by application services."""
 

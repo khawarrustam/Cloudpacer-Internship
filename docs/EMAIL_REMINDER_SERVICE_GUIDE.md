@@ -1,560 +1,278 @@
-# TodoFlow Email Reminder Service — Beginner Step-by-Step Guide
+# TodoFlow Email Reminder Service Guide
 
-> **Purpose:** Is document mein email reminder feature ka complete flow simple
-> Roman Urdu mein explain kiya gaya hai: UI se reminder select honay se lekar
-> database save, automatic scan, Resend email aur sent-state update tak.
+## 1. Feature overview
 
----
+A user may give a todo a due date and request an email reminder:
 
-## 1. Feature kya karta hai?
+- 1 minute before;
+- 1 hour before;
+- 1 day before;
+- 3 days before; or
+- at a custom date and time before the due date.
 
-User todo create karte waqt:
-
-- due date/time select karta hai;
-- reminder option select karta hai;
-- backend reminder ka exact UTC time calculate karta hai;
-- selected database reminder ko permanently save karta hai;
-- FastAPI ke sath background scheduler due reminders check karta rehta hai;
-- reminder due ho to Resend professional email bhejta hai;
-- successful delivery ke baad database mein `reminder_sent_at` save hota hai.
-
-Available options:
+The selected database stores the complete reminder state. A background
+APScheduler job scans due reminders and sends branded email through Resend.
 
 ```text
-No reminder
-1 minute before
-1 hour before
-1 day before
-3 days before
-Custom time
+UI selection -> domain validation -> selected database
+             -> background scan -> Resend -> mark as sent
 ```
 
-One-line flow:
+Only the backend terminal is required for the API and scheduler. APScheduler
+runs in a background thread inside the same application process.
 
-```text
-UI -> API -> Controller -> TodoService -> Domain rules -> Selected database
-                                                     |
-FastAPI BackgroundScheduler -> ReminderService -> Resend -> sent state save
-```
+## 2. DDD placement
 
----
+### Domain
 
-## 2. Is feature ke liye kya changes kiye gaye?
+`app/domain/reminder.py` contains `ReminderOption` and `ReminderSettings`.
+These rules are independent of FastAPI, databases, APScheduler, and Resend:
 
-| Area | Change | Reason |
-|---|---|---|
-| Frontend form | Due date aur reminder options add | User schedule select kar sake |
-| Frontend task item | Due/reminder status show | User saved schedule dekh sake |
-| Presentation | Reminder fields request/response schemas mein add | HTTP contract clear rahe |
-| Controller | Route se mapping/error logic controller mein move | Routes thin aur readable rahen |
-| Application | `ReminderService` add | Sending workflow aik use case mein rahe |
-| Domain | `ReminderSettings` rules add | Date/reminder rules DB/UI se independent rahen |
-| Domain port | `EmailSender` contract add | Domain Resend SDK par depend na kare |
-| Infrastructure | `ResendEmailSender` add | Resend-specific API call isolate rahe |
-| Infrastructure | `ReminderScheduler` add | API ke sath automatic recurring scan chale |
-| Databases | Reminder fields/queries add | Firestore, MongoDB aur PostgreSQL same behavior dein |
-| Configuration | Resend/scheduler `.env` values add | Secrets aur runtime values code se bahar rahen |
-| Email design | Branded HTML + text fallback add | Received email professional aur compatible ho |
+- a reminder requires a due date;
+- the due date must be in the future;
+- the calculated reminder must occur before the due date;
+- the reminder must still be in the future when the todo is created;
+- a custom reminder must be before the due date;
+- a sent reminder cannot be marked as sent again.
 
----
+`app/domain/todo.py` owns todo state and `reminder_is_due()`. Completed todos
+are never considered due for notification.
 
-## 3. DDD layers mein cheezen kahan aur kyun rakhi hain?
+`app/domain/notification.py` defines the provider-neutral `EmailMessage` value
+and `EmailSender` port. The domain does not import the Resend SDK.
 
-### Domain — business rules
+### Application
 
-Files:
+`TodoService.create()` coordinates todo creation and asks domain factories to
+validate the reminder. `ReminderService.process_due()` coordinates one batch:
 
-- [`domain/reminder.py`](../backend/DDD/app/domain/reminder.py)
-- [`domain/notification.py`](../backend/DDD/app/domain/notification.py)
-- [`domain/todo.py`](../backend/DDD/app/domain/todo.py)
+1. read due reminders from the repository;
+2. recheck the domain rule;
+3. build plain-text and HTML messages;
+4. call `EmailSender.send()`;
+5. mark the reminder sent only after provider success;
+6. save the updated todo.
 
-Domain decide karta hai:
+### Presentation
 
-- due date future mein honi chahiye;
-- reminder ke liye due date required hai;
-- reminder due date se pehle hona chahiye;
-- custom reminder future mein hona chahiye;
-- completed todo ka reminder send nahi hoga;
-- sent reminder dobara sent mark nahi ho sakta.
+`CreateTodoRequest` validates the HTTP data shape. The thin todo route delegates
+to `todo_controller.add_todo`, which creates `CreateTodoInput` using the
+authenticated user's UID and email. The client cannot choose another owner.
 
-Domain ko FastAPI, Resend, MongoDB, Firestore ya SQL ka knowledge nahi hai.
+### Infrastructure
 
-### Application — workflow coordination
+| File | Technical responsibility |
+|---|---|
+| `reminder_scheduler.py` | Starts, scans, and shuts down APScheduler |
+| `resend_email_sender.py` | Converts `EmailMessage` into a Resend request |
+| Database todo repositories | Store reminder fields and query due reminders |
+| PostgreSQL `todo_schema.py` | Safely creates/migrates reminder columns and index |
 
-Files:
+## 3. Todo creation flow
 
-- [`application/todo_service.py`](../backend/DDD/app/application/todo_service.py)
-- [`application/reminder_service.py`](../backend/DDD/app/application/reminder_service.py)
-- [`application/dto.py`](../backend/DDD/app/application/dto.py)
-
-Application ka kaam:
-
-- domain entity create karwana;
-- repository se due reminders lena;
-- provider-independent email message banana;
-- `EmailSender` ke through email bhejna;
-- success ke baad sent state save karwana.
-
-Application SQL/Firestore/PyMongo query nahi likhti.
-
-### Presentation — HTTP input/output
-
-Files:
-
-- [`presentation/schemas.py`](../backend/DDD/app/presentation/schemas.py)
-- [`presentation/routers/todos.py`](../backend/DDD/app/presentation/routers/todos.py)
-- [`presentation/controllers/todo_controller.py`](../backend/DDD/app/presentation/controllers/todo_controller.py)
-
-Presentation request validate, trusted user identity attach aur known business
-errors ko HTTP response mein translate karti hai.
-
-### Infrastructure — technical implementation
-
-Files:
-
-- [`infrastructure/resend_email_sender.py`](../backend/DDD/app/infrastructure/resend_email_sender.py)
-- [`infrastructure/reminder_scheduler.py`](../backend/DDD/app/infrastructure/reminder_scheduler.py)
-- three database todo repositories
-
-Infrastructure Resend SDK, APScheduler aur actual database queries handle karti
-hai. Yeh details domain se bahar rakhi gayi hain.
-
----
-
-## 4. Step-by-step: user todo reminder kaise create karta hai?
-
-### Step 1 — UI data collect karti hai
-
-File: [`AddTodoForm.jsx`](../frontend/src/components/todos/AddTodoForm.jsx)
-
-User title, priority, due date aur reminder select karta hai. Custom reminder
-select ho to extra date/time input show hota hai.
-
-Frontend validation:
-
-- title 3–120 characters;
-- due date future mein;
-- reminder ke liye due date required;
-- custom reminder future mein aur due date se pehle;
-- preset reminder past mein calculate ho to later due date required.
-
-Browser ka local `datetime-local` value API bhejne se pehle UTC ISO string banta
-hai:
-
-```javascript
-new Date(dueAt).toISOString()
-```
-
-Is se Pakistan ya kisi aur timezone ka local time backend par consistent UTC
-time mein receive hota hai.
-
-### Step 2 — Redux/API request bhejte hain
-
-`createTodo` thunk complete form payload `POST /todos` ko bhejta hai:
+The frontend submits fields equivalent to:
 
 ```json
 {
-  "title": "Prepare presentation",
-  "priority": "high",
-  "due_at": "2026-11-13T13:00:00.000Z",
+  "title": "Prepare the presentation",
+  "priority": "HIGH",
+  "due_at": "2026-11-16T15:00:00.000Z",
   "reminder_option": "1_HOUR",
   "custom_reminder_at": null
 }
 ```
 
-### Step 3 — HTTP schema basic shape validate karti hai
-
-`CreateTodoRequest` allowed reminder options aur datetime types validate karti
-hai. Yeh HTTP validation hai; actual business date rules domain mein hain.
-
-### Step 4 — thin route controller ko call karti hai
+The flow is:
 
 ```text
-POST /todos
- -> todos.create_todo route
+AddTodoForm
+ -> todosSlice async thunk
+ -> todoApi.create
+ -> POST /todos with Bearer JWT
+ -> CreateTodoRequest
  -> todo_controller.add_todo
-```
-
-Controller verified token se `owner_uid` aur `owner_email` leta hai. Email JSON
-body se trust nahi hoti, isliye reminder kisi doosre address par force nahi ki
-ja sakti.
-
-### Step 5 — controller application DTO banata hai
-
-`CreateTodoInput` mein yeh values jati hain:
-
-```text
-title, priority, owner_uid, owner_email,
-due_at, reminder_option, custom_reminder_at
-```
-
-### Step 6 — TodoService domain entity create karwati hai
-
-```text
-TodoService.create
+ -> CreateTodoInput
+ -> TodoService.create
  -> TodoItem.create
  -> ReminderSettings.create
+ -> selected TodoRepository.save
+ -> TodoResponse
 ```
 
-`ReminderSettings.create()` exact reminder time calculate aur validate karta
-hai.
+All browser dates are sent as ISO timestamps. The backend normalizes reminder
+calculations to UTC so database and scheduler comparisons are consistent.
 
-Example:
+## 4. Reminder calculation
 
-```text
-Due time       = 06:00 PM
-Selected       = 1_HOUR
-Reminder time  = 05:00 PM
-```
+For a due time `D`, the domain calculates:
 
-Custom example:
-
-```text
-Current time   = 05:30 PM
-Reminder time  = 05:40 PM
-Due time       = 06:00 PM
-Result         = valid
-```
-
-Invalid example:
-
-```text
-Current time   = 05:37 PM
-Due time       = 05:36 PM
-Reminder time  = 05:40 PM
-Result         = invalid: due past hai aur reminder due ke baad hai
-```
-
-### Step 7 — selected database entity save karta hai
-
-Todo aur reminder aik hi entity/document/row ka part hain. Separate scheduler
-memory par depend nahi kiya gaya, isliye API restart se schedule lose nahi hota.
-
----
-
-## 5. Database mein kya save hota hai?
-
-Har todo ke sath:
-
-| Field | Meaning |
+| Option | Calculation |
 |---|---|
-| `due_at` | Task kab due hai |
-| `reminder_at` | Email kab send honi hai |
-| `reminder_email` | Authenticated account email |
-| `reminder_sent_at` | Successful delivery ka time; pehle `null` |
-| `reminder_option` | `NONE`, `1_HOUR`, `CUSTOM`, etc. |
+| `NONE` | No reminder timestamp |
+| `1_MINUTE` | `D - 1 minute` |
+| `1_HOUR` | `D - 1 hour` |
+| `1_DAY` | `D - 1 day` |
+| `3_DAYS` | `D - 3 days` |
+| `CUSTOM` | Use the validated custom timestamp |
 
-### MongoDB
+Example: if a todo is due at 5:00 PM and `1_HOUR` is selected, `reminder_at`
+is 4:00 PM. If the current time is already 4:30 PM, creation is rejected
+because that reminder would be in the past.
 
-[`mongodb/todo_repository.py`](../backend/DDD/app/infrastructure/mongodb/todo_repository.py)
-document fields save karta hai aur due/incomplete/unsent reminders ke liye
-compound index/query use karta hai.
+## 5. Persisted fields
 
-### PostgreSQL
-
-[`postgresql/todo_schema.py`](../backend/DDD/app/infrastructure/postgresql/todo_schema.py)
-existing table ko safe `ADD COLUMN IF NOT EXISTS` migration se extend karta hai.
-Partial reminder index due scan ko optimize karta hai.
-
-[`postgresql/todo_repository.py`](../backend/DDD/app/infrastructure/postgresql/todo_repository.py)
-parameterized SQL se due reminders read karta hai.
-
-### Firestore
-
-[`firestore/todo_mapper.py`](../backend/DDD/app/infrastructure/firestore/todo_mapper.py)
-domain entity aur Firestore REST document convert karta hai.
-
-[`firestore/todo_repository.py`](../backend/DDD/app/infrastructure/firestore/todo_repository.py)
-collection-group query use karta hai. Agar project mein required collection-
-group index missing ho, beginner/demo data ke liye safe scan fallback use hota
-hai.
-
----
-
-## 6. Automatic scheduler same terminal mein kaise chalta hai?
-
-File: [`infrastructure/reminder_scheduler.py`](../backend/DDD/app/infrastructure/reminder_scheduler.py)
-
-Project ko sirf aik command chahiye:
-
-```powershell
-python -m uvicorn main:app --reload
-```
-
-[`app/main.py`](../backend/DDD/app/main.py) FastAPI lifespan ke through:
+Every database stores the same logical state:
 
 ```text
-API startup  -> ReminderScheduler.start()
-API running  -> interval scans background thread mein
-API shutdown -> ReminderScheduler.shutdown()
+due_at
+reminder_at
+reminder_email
+reminder_sent_at
+reminder_option
 ```
 
-`BackgroundScheduler` use hua hai kyun ke uska `start()` main FastAPI process ko
-block nahi karta. API requests aur reminder scans same terminal/process mein
-chal sakte hain.
+- MongoDB stores these fields in the todo document.
+- PostgreSQL stores them in typed `TIMESTAMPTZ`/`TEXT` columns and uses a
+  partial index for incomplete, unsent reminders.
+- Firestore maps them to REST document fields through `todo_mapper.py`.
 
-### Kya yeh cron job hai?
+Because reminder state is persistent, restarting the API does not lose pending
+reminders.
 
-Behavior cron job jaisa recurring hai, lekin technically Windows/Linux operating
-system ka cron nahi. Yeh application-level **APScheduler interval job** hai.
-Faida yeh hai ke project ke sath Python code mein configure hota hai aur local
-development mein separate OS cron setup nahi chahiye.
+## 6. Scheduler lifecycle
 
-Scheduler settings:
-
-- `max_instances=1`: previous scan chal raha ho to overlapping scan nahi;
-- `coalesce=True`: missed repeated runs ko aik run mein combine;
-- `misfire_grace_time`: short delay ke baad bhi scan recover;
-- startup scan: server downtime mein due honay wali reminders foran recover.
-
-Important beginner limitation:
-
-> Local project mein one Uvicorn process use karein. Production mein multiple
-> Uvicorn workers start kiye to har process apna scheduler bana sakta hai. Us
-> case mein dedicated scheduler ya distributed lock chahiye hota hai.
-
----
-
-## 7. Due reminder milnay ke baad complete send flow
+FastAPI's lifespan starts `ReminderScheduler` after application wiring and
+shuts it down cleanly during reload or termination.
 
 ```text
-ReminderScheduler._process_reminders
- -> ReminderService.process_due(now)
- -> TodoRepository.get_due_reminders(now, batch_size)
+FastAPI startup
+ -> immediate recovery scan
+ -> interval job starts
+ -> API continues serving requests in the same process
+ -> each interval calls ReminderService.process_due()
+```
+
+Important scheduler settings:
+
+- `max_instances=1` prevents overlapping scans;
+- `coalesce=True` combines missed intervals into one recovery run;
+- a misfire grace period tolerates short delays;
+- an immediate startup scan recovers reminders that became due during downtime.
+
+This is an application-level scheduled job rather than an operating-system cron
+entry. Run one Uvicorn application process for the beginner/local setup. A
+production multi-worker deployment requires one dedicated scheduler or a
+distributed lock so multiple processes do not scan the same reminders.
+
+## 7. Due reminder send flow
+
+```text
+Scheduler interval fires
+ -> ReminderService.process_due
+ -> repository.get_due_reminders(now, limit)
  -> TodoItem.reminder_is_due(now)
- -> ReminderService._build_message(todo)
- -> ResendEmailSender.send(message)
- -> Resend API success + provider email ID
- -> TodoItem.mark_reminder_sent(now)
- -> TodoRepository.save(todo)
- -> reminder_sent_at database mein save
+ -> build EmailMessage
+ -> ResendEmailSender.send
+ -> provider success
+ -> ReminderSettings.mark_sent
+ -> repository.save
+ -> reminder_sent_at persists
 ```
 
-Repository query sirf yeh reminders dhoondti hai:
+The query returns only incomplete todos whose reminder is due and not yet sent.
+The domain checks again so the business rule remains protected even if another
+repository implementation is added later.
+
+## 8. Email content
+
+`ReminderService._build_message()` creates both HTML and plain-text forms. The
+HTML email includes TodoFlow branding, an escaped task title, readable due
+date, priority badge, and concise callout. Inline CSS is used because email
+clients do not consistently support external stylesheets.
+
+User-controlled title text is HTML-escaped before insertion into the template.
+
+## 9. Resend adapter and duplicate protection
+
+`ResendEmailSender` implements the domain `EmailSender` contract. It receives
+provider-independent content and maps it to Resend's API.
+
+Each reminder uses a stable idempotency key derived from the reminder event,
+todo ID, and reminder timestamp. A short retry therefore refers to the same
+email event instead of intentionally creating a duplicate.
+
+Success behavior:
 
 ```text
-is_completed = false
-reminder_at <= current time
-reminder_sent_at = null
+Resend accepts email -> provider ID is logged -> reminder_sent_at is saved
 ```
 
-Domain dobara `reminder_is_due()` check karta hai. Query technical filter hai;
-final business decision entity ke paas rehta hai.
-
----
-
-## 8. Received email professional kaise bani?
-
-Function: `ReminderService._build_message()`
-
-Email mein:
-
-- branded blue TodoFlow header;
-- “Your task is due soon” heading;
-- safely escaped task title;
-- readable UTC due date;
-- High/Medium/Low color-coded priority badge;
-- short action message;
-- automated-reminder footer.
-
-Inline CSS use hoti hai kyun ke Gmail/Outlook jaisay email clients external CSS
-ko consistently support nahi karte.
-
-Plain-text fallback bhi banta hai:
+Failure behavior:
 
 ```text
-TODOFLOW TASK REMINDER
-
-Task: Prepare presentation
-Due: Friday, 13 November 2026 at 06:00 PM UTC
-Priority: High
-
-Open TodoFlow to review the task and mark it complete.
+Resend/network failure -> safe error is logged -> sent state remains empty
+                       -> next scheduler scan may retry
 ```
 
----
+A completed todo fails the domain due check, and a deleted todo is absent from
+the repository query, so neither receives an email.
 
-## 9. Resend adapter kya karta hai?
+## 10. Environment configuration
 
-File: [`infrastructure/resend_email_sender.py`](../backend/DDD/app/infrastructure/resend_email_sender.py)
-
-Domain ka `EmailSender` sirf contract hai:
-
-```text
-send(EmailMessage) -> provider message ID
-```
-
-`ResendEmailSender` is contract ko Resend SDK se implement karta hai. Isliye
-future mein provider change ho to domain reminder rules change nahi hongi.
-
-Resend request mein:
-
-```text
-from, to, subject, html, text, idempotency key
-```
-
-Idempotency key format:
-
-```text
-todo-reminder/{todo_id}/{reminder_timestamp}
-```
-
-Same reminder short retry mein dobara request ho to Resend same event ko
-duplicate email banne se protect karta hai.
-
----
-
-## 10. Success aur failure behavior
-
-### Success
-
-```text
-Resend accepts email
- -> provider ID return
- -> mark_reminder_sent
- -> reminder_sent_at save
- -> next scan is reminder ko ignore karta hai
-```
-
-### Failure
-
-```text
-Resend/network error
- -> error bilingual log mein
- -> reminder_sent_at null rehta hai
- -> next scheduler scan retry karta hai
-```
-
-Sent state provider success se **pehle** save nahi hoti. Agar pehle save kar dein
-aur email fail ho jaye to reminder permanently miss ho sakti hai.
-
-### Todo complete/delete ho jaye
-
-- completed todo `reminder_is_due()` mein false;
-- deleted todo query mein milta hi nahi;
-- isliye email send nahi hoti.
-
----
-
-## 11. `.env` configuration
-
-Real secrets sirf ignored `.env` mein:
+Real values belong only in ignored `backend/DDD/.env`:
 
 ```env
-RESEND_API_KEY=your-real-secret-key
-REMINDER_EMAIL_FROM=TodoFlow <reminders@your-verified-domain.com>
+RESEND_API_KEY=re_your_key
+REMINDER_EMAIL_FROM=TodoFlow <onboarding@resend.dev>
 REMINDER_SCAN_INTERVAL_SECONDS=30
 REMINDER_BATCH_SIZE=50
 ```
 
-| Variable | Purpose |
+| Setting | Purpose |
 |---|---|
-| `RESEND_API_KEY` | Resend API authenticate karta hai |
-| `REMINDER_EMAIL_FROM` | Received email ka sender |
-| `REMINDER_SCAN_INTERVAL_SECONDS` | Kitne seconds baad DB scan ho |
-| `REMINDER_BATCH_SIZE` | Aik scan mein maximum reminders |
+| `RESEND_API_KEY` | Authenticates the provider request |
+| `REMINDER_EMAIL_FROM` | Sets the visible sender |
+| `REMINDER_SCAN_INTERVAL_SECONDS` | Controls scan frequency |
+| `REMINDER_BATCH_SIZE` | Limits work performed by one scan |
 
-`onboarding@resend.dev` development testing ke liye hai. Real users ko send
-karne ke liye Resend dashboard mein apna domain verify karna chahiye.
+`onboarding@resend.dev` is suitable for provider testing. Sending to arbitrary
+real recipients requires a verified sender domain in Resend.
 
-Never commit:
-
-- real API key;
-- `.env`;
-- Firebase service-account key.
-
----
-
-## 12. Run aur manually test kaise karein?
-
-### Backend run
+## 11. Manual test
 
 ```powershell
-cd "C:\Users\Rana Khawar Ali\Desktop\Cloudpacer-Internship\backend\DDD"
+cd backend\DDD
 .\.venv\Scripts\Activate.ps1
 python -m uvicorn main:app --reload
 ```
 
-Expected startup log:
+1. Sign in to TodoFlow.
+2. Choose a due time 5–10 minutes in the future.
+3. Choose a custom reminder 2–3 minutes in the future but before the due time.
+4. Save the todo and verify the displayed schedule.
+5. Keep the backend running.
+6. At reminder time, inspect the terminal and Resend dashboard/inbox.
+7. Verify that `reminder_sent_at` is populated in the selected database.
 
-```text
-Email reminder scheduler started with the API.
-Email reminder scheduler API ke sath start ho gaya.
-```
+## 12. Common errors
 
-### Manual test
+- **Due date must be in the future:** Choose a due date after the current clock.
+- **Reminder must be before the due date:** Move the custom reminder earlier.
+- **This reminder falls in the past:** The selected offset is larger than the
+  remaining time; choose a later due date or a custom reminder.
+- **Provider shows sent but inbox is empty:** Check spam, recipient address,
+  Resend delivery logs, and sender-domain verification.
+- **Scheduler starts again during reload:** Expected in development; the old
+  application shuts down its scheduler and the reloaded process starts a new
+  one. Persistent state prevents reminder loss.
 
-1. Login/signup karein.
-2. Due time current time se 5–10 minutes baad select karein.
-3. Custom reminder due se pehle aur current time se 2–3 minutes baad select karein.
-4. Todo save karein.
-5. Task card par due/reminder schedule verify karein.
-6. Backend terminal open rakhein.
-7. Reminder time par terminal log aur inbox/Resend dashboard check karein.
-8. Database mein `reminder_sent_at` populated verify karein.
+## 13. Presentation answer
 
-Example:
-
-```text
-Current   05:30 PM
-Reminder  05:33 PM
-Due       05:38 PM
-```
-
----
-
-## 13. Common errors
-
-### “Due date must be in the future”
-
-Due time current clock se aagay set karein. Reminder future honay se past due
-date valid nahi ban jati.
-
-### “Reminder must be before the due date”
-
-Correct order:
-
-```text
-current time < reminder time < due time
-```
-
-### “This reminder falls in the past”
-
-Example: due sirf 30 minutes baad hai lekin `1_HOUR` select hai. Later due date
-ya custom reminder choose karein.
-
-### Email dashboard mein hai lekin inbox mein nahi
-
-- spam/junk check karein;
-- recipient address verify karein;
-- Resend logs mein delivery status dekhein;
-- real recipients ke liye verified sender domain use karein.
-
-### Server reload par scheduler dobara start hota hai
-
-Expected hai. Lifespan old scheduler cleanly stop aur new application scheduler
-start karta hai. Reminder state database mein hai, memory mein nahi.
-
----
-
-## 14. Quick presentation answer
-
-> “User UI se due date aur reminder option select karta hai. Presentation layer
-> request ko application DTO mein map karti hai. Domain ka `ReminderSettings`
-> exact UTC time calculate aur business rules validate karta hai. Selected
-> database todo ke sath reminder state save karta hai. FastAPI lifespan ke andar
-> `BackgroundScheduler` recurring scans chalata hai. `ReminderService` due
-> reminders read karke provider-independent `EmailMessage` banata hai aur domain
-> `EmailSender` port ke Resend adapter se professional email bhejta hai. Sirf
-> provider success ke baad `reminder_sent_at` save hota hai; failure next scan
-> par retry hoti hai. Firestore, MongoDB aur PostgreSQL same domain/application
-> workflow use karte hain, sirf repository implementation different hai.”
-
----
-
-## 15. Official technical references
-
-- [APScheduler BackgroundScheduler](https://apscheduler.readthedocs.io/en/3.x/modules/schedulers/background.html)
-- [APScheduler user guide](https://apscheduler.readthedocs.io/en/3.x/userguide.html)
-- [Resend Python SDK](https://resend.com/python)
-- [Resend idempotency keys](https://resend.com/changelog/idempotency-keys)
+> The UI sends a due date and reminder choice. The presentation layer validates
+> the HTTP shape, the application layer coordinates creation, and the domain
+> calculates the UTC reminder time while enforcing all time rules. The active
+> database persists the reminder with the todo. FastAPI starts an APScheduler
+> background job in the same process. Each scan asks the application service
+> for due reminders, sends provider-neutral messages through the Resend adapter,
+> and persists `reminder_sent_at` only after success. The same workflow works
+> with Firestore, MongoDB, and PostgreSQL because only repository adapters vary.

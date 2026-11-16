@@ -2,6 +2,7 @@
 
 from app.application.dto import (
     AuthOutput,
+    GitHubLoginInput,
     GoogleLoginInput,
     LoginInput,
     SignupInput,
@@ -11,7 +12,7 @@ from app.logging import log_step
 
 
 class AuthService:
-    """What: Coordinate signup, password/Google login, and token authentication.
+    """What: Coordinate signup, password/provider login, and token authentication.
 
     When: Presentation routes need an authentication use case.
     How: Delegate persistence/security work through AuthRepository.
@@ -46,6 +47,16 @@ class AuthService:
             "Application",
             "Google login completed.",
             "Google login mukammal ho gaya.",
+        )
+        return self._to_output(user.uid, user.email, user.token)
+
+    def login_with_github(self, data: GitHubLoginInput) -> AuthOutput:
+        """Exchange GitHub OAuth code and return the local database user's JWT."""
+        user = self.repository.login_with_github(data.code)
+        log_step(
+            "Application",
+            "GitHub login completed.",
+            "GitHub login mukammal ho gaya.",
         )
         return self._to_output(user.uid, user.email, user.token)
 

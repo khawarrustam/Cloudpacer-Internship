@@ -10,11 +10,13 @@ from app.domain.auth import (
     AuthRepository,
     DisplayName,
     EmailAddress,
+    GitHubAccountPolicy,
     GoogleAccountPolicy,
     PasswordPolicy,
     UserData,
     ValidationException,
 )
+from app.infrastructure.github_oauth import GitHubOAuthClient
 from app.infrastructure.security import AuthSecurity
 from app.logging import log_error, log_step
 
@@ -31,11 +33,13 @@ class FirestoreAuthRepository(AuthRepository):
         session: AuthorizedSession,
         users_url: str,
         security: AuthSecurity,
+        github_oauth: GitHubOAuthClient,
     ) -> None:
         self.session = session
         self.users_url = users_url
         self.security = security
-        # runQuery Google `sub` lookup deta hai; email ko identity key nahi banate.
+        self.github_oauth = github_oauth
+        # runQuery provider subject lookup deta hai; email identity key nahi banti.
         documents_url, encoded_collection = users_url.rsplit("/", 1)
         self.run_query_url = f"{documents_url}:runQuery"
         self.collection_id = unquote(encoded_collection)
@@ -110,7 +114,7 @@ class FirestoreAuthRepository(AuthRepository):
         profile = self.security.verify_google_credential(credential)
         try:
             # Stable Google subject first; email may change during account lifetime.
-            user = self._find_google_user(profile.subject)
+            user = self._find_provider_user("google_sub", profile.subject)
             if user is None:
                 user = self._find_user(profile.email.value)
 
@@ -150,6 +154,46 @@ class FirestoreAuthRepository(AuthRepository):
         )
         return UserData(uid=user["uid"], email=user["email"], token=token)
 
+    def login_with_github(self, code: str) -> UserData:
+        """Verify GitHub, then find/create its user only in Firestore."""
+        profile = self.github_oauth.verify_code(code)
+        try:
+            user = self._find_provider_user("github_sub", profile.subject)
+            if user is None:
+                user = self._find_user(profile.email.value)
+
+            if user is None:
+                user = {
+                    "uid": str(uuid.uuid4()),
+                    "email": profile.email.value,
+                    "display_name": profile.display_name.value,
+                    "github_sub": profile.subject,
+                }
+            elif GitHubAccountPolicy.should_link(
+                user.get("github_sub"),
+                profile,
+            ):
+                user["github_sub"] = profile.subject
+
+            response = self.session.patch(
+                self._user_url(user["email"]),
+                json=self._to_document(user),
+            )
+            response.raise_for_status()
+        except ValidationException:
+            raise
+        except Exception as error:
+            log_error("Infrastructure", f"Firestore GitHub login failed: {error}")
+            raise ValidationException("Firestore GitHub login failed.") from error
+
+        token = self.security.create_token(user["uid"], user["email"])
+        log_step(
+            "Infrastructure",
+            "Firestore GitHub authentication succeeded.",
+            "Firestore GitHub authentication kamyab ho gayi.",
+        )
+        return UserData(uid=user["uid"], email=user["email"], token=token)
+
     def authenticate(self, token: str) -> UserData:
         """Accept the token only if its Firestore user still exists."""
         uid, email = self.security.read_token(token)
@@ -171,14 +215,18 @@ class FirestoreAuthRepository(AuthRepository):
         response.raise_for_status()
         return self._from_document(response.json())
 
-    def _find_google_user(self, subject: str) -> dict | None:
-        """Return one Firestore user by stable Google subject, or None."""
+    def _find_provider_user(
+        self,
+        field_name: str,
+        subject: str,
+    ) -> dict | None:
+        """Return one Firestore user by a stable provider subject."""
         query = {
             "structuredQuery": {
                 "from": [{"collectionId": self.collection_id}],
                 "where": {
                     "fieldFilter": {
-                        "field": {"fieldPath": "google_sub"},
+                        "field": {"fieldPath": field_name},
                         "op": "EQUAL",
                         "value": {"stringValue": subject},
                     }

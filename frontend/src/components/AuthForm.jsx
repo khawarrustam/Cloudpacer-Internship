@@ -1,11 +1,17 @@
 import { useState } from 'react';
 import { Eye, EyeOff } from 'lucide-react';
 import Button from './ui/Button';
+import GitHubSignInButton from './GitHubSignInButton';
 import GoogleSignInButton from './GoogleSignInButton';
 import Input from './ui/Input';
 import { toast } from './ui/Toast';
 
-export default function AuthForm({ onSignup, onLogin, onGoogleLogin, loading }) {
+export default function AuthForm({
+  onSignup,
+  onLogin,
+  onGoogleLogin,
+  loading,
+}) {
   // English: Form values are temporary, so local state is simpler than Redux here.
   // Roman Urdu: Form values temporary hain, is liye local state Redux se simple hai.
   const [isLogin, setIsLogin] = useState(true);
@@ -63,11 +69,14 @@ export default function AuthForm({ onSignup, onLogin, onGoogleLogin, loading }) 
           </p>
         </header>
 
-        <GoogleSignInButton
-          onCredential={handleGoogleLogin}
-          onError={setError}
-          disabled={loading}
-        />
+        <div className="space-y-3">
+          <GoogleSignInButton
+            onCredential={handleGoogleLogin}
+            onError={setError}
+            disabled={loading}
+          />
+          <GitHubSignInButton onError={setError} disabled={loading} />
+        </div>
 
         <div className="my-5 flex items-center gap-3 text-xs font-semibold uppercase tracking-wide text-[var(--text-muted)]">
           <span className="h-px flex-1 bg-[var(--border)]" />

@@ -9,11 +9,13 @@ from app.domain.auth import (
     AuthRepository,
     DisplayName,
     EmailAddress,
+    GitHubAccountPolicy,
     GoogleAccountPolicy,
     PasswordPolicy,
     UserData,
     ValidationException,
 )
+from app.infrastructure.github_oauth import GitHubOAuthClient
 from app.infrastructure.security import AuthSecurity
 from app.logging import log_error, log_step
 
@@ -29,13 +31,16 @@ class MongoAuthRepository(AuthRepository):
         self,
         collection: Collection,
         security: AuthSecurity,
+        github_oauth: GitHubOAuthClient,
     ) -> None:
         self.collection = collection
         # Unique index selected Mongo database mein duplicate normalized email rokta hai.
         self.collection.create_index("email", unique=True)
         # Sparse index Google-only/link records par stable subject unique rakhta hai.
         self.collection.create_index("google_sub", unique=True, sparse=True)
+        self.collection.create_index("github_sub", unique=True, sparse=True)
         self.security = security
+        self.github_oauth = github_oauth
 
     def signup(self, email: str, password: str, name: str) -> UserData:
         """Create a MongoDB-only account and return its token."""
@@ -133,6 +138,50 @@ class MongoAuthRepository(AuthRepository):
             "Infrastructure",
             "MongoDB Google authentication succeeded.",
             "MongoDB Google authentication kamyab ho gayi.",
+        )
+        return UserData(uid=uid, email=email, token=token)
+
+    def login_with_github(self, code: str) -> UserData:
+        """Verify GitHub, then find/create its user only in MongoDB."""
+        profile = self.github_oauth.verify_code(code)
+        try:
+            user = self.collection.find_one({"github_sub": profile.subject})
+            if user is None:
+                user = self.collection.find_one({"email": profile.email.value})
+
+            if user is None:
+                user = {
+                    "_id": str(uuid.uuid4()),
+                    "email": profile.email.value,
+                    "display_name": profile.display_name.value,
+                    "github_sub": profile.subject,
+                }
+                self.collection.insert_one(user)
+            elif GitHubAccountPolicy.should_link(
+                user.get("github_sub"),
+                profile,
+            ):
+                self.collection.update_one(
+                    {"_id": user["_id"]},
+                    {"$set": {"github_sub": profile.subject}},
+                )
+        except ValidationException:
+            raise
+        except DuplicateKeyError as error:
+            raise ValidationException(
+                "This GitHub account already exists in MongoDB."
+            ) from error
+        except Exception as error:
+            log_error("Infrastructure", f"MongoDB GitHub login failed: {error}")
+            raise ValidationException("MongoDB GitHub login failed.") from error
+
+        uid = str(user["_id"])
+        email = str(user["email"])
+        token = self.security.create_token(uid, email)
+        log_step(
+            "Infrastructure",
+            "MongoDB GitHub authentication succeeded.",
+            "MongoDB GitHub authentication kamyab ho gayi.",
         )
         return UserData(uid=uid, email=email, token=token)
 

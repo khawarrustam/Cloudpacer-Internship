@@ -1,7 +1,9 @@
 import AuthForm from './components/AuthForm';
+import GitHubCallback from './components/GitHubCallback';
 import TodoDashboard from './components/TodoDashboard';
 import { useDispatch, useSelector } from 'react-redux';
 import {
+  githubLoginUser,
   googleLoginUser,
   loginUser,
   logoutUser,
@@ -44,6 +46,14 @@ export default function App() {
   const googleLogin = (credential) => (
     runAuthAction(googleLoginUser({ credential }))
   );
+
+  const githubLogin = (code) => (
+    runAuthAction(githubLoginUser({ code }))
+  );
+
+  if (window.location.pathname === '/auth/github/callback' && !isLoggedIn) {
+    return <GitHubCallback onLogin={githubLogin} />;
+  }
 
   // English: Authentication state decides which main screen is rendered.
   // Roman Urdu: Login state decide karti hai ke auth form show ho ya todo dashboard.

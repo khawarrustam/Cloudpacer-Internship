@@ -9,11 +9,14 @@ from app.domain.auth import (
     AuthRepository,
     DisplayName,
     EmailAddress,
+    GitHubAccountPolicy,
     GoogleAccountPolicy,
     PasswordPolicy,
     UserData,
     ValidationException,
 )
+from app.infrastructure.github_oauth import GitHubOAuthClient
+from app.infrastructure.postgresql.auth_schema import ensure_auth_table
 from app.infrastructure.security import AuthSecurity
 from app.logging import log_error, log_step
 
@@ -25,11 +28,17 @@ class PostgreSQLAuthRepository(AuthRepository):
     How: Use a unique email column, hashed passwords, and database-bound JWTs.
     """
 
-    def __init__(self, connection_url: str, security: AuthSecurity) -> None:
+    def __init__(
+        self,
+        connection_url: str,
+        security: AuthSecurity,
+        github_oauth: GitHubOAuthClient,
+    ) -> None:
         self.connection_url = connection_url
         self.security = security
+        self.github_oauth = github_oauth
         # Beginner setup simple rakhne ke liye missing table startup par create hoti hai.
-        self._create_table()
+        ensure_auth_table(connection_url)
 
     def signup(self, email: str, password: str, name: str) -> UserData:
         """Create a PostgreSQL-only account and return its token."""
@@ -169,6 +178,70 @@ class PostgreSQLAuthRepository(AuthRepository):
         )
         return UserData(uid=user["id"], email=user["email"], token=token)
 
+    def login_with_github(self, code: str) -> UserData:
+        """Verify GitHub, then find/create its user only in PostgreSQL."""
+        profile = self.github_oauth.verify_code(code)
+        try:
+            with psycopg.connect(
+                self.connection_url,
+                row_factory=dict_row,
+            ) as connection:
+                user = connection.execute(
+                    "SELECT id, email, github_sub FROM users WHERE github_sub = %s",
+                    (profile.subject,),
+                ).fetchone()
+                if user is None:
+                    user = connection.execute(
+                        "SELECT id, email, github_sub FROM users WHERE email = %s",
+                        (profile.email.value,),
+                    ).fetchone()
+
+                if user is None:
+                    uid = str(uuid.uuid4())
+                    connection.execute(
+                        """
+                        INSERT INTO users (
+                            id, email, display_name, password_hash, github_sub
+                        ) VALUES (%s, %s, %s, NULL, %s)
+                        """,
+                        (
+                            uid,
+                            profile.email.value,
+                            profile.display_name.value,
+                            profile.subject,
+                        ),
+                    )
+                    user = {
+                        "id": uid,
+                        "email": profile.email.value,
+                        "github_sub": profile.subject,
+                    }
+                elif GitHubAccountPolicy.should_link(
+                    user.get("github_sub"),
+                    profile,
+                ):
+                    connection.execute(
+                        "UPDATE users SET github_sub = %s WHERE id = %s",
+                        (profile.subject, user["id"]),
+                    )
+        except ValidationException:
+            raise
+        except psycopg.errors.UniqueViolation as error:
+            raise ValidationException(
+                "This GitHub account already exists in PostgreSQL."
+            ) from error
+        except Exception as error:
+            log_error("Infrastructure", f"PostgreSQL GitHub login failed: {error}")
+            raise ValidationException("PostgreSQL GitHub login failed.") from error
+
+        token = self.security.create_token(user["id"], user["email"])
+        log_step(
+            "Infrastructure",
+            "PostgreSQL GitHub authentication succeeded.",
+            "PostgreSQL GitHub authentication kamyab ho gayi.",
+        )
+        return UserData(uid=user["id"], email=user["email"], token=token)
+
     def authenticate(self, token: str) -> UserData:
         """Accept the token only if its PostgreSQL user still exists."""
         uid, email = self.security.read_token(token)
@@ -179,32 +252,3 @@ class PostgreSQLAuthRepository(AuthRepository):
         if user is None:
             raise ValidationException("PostgreSQL user no longer exists.")
         return UserData(uid=uid, email=email, token=token)
-
-    def _create_table(self) -> None:
-        """Create or safely extend the users table for both login methods."""
-        # IF NOT EXISTS existing table/data ko delete ya reset nahi karta.
-        create_table = """
-            CREATE TABLE IF NOT EXISTS users (
-                id TEXT PRIMARY KEY,
-                email TEXT UNIQUE NOT NULL,
-                display_name TEXT NOT NULL,
-                password_hash TEXT,
-                google_sub TEXT
-            )
-        """
-        with psycopg.connect(self.connection_url) as connection:
-            connection.execute(create_table)
-            # Existing password-only table ko data loss ke baghair migrate karte hain.
-            connection.execute(
-                "ALTER TABLE users ADD COLUMN IF NOT EXISTS google_sub TEXT"
-            )
-            connection.execute(
-                "ALTER TABLE users ALTER COLUMN password_hash DROP NOT NULL"
-            )
-            connection.execute(
-                """
-                CREATE UNIQUE INDEX IF NOT EXISTS users_google_sub_unique
-                ON users (google_sub)
-                WHERE google_sub IS NOT NULL
-                """
-            )

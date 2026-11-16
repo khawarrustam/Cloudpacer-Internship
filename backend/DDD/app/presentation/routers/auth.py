@@ -3,6 +3,7 @@
 from fastapi import APIRouter
 
 from app.presentation.controllers.auth_controller import (
+    github_login_user,
     google_login_user,
     login_user,
     signup_user,
@@ -10,6 +11,7 @@ from app.presentation.controllers.auth_controller import (
 from app.presentation.dependencies import AuthServiceDep
 from app.presentation.schemas import (
     AuthResponse,
+    GitHubLoginRequest,
     GoogleLoginRequest,
     LoginRequest,
     SignupRequest,
@@ -38,3 +40,12 @@ def login_with_google(
 ) -> AuthResponse:
     """Delegate the Google-login endpoint to its controller."""
     return google_login_user(request, auth_service)
+
+
+@router.post("/github", response_model=AuthResponse)
+def login_with_github(
+    request: GitHubLoginRequest,
+    auth_service: AuthServiceDep,
+) -> AuthResponse:
+    """Delegate the GitHub OAuth callback code to its controller."""
+    return github_login_user(request, auth_service)

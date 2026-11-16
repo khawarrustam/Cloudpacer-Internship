@@ -13,6 +13,9 @@ and viva preparation, read
 Email reminder ka beginner-friendly complete flow:
 [`EMAIL_REMINDER_SERVICE_GUIDE.md`](../../docs/EMAIL_REMINDER_SERVICE_GUIDE.md).
 
+GitHub login ka short Roman-Urdu complete flow:
+[`GITHUB_LOGIN_INTEGRATION_GUIDE.md`](../../docs/GITHUB_LOGIN_INTEGRATION_GUIDE.md).
+
 ## Structure
 
 ```text
@@ -36,6 +39,7 @@ Detailed adapter modules remain small and explicit:
 ```text
 app/infrastructure/
 |-- security.py
+|-- github_oauth.py
 |-- repository_factory.py
 |-- resend_email_sender.py
 |-- reminder_scheduler.py
@@ -47,6 +51,7 @@ app/infrastructure/
 |   |-- auth_repository.py
 |   `-- todo_repository.py
 `-- postgresql/
+    |-- auth_schema.py
     |-- auth_repository.py
     |-- todo_repository.py
     `-- todo_schema.py
@@ -87,6 +92,11 @@ terminal environment overrides. Inactive database fields may retain safe
 local/sample values. Keep `AUTH_TOKEN_SECRET` private. Set `GOOGLE_CLIENT_ID`
 to the Web OAuth client ID also used by `frontend/.env`; a client secret is not
 used for this Google Identity Services flow.
+
+GitHub OAuth ke liye `GITHUB_CLIENT_ID`, `GITHUB_CLIENT_SECRET`, aur
+`GITHUB_REDIRECT_URI` backend `.env` mein set karein. Frontend `.env` mein sirf
+public `VITE_GITHUB_CLIENT_ID` aur matching `VITE_GITHUB_REDIRECT_URI` rakhein;
+client secret frontend mein kabhi nahi jata.
 
 For reminders, add a Resend API key and sender to `.env`:
 
@@ -150,6 +160,12 @@ when first used in Firestore, MongoDB, and PostgreSQL. An existing same-email
 password account in one database is linked only inside that database when
 Google is authoritative for the email (Gmail or Google Workspace).
 
+GitHub login bhi same isolation rule follow karta hai. Backend OAuth code ko
+server-side exchange karke verified email aur stable numeric GitHub ID leta hai.
+Access token save nahi hota. Same verified email active database ke existing
+local account se link hoti hai; dusri database mein phir bhi separate UID banti
+hai.
+
 - Firestore accounts: `auth_users` collection
 - MongoDB accounts: `users` collection
 - PostgreSQL accounts: `users` table
@@ -164,6 +180,7 @@ Passwords are stored as salted PBKDF2 hashes, never plain text.
 | `POST` | `/auth/signup` | Create account in active database |
 | `POST` | `/auth/login` | Login from active database |
 | `POST` | `/auth/google` | Verify Google and login/create in active database |
+| `POST` | `/auth/github` | Verify GitHub and login/create in active database |
 | `GET` | `/todos` | List current user's todos |
 | `POST` | `/todos` | Create todo with optional due date/reminder |
 | `PATCH` | `/todos/{id}/complete` | Complete todo |
@@ -190,3 +207,6 @@ docstrings so the reason and layer responsibility stay aligned with the code.
 
 For the complete frontend-to-database Google flow, read
 [`docs/GOOGLE_LOGIN_INTEGRATION_GUIDE.md`](../../docs/GOOGLE_LOGIN_INTEGRATION_GUIDE.md).
+
+For the complete GitHub OAuth flow, read
+[`docs/GITHUB_LOGIN_INTEGRATION_GUIDE.md`](../../docs/GITHUB_LOGIN_INTEGRATION_GUIDE.md).

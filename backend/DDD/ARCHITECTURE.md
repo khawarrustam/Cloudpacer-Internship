@@ -40,7 +40,7 @@ must not be moved between layers unless the placement rules below support it.
 |---|---|---|
 | `domain/` | Todo/auth/reminder rules, email/repository ports, value objects and business errors | FastAPI, Pydantic HTTP schemas, Resend/JWT SDKs, database drivers, environment variables |
 | `application/` | Input/output DTOs and auth/todo/reminder use cases | HTTP status codes, database queries, Resend SDK, environment reads |
-| `infrastructure/` | Repository adapters, schema/mappers, hashing, Google/JWT, Resend and scheduler adapters | HTTP routes, UI response models, business decisions |
+| `infrastructure/` | Repository adapters, schema/mappers, hashing, Google/GitHub OAuth/JWT, Resend and scheduler adapters | HTTP routes, UI response models, business decisions |
 | `presentation/` | Pydantic schemas, dependencies, thin routes, controllers and HTTP error mapping | SQL, PyMongo, Firestore URLs, hashing, email provider calls |
 | `config.py` | Typed environment settings and selected-database normalization | Repository creation, API routes, business rules |
 | `logging.py` | Existing request and bilingual step logging | Domain decisions or persistence logic |
@@ -86,6 +86,7 @@ backend/DDD/
 |   |   `-- reminder_service.py   # Due email reminder use case
 |   |-- infrastructure/
 |   |   |-- security.py           # Password + Google token + app JWT
+|   |   |-- github_oauth.py       # GitHub code exchange + verified profile
 |   |   |-- repository_factory.py # Selected DB adapter wiring
 |   |   |-- resend_email_sender.py# EmailSender adapter
 |   |   |-- reminder_scheduler.py # APScheduler background adapter
@@ -97,6 +98,7 @@ backend/DDD/
 |   |   |   |-- auth_repository.py
 |   |   |   `-- todo_repository.py
 |   |   `-- postgresql/
+|   |       |-- auth_schema.py    # Safe users-table migration
 |   |       |-- auth_repository.py
 |   |       |-- todo_repository.py
 |   |       `-- todo_schema.py

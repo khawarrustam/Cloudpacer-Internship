@@ -34,6 +34,9 @@ class Settings(BaseSettings):
     auth_token_secret: str
     auth_token_expire_minutes: int
     google_client_id: str
+    github_client_id: str
+    github_client_secret: str
+    github_redirect_uri: str
 
     # Reminder scheduler aur Resend ki har runtime value environment se aati hai.
     resend_api_key: str

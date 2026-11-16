@@ -3,11 +3,17 @@
 from fastapi import HTTPException
 
 from app.application.auth_service import AuthService
-from app.application.dto import GoogleLoginInput, LoginInput, SignupInput
+from app.application.dto import (
+    GitHubLoginInput,
+    GoogleLoginInput,
+    LoginInput,
+    SignupInput,
+)
 from app.domain.auth import ValidationException
 from app.logging import log_step
 from app.presentation.schemas import (
     AuthResponse,
+    GitHubLoginRequest,
     GoogleLoginRequest,
     LoginRequest,
     SignupRequest,
@@ -76,6 +82,30 @@ def google_login_user(
             result.email,
             result.token,
             "Google login successful",
+        )
+    except ValidationException as error:
+        raise HTTPException(401, str(error)) from error
+
+
+def github_login_user(
+    request: GitHubLoginRequest,
+    auth_service: AuthService,
+) -> AuthResponse:
+    """Exchange GitHub code through the use case and return our JWT response."""
+    log_step(
+        "Presentation",
+        "GitHub login request received.",
+        "GitHub login request mil gayi.",
+    )
+    try:
+        result = auth_service.login_with_github(
+            GitHubLoginInput(code=request.code)
+        )
+        return _auth_response(
+            result.uid,
+            result.email,
+            result.token,
+            "GitHub login successful",
         )
     except ValidationException as error:
         raise HTTPException(401, str(error)) from error

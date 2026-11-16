@@ -58,6 +58,22 @@ export const googleLoginUser = createAsyncThunk(
   },
 );
 
+export const githubLoginUser = createAsyncThunk(
+  'auth/githubLoginUser',
+  async ({ code }, { rejectWithValue }) => {
+    try {
+      // Backend code exchange karta hai; GitHub access token browser mein nahi aata.
+      const data = await authApi.loginWithGitHub(code);
+      saveSession(data);
+      return { uid: data.uid, email: data.email };
+    } catch (error) {
+      return rejectWithValue(
+        getApiErrorMessage(error, 'GitHub login failed. Please try again.'),
+      );
+    }
+  },
+);
+
 const initialState = {
   // English: The session stays only in memory; refresh means login again.
   // Roman Urdu: Session sirf memory mein hai; refresh par dobara login hoga.
@@ -112,6 +128,16 @@ const authSlice = createSlice({
         state.user = action.payload;
       })
       .addCase(googleLoginUser.rejected, (state) => {
+        state.status = 'failed';
+      })
+      .addCase(githubLoginUser.pending, (state) => {
+        state.status = 'loading';
+      })
+      .addCase(githubLoginUser.fulfilled, (state, action) => {
+        state.status = 'succeeded';
+        state.user = action.payload;
+      })
+      .addCase(githubLoginUser.rejected, (state) => {
         state.status = 'failed';
       });
   },

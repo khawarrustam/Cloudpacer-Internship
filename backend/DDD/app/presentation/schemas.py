@@ -29,6 +29,12 @@ class GoogleLoginRequest(BaseModel):
     credential: str = Field(min_length=20)
 
 
+class GitHubLoginRequest(BaseModel):
+    """Validate the short-lived code returned by GitHub OAuth."""
+
+    code: str = Field(min_length=5, max_length=500)
+
+
 class AuthResponse(BaseModel):
     """Define the public JSON returned after signup or login."""
 
